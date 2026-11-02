@@ -1,0 +1,272 @@
+{
+  "employee_month": {
+    "4050 H1": {
+      "gross": 4050,
+      "mw": 4050,
+      "nontaxable": 300,
+      "cas": 938,
+      "cass": 375,
+      "deduction": 810,
+      "tax": 163,
+      "net": 2574,
+      "cam": 84,
+      "employer_cost": 4134
+    },
+    "4325 H2": {
+      "gross": 4325,
+      "mw": 4325,
+      "nontaxable": 200,
+      "cas": 1031,
+      "cass": 413,
+      "deduction": 865,
+      "tax": 182,
+      "net": 2699,
+      "cam": 93,
+      "employer_cost": 4418
+    },
+    "5000 H1": {
+      "gross": 5000,
+      "mw": 4050,
+      "nontaxable": 0,
+      "cas": 1250,
+      "cass": 500,
+      "deduction": 425,
+      "tax": 283,
+      "net": 2967,
+      "cam": 113,
+      "employer_cost": 5113
+    },
+    "5000 H2": {
+      "gross": 5000,
+      "mw": 4325,
+      "nontaxable": 0,
+      "cas": 1250,
+      "cass": 500,
+      "deduction": 562,
+      "tax": 269,
+      "net": 2981,
+      "cam": 113,
+      "employer_cost": 5113
+    },
+    "10000 H2": {
+      "gross": 10000,
+      "mw": 4325,
+      "nontaxable": 0,
+      "cas": 2500,
+      "cass": 1000,
+      "deduction": 0,
+      "tax": 650,
+      "net": 5850,
+      "cam": 225,
+      "employer_cost": 10225
+    },
+    "6000 H1 2 dep u26 1 child": {
+      "gross": 6000,
+      "mw": 4050,
+      "nontaxable": 0,
+      "cas": 1500,
+      "cass": 600,
+      "deduction": 1133,
+      "tax": 277,
+      "net": 3623,
+      "cam": 135,
+      "employer_cost": 6135
+    }
+  },
+  "owner_salary_year": {
+    "gross": 50250,
+    "cam": 1062,
+    "net": 31638
+  },
+  "compare_monthly": {
+    "5000": {
+      "Salariat": 2974.0,
+      "PFA": 3138.75,
+      "SRL micro": 3202.66,
+      "SRL profit cu salariu": 3147.3544,
+      "SRL profit fara salariu": 3325.5,
+      "Drepturi de autor": 4497.5
+    },
+    "10000": {
+      "Salariat": 5850.0,
+      "PFA": 6277.5,
+      "SRL micro": 6955.66,
+      "SRL profit cu salariu": 6472.8544,
+      "SRL profit fara salariu": 6651.0,
+      "Drepturi de autor": 7982.5
+    },
+    "20000": {
+      "Salariat": 11700.0,
+      "PFA": 14377.5,
+      "SRL micro": 14866.659999999998,
+      "SRL profit cu salariu": 12921.354399999998,
+      "SRL profit fara salariu": 13302.0,
+      "Drepturi de autor": 15965.0
+    },
+    "30 EUR/h": {
+      "Salariat": 16252.519999999999,
+      "PFA": 20993.868,
+      "SRL micro": 21337.772031999997,
+      "SRL profit cu salariu": 18411.994912,
+      "SRL profit fara salariu": 18792.640511999998,
+      "Drepturi de autor": 23279.628800000002
+    }
+  },
+  "scenario_monthly_gross": {
+    "5000": 5000,
+    "10000": 10000,
+    "20000": 20000,
+    "30 EUR/h": 27781.52
+  },
+  "pfa": {
+    "20000": {
+      "revenue": 20000,
+      "net_income": 20000,
+      "cas": 0.0,
+      "cass": 2430.0,
+      "tax": 1800.0,
+      "take_home": 15770.0
+    },
+    "48600": {
+      "revenue": 48600,
+      "net_income": 48600,
+      "cas": 12150.0,
+      "cass": 4860.0,
+      "tax": 3159.0,
+      "take_home": 28431.0
+    },
+    "97200": {
+      "revenue": 97200,
+      "net_income": 97200,
+      "cas": 24300.0,
+      "cass": 9720.0,
+      "tax": 6318.0,
+      "take_home": 56862.0
+    },
+    "120000": {
+      "revenue": 120000,
+      "net_income": 120000,
+      "cas": 24300.0,
+      "cass": 12000.0,
+      "tax": 8370.0,
+      "take_home": 75330.0
+    },
+    "300000": {
+      "revenue": 300000,
+      "net_income": 300000,
+      "cas": 24300.0,
+      "cass": 29160.0,
+      "tax": 24654.0,
+      "take_home": 221886.0
+    },
+    "400000": {
+      "revenue": 400000,
+      "net_income": 400000,
+      "cas": 24300.0,
+      "cass": 29160.0,
+      "tax": 34654.0,
+      "take_home": 311886.0
+    }
+  },
+  "srl": {
+    "100000": {
+      "regime": "micro",
+      "revenue": 100000,
+      "salary_gross": 50250,
+      "cam": 1062,
+      "company_tax": 1000.0,
+      "profit": 47688.0,
+      "dividend_tax": 7630.08,
+      "net_dividends": 40057.92,
+      "cass_dividends": 2430.0,
+      "salary_net": 31638,
+      "take_home": 69265.92
+    },
+    "300000": {
+      "regime": "micro",
+      "revenue": 300000,
+      "salary_gross": 50250,
+      "cam": 1062,
+      "company_tax": 3000.0,
+      "profit": 245688.0,
+      "dividend_tax": 39310.08,
+      "net_dividends": 206377.91999999998,
+      "cass_dividends": 9720.0,
+      "salary_net": 31638,
+      "take_home": 228295.91999999998
+    },
+    "509850": {
+      "regime": "profit",
+      "revenue": 509850,
+      "salary_gross": 50250,
+      "cam": 1062,
+      "company_tax": 73366.08,
+      "profit": 385171.92,
+      "dividend_tax": 61627.5072,
+      "net_dividends": 323544.4128,
+      "cass_dividends": 9720.0,
+      "salary_net": 31638,
+      "take_home": 345462.4128
+    },
+    "600000": {
+      "regime": "profit",
+      "revenue": 600000,
+      "salary_gross": 50250,
+      "cam": 1062,
+      "company_tax": 87790.08,
+      "profit": 460897.92,
+      "dividend_tax": 73743.6672,
+      "net_dividends": 387154.2528,
+      "cass_dividends": 9720.0,
+      "salary_net": 31638,
+      "take_home": 409072.2528
+    }
+  },
+  "copyright": {
+    "40000": {
+      "gross": 40000,
+      "net_income": 24000.0,
+      "tax": 2400.0,
+      "cas": 0.0,
+      "cass": 0.0,
+      "take_home": 37600.0
+    },
+    "40500": {
+      "gross": 40500,
+      "net_income": 24300.0,
+      "tax": 2430.0,
+      "cas": 0.0,
+      "cass": 2430.0,
+      "take_home": 35640.0
+    },
+    "81000": {
+      "gross": 81000,
+      "net_income": 48600.0,
+      "tax": 4860.0,
+      "cas": 12150.0,
+      "cass": 4860.0,
+      "take_home": 59130.0
+    },
+    "162000": {
+      "gross": 162000,
+      "net_income": 97200.0,
+      "tax": 9720.0,
+      "cas": 24300.0,
+      "cass": 9720.0,
+      "take_home": 118260.0
+    },
+    "200000": {
+      "gross": 200000,
+      "net_income": 120000.0,
+      "tax": 12000.0,
+      "cas": 24300.0,
+      "cass": 9720.0,
+      "take_home": 153980.0
+    }
+  },
+  "copyright_gross_for_net": {
+    "38000": 40425.53191489362,
+    "60000": 66414.89361702128,
+    "100000": 124478.72340425533
+  }
+}

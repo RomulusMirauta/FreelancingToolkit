@@ -1,0 +1,29 @@
+# Private files: the tax workbook and anything else kept out of the public repo
+.donotpush/
+PLAN.local.md
+*.local.md
+*.xlsx
+*.xlsm
+~$*
+
+# Secrets, in case any are ever added
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+
+# Node and build output
+node_modules/
+dist/
+dev-dist/
+*.tsbuildinfo
+*.log
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1f6f5c" />
+    <meta name="description" content="Convertor de tarif și calculator de taxe 2026 pentru freelancerii din România." />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <title>FreelancingToolkit</title>
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem('ft.theme'));
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

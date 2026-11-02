@@ -1,0 +1,90 @@
+import { describe, expect, it } from 'vitest';
+import golden from '../../../data/golden-2026.json';
+import { compareYear } from './compare';
+import { copyrightYear } from './copyright';
+import { employeeYear } from './employee';
+import { pfaYear } from './pfa';
+import { BOARD_REGIMES, DEFAULT_TAX_OPTIONS, computeRegime, computeSideJob, mergeTaxOptions } from './regimes';
+import { mandateMonth } from './srl';
+
+describe('tax board regimes', () => {
+  it('with default options, match the comparison engine (and so the golden file)', () => {
+    for (const monthly of Object.values(golden.scenario_monthly_gross)) {
+      const annual = 12 * monthly;
+      const c = compareYear(annual);
+      const at = (r: (typeof BOARD_REGIMES)[number]) => computeRegime(r, annual, DEFAULT_TAX_OPTIONS).takeHome;
+      expect(at('employee')).toBeCloseTo(c.employee, 6);
+      expect(at('pfaReal')).toBeCloseTo(c.pfa, 6);
+      expect(at('srlMicro')).toBeCloseTo(c.srlMicro, 6);
+      expect(at('srlProfitSalary')).toBeCloseTo(c.srlProfitSalary, 6);
+      expect(at('srlProfitNoSalary')).toBeCloseTo(c.srlProfitNoSalary, 6);
+      expect(at('copyright')).toBeCloseTo(c.copyright, 6);
+    }
+  });
+
+  it('employee at 30,000 lei gross: tax share as in the workbook (H2: 41.5%)', () => {
+    const r = computeRegime('employee', 12 * 30_000, DEFAULT_TAX_OPTIONS);
+    expect(r.taxShare).toBeCloseTo(0.415, 3);
+  });
+
+  it('PFA income norm taxes the norm, not the revenue', () => {
+    const r = computeRegime('pfaNorm', 360_000, DEFAULT_TAX_OPTIONS);
+    expect(r.lines.find((l) => l.key === 'taxedNorm')!.annual).toBe(48_600);
+    expect(r.notice).toEqual({ kind: 'normLimit', overLimit: true });
+  });
+
+  it('SRL micro above the ceiling falls back to profit tax and says why', () => {
+    expect(computeRegime('srlMicro', 600_000, DEFAULT_TAX_OPTIONS).notice).toEqual({ kind: 'microFallback', reason: 'ceiling' });
+  });
+
+  it('monthly expenses are applied twelve times', () => {
+    const o = { ...DEFAULT_TAX_OPTIONS, pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1000 } };
+    const r = computeRegime('pfaReal', 120_000, o);
+    expect(r.lines.find((l) => l.key === 'netIncome')!.annual).toBe(108_000);
+  });
+
+  it('PFA sick-leave insurance costs 1% of the minimum wage a month and is not deductible', () => {
+    const base = computeRegime('pfaReal', 120_000, DEFAULT_TAX_OPTIONS).takeHome;
+    const o = { ...DEFAULT_TAX_OPTIONS, pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, sickLeave: true } };
+    expect(base - computeRegime('pfaReal', 120_000, o).takeHome).toBeCloseTo(12 * 40.5, 6);
+  });
+
+  it('SRL owner paid by mandate: no personal deduction, so a lower net than CIM; still a micro-enterprise', () => {
+    const cim = computeRegime('srlMicro', 300_000, DEFAULT_TAX_OPTIONS);
+    const o = { ...DEFAULT_TAX_OPTIONS, srlMicro: { ...DEFAULT_TAX_OPTIONS.srlMicro, ownerPay: 'mandate' as const } };
+    const mandate = computeRegime('srlMicro', 300_000, o);
+    expect(mandate.notice).toEqual({ kind: 'microOk' });
+    const net = (r: typeof cim) => r.lines.find((l) => l.key === 'ownerNet')!.annual;
+    expect(net(mandate)).toBeLessThan(net(cim));
+    // H1 month at 4,050: CAS 1,013, CASS 405, tax 263 → net 2,369.
+    expect(mandateMonth(4050).net).toBe(2369);
+  });
+
+  it('SRL with owner salary: revenue that does not cover the salary costs is paid by the owner', () => {
+    // With no revenue, the owner funds the minimum-wage salary and its taxes: take-home is negative, not the net salary.
+    expect(computeRegime('srlMicro', 0, DEFAULT_TAX_OPTIONS).takeHome).toBeLessThan(0);
+    expect(computeRegime('srlProfitSalary', 0, DEFAULT_TAX_OPTIONS).takeHome).toBeLessThan(0);
+  });
+
+  it('merging saved options keeps valid values and defaults the rest', () => {
+    const merged = mergeTaxOptions({ employee: { dependants: 2, under26: 'yes' }, bogus: {} });
+    expect(merged.employee).toEqual({ dependants: 2, under26: false, schoolChildren: 0 });
+    expect(merged.pfaNorm).toEqual(DEFAULT_TAX_OPTIONS.pfaNorm);
+  });
+
+  it('CIM + PFA: salary of at least 6 minimum wages a year waives the CASS minimum on the PFA', () => {
+    const r = computeSideJob('pfa', { salaryMonthly: 8000, sideMonthly: 1000 });
+    expect(r.notice).toBe('cassWaived');
+    expect(r.salaryNet).toBeCloseTo(employeeYear(8000).net, 6);
+    expect(r.sideNet).toBeCloseTo(pfaYear(12_000, { hasSalary: true }).takeHome, 6);
+    // CASS is 10% of 12,000, not the 2,430 minimum.
+    expect(r.lines.find((l) => l.key === 'cass')!.annual).toBeCloseTo(1200, 6);
+  });
+
+  it('CIM + copyright: an employee pays only income tax on copyright income (6% of gross)', () => {
+    const r = computeSideJob('copyright', { salaryMonthly: 8000, sideMonthly: 5000 });
+    expect(r.sideNet).toBeCloseTo(copyrightYear(60_000, true).takeHome, 6);
+    expect(r.sideTaxShare).toBeCloseTo(0.06, 9);
+    expect(r.notice).toBe('daEmployee');
+  });
+});

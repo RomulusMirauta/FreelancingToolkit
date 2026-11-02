@@ -1,0 +1,60 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  # BNR publishes reference rates on banking days at about 13:00 Romanian time (10:00–11:00 UTC).
+  schedule:
+    - cron: '30 11 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - name: Refresh BNR and market rates (keeps the committed snapshots on failure)
+        run: npm run rates
+      # Tests and build run on the fresh rates. If either fails, nothing is committed or deployed,
+      # and GitHub Pages keeps serving the last good version.
+      - run: npm test
+      - run: npm run build
+      - name: Commit the new rates snapshots
+        run: |
+          if ! git diff --quiet -- src/data/rates.json src/data/market-rates.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "Update exchange rates" -- src/data/rates.json src/data/market-rates.json
+            git pull --rebase --autostash
+            git push
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
