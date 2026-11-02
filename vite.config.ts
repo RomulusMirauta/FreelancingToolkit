@@ -20,6 +20,8 @@ export default defineConfig({
         theme_color: '#1f6f5c',
         background_color: '#f7f7f4',
         display: 'standalone',
+        // A fixed identity, so the installed app stays the same app even if start_url changes.
+        id: './',
         start_url: './',
         scope: './',
         // PNGs for installing on Android and desktop; the maskable one fills the whole shape Android crops it to.

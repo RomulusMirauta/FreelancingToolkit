@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { CURRENCIES, MAIN_CODES } from '../../lib/currency/currencies';
 import { convert, crossRate } from '../../lib/currency/convert';
 import { BNR_RATES, MARKET_RATES, baseRate, effectiveRates, isMarketRate, isStale } from '../../lib/currency/rates';
@@ -7,7 +7,9 @@ import { PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time
 import { formatEditable, formatMoney, formatRate, parseAmount } from '../../lib/ui/numbers';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
+import { Fold } from '../../lib/ui/Fold';
 import { AddCurrency } from './AddCurrency';
+import { writeSourceQuery } from './sourceQuery';
 
 /** The cell the user last typed into; every other cell is derived from it. */
 export interface SourceCell {
@@ -36,9 +38,21 @@ interface Props {
   work: WorkSettings;
   /** Opens the tax calculator for this income, given in lei per year. */
   onTaxes: (yearRon: number) => void;
+  /** The amount per month in lei changed: the tax page's income follows it. */
+  onIncome: (monthRon: number) => void;
+  /** The converter's current figures, for the fees card under it. */
+  onSnapshot: (s: ConverterSnapshot) => void;
 }
 
-export function Converter({ work, onTaxes }: Props) {
+export interface ConverterSnapshot {
+  /** Amount per month in RON, before fees. */
+  monthRon: number;
+  /** Hourly rate in the anchor currency, before fees. */
+  hour: number;
+  anchor: string;
+}
+
+export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const t = useT();
   const tc = t.converter;
   const lang = useLang();
@@ -48,6 +62,8 @@ export function Converter({ work, onTaxes }: Props) {
   /** Currencies the user added from the dropdown; they get a chip next to the main ones. */
   const [added, setAdded] = usePersistentState<string[]>('ft.addedCurrencies', [], isCodes);
   const [overrides, setOverrides] = usePersistentState('ft.customRates', {}, isOverrides);
+  /** The "Or work backwards" note beside the grid; its × hides it (Reset tab brings it back). */
+  const [goalShown, setGoalShown] = usePersistentState('ft.goalNote', true, (v): v is boolean => typeof v === 'boolean');
   const [editing, setEditing] = useState<{ period: Period; currency: string; text: string } | null>(null);
 
   // Chip order is also column order: EUR, RON, USD, GBP, then added currencies in the order they were added.
@@ -67,6 +83,22 @@ export function Converter({ work, onTaxes }: Props) {
   const valueAt = (period: Period, currency: string) =>
     convert(rescale(source.amount, source.period, period, work), source.currency, currency, rates);
 
+  // The tax page's income follows the converter: whenever the amount per month changes here (rate, working
+  // time, custom rate), it is sent on. Compared with the last value, not skipped on mount, so StrictMode's
+  // double effect doesn't overwrite an income set on the tax page.
+  const monthRon = valueAt('month', 'RON');
+  const sentRef = useRef(monthRon);
+  useEffect(() => {
+    if (sentRef.current === monthRon) return;
+    sentRef.current = monthRon;
+    onIncome(monthRon);
+  }, [monthRon, onIncome]);
+
+  // The cell typed into lives in the address too (?amount=40&currency=EUR&per=hour).
+  useEffect(() => {
+    writeSourceQuery(source, source.amount === DEFAULT_SOURCE.amount && source.currency === DEFAULT_SOURCE.currency && source.period === DEFAULT_SOURCE.period);
+  }, [source]);
+
   const onType = (period: Period, currency: string, text: string) => {
     setEditing({ period, currency, text });
     const amount = parseAmount(text);
@@ -79,16 +111,20 @@ export function Converter({ work, onTaxes }: Props) {
 
   const stale = isStale(BNR_RATES.date, new Date());
   const anchor = columns.includes('EUR') ? 'EUR' : columns[0]!;
+  const hourAnchor = valueAt('hour', anchor);
+  useEffect(() => onSnapshot({ monthRon, hour: hourAnchor, anchor }), [monthRon, hourAnchor, anchor, onSnapshot]);
 
   return (
-    <section className="card" aria-labelledby="converter-title">
-      <div className="card-head">
-        <h2 id="converter-title">{tc.title}</h2>
-        <p className="edit-hint">
-          <span className="pencil" aria-hidden="true">✎</span>
-          {tc.hintBefore}<strong>{tc.hintStrong}</strong>{tc.hintAfter}
-        </p>
-      </div>
+    <Fold
+      id="converter"
+      title={tc.title}
+      summary={tc.summary(formatMoney(valueAt('hour', anchor)), anchor, formatMoney(monthRon))}
+      className="converter"
+    >
+      <p className="edit-hint">
+        <span className="pencil" aria-hidden="true">✎</span>
+        {tc.hintBefore}<strong>{tc.hintStrong}</strong>{tc.hintAfter}
+      </p>
 
       <div className="currency-bar">
         <div className="chips" role="group" aria-label={tc.currenciesShown}>
@@ -161,9 +197,9 @@ export function Converter({ work, onTaxes }: Props) {
                     </td>
                   );
                 })}
-                {period === 'day' && (
+                {period === 'day' && goalShown && (
                   <td rowSpan={PERIODS.length - 1} className="goal-note">
-                    <GoalNote />
+                    <GoalNote onClose={() => setGoalShown(false)} />
                   </td>
                 )}
               </tr>
@@ -171,9 +207,12 @@ export function Converter({ work, onTaxes }: Props) {
           </tbody>
         </table>
       </div>
-      <p className="goal-hint-narrow">
-        <span aria-hidden="true">↑</span> {tc.goalNarrow}
-      </p>
+      {goalShown && (
+        <p className="goal-hint-narrow">
+          <span aria-hidden="true">↑</span> {tc.goalNarrow}
+          <button type="button" className="goal-close" aria-label={tc.goalClose} title={tc.goalClose} onClick={() => setGoalShown(false)}>×</button>
+        </p>
+      )}
 
       <button type="button" className="cta" onClick={() => onTaxes(valueAt('year', 'RON'))}>
         {tc.cta(formatMoney(valueAt('month', 'RON')))}
@@ -191,41 +230,54 @@ export function Converter({ work, onTaxes }: Props) {
             <a href={MARKET_RATES.provider} target="_blank" rel="noreferrer">{tc.marketBy}</a>
           </p>
         )}
-        <ul className="rate-list">
-          {columns.filter((c) => c !== 'RON').map((code) => {
-            const custom = overrides[code];
-            return (
-              <li key={code}>
-                <span>
-                  1 {code} = {formatRate(rates[code]!)} RON
-                  {custom !== undefined && <span className="badge">{tc.customBadge}</span>}
-                  {custom === undefined && isMarketRate(code) && <span className="badge market" title={tc.marketTitle}>{tc.marketBadge}</span>}
-                </span>
-                {anchor !== code && anchor !== 'RON' && (
-                  <span className="muted"> · 1 {anchor} = {formatRate(crossRate(anchor, code, rates))} {code}</span>
-                )}
-                <label className="custom-rate">
-                  <span>{tc.custom}</span>
-                  <input
-                    inputMode="decimal"
-                    placeholder={formatRate(baseRate(code) ?? 0)}
-                    defaultValue={custom !== undefined ? String(custom) : ''}
-                    aria-label={tc.customLabel(code)}
-                    onChange={(e) => {
-                      const v = parseAmount(e.target.value);
-                      const next = { ...overrides };
-                      if (v && v > 0) next[code] = v;
-                      else delete next[code];
-                      setOverrides(next);
-                    }}
-                  />
-                </label>
-              </li>
-            );
-          })}
-        </ul>
+        {/* One table, so "Custom rate" is a column heading instead of a label repeated on every row. */}
+        <table className="rate-table">
+          <thead>
+            <tr>
+              <th scope="col">{tc.rateCurrency}</th>
+              <th scope="col">{tc.rateBnr}</th>
+              {anchor !== 'RON' && <th scope="col" className="rate-cross">{tc.rateCross(anchor)}</th>}
+              <th scope="col" className="rate-custom-col">{tc.custom}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {columns.filter((c) => c !== 'RON').map((code) => {
+              const custom = overrides[code];
+              return (
+                <tr key={code}>
+                  <th scope="row"><CurrencyCode code={code} /></th>
+                  <td>
+                    1 {code} = <strong>{formatRate(rates[code]!)}</strong> RON
+                    {custom !== undefined && <span className="badge">{tc.customBadge}</span>}
+                    {custom === undefined && isMarketRate(code) && <span className="badge market" title={tc.marketTitle}>{tc.marketBadge}</span>}
+                  </td>
+                  {anchor !== 'RON' && (
+                    <td className="muted rate-cross">{anchor !== code ? `1 ${anchor} = ${formatRate(crossRate(anchor, code, rates))} ${code}` : '—'}</td>
+                  )}
+                  <td className="rate-custom-col">
+                    <input
+                      className="custom-rate-input"
+                      inputMode="decimal"
+                      placeholder={formatRate(baseRate(code) ?? 0)}
+                      defaultValue={custom !== undefined ? String(custom) : ''}
+                      aria-label={tc.customLabel(code)}
+                      onChange={(e) => {
+                        const v = parseAmount(e.target.value);
+                        const next = { ...overrides };
+                        if (v && v > 0) next[code] = v;
+                        else delete next[code];
+                        setOverrides(next);
+                      }}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="muted small rate-note">{tc.customNote}</p>
       </div>
-    </section>
+    </Fold>
   );
 }
 
@@ -256,7 +308,7 @@ function useBraceFits(scrollRef: RefObject<HTMLDivElement | null>, columnCount: 
 }
 
 /** A brace spanning Day → Year with a nudge to type a goal there, not only an hourly rate. */
-function GoalNote() {
+function GoalNote({ onClose }: { onClose: () => void }) {
   const tc = useT().converter;
   return (
     <div className="goal-inner">
@@ -264,7 +316,11 @@ function GoalNote() {
         <path d="M2 1 Q10 1 10 9 L10 42 Q10 50 18 50 Q10 50 10 58 L10 91 Q10 99 2 99" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="goal-text">
-        <strong>{tc.goalTitle}</strong>
+        {/* The × sits on the title's line, next to the text it hides. */}
+        <span className="goal-title">
+          <strong>{tc.goalTitle}</strong>
+          <button type="button" className="goal-close" aria-label={tc.goalClose} title={tc.goalClose} onClick={onClose}>×</button>
+        </span>
         <span>
           {tc.goalBefore}<em>{tc.goalEm}</em>{tc.goalAfter}
         </span>

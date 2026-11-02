@@ -1,16 +1,21 @@
-import { useEffect, useState } from 'react';
-import { Converter } from './features/converter/Converter';
+import { useCallback, useEffect, useState } from 'react';
+import { SharedBanner, TopActions } from './features/app/TopActions';
+import { LangSlider, ThemeSlider } from './features/app/ThemeSlider';
+import { ViewSwitch } from './features/app/ViewSwitch';
+import { Converter, type ConverterSnapshot } from './features/converter/Converter';
+import { Fees } from './features/converter/Fees';
 import { ResetApp } from './features/reset/ResetApp';
 import { Settings } from './features/settings/Settings';
 import { DEFAULT_INCOME, Taxes, isTaxIncome } from './features/taxes/Taxes';
-import { DEFAULT_LANG, LANGS, LangProvider, isLang, useT, type Lang } from './lib/i18n';
-import { DEFAULT_WORK, isValidWork, type WorkSettings } from './lib/time/periods';
-import { THEMES, applyTheme, isTheme, type Theme } from './lib/ui/theme';
+import { DEFAULT_LANG, LangProvider, isLang, useT, type Lang } from './lib/i18n';
+import { DEFAULT_WORK, isValidWork, readWork, type WorkSettings } from './lib/time/periods';
+import { applyTheme, isTheme, type Theme } from './lib/ui/theme';
 import { usePersistentState } from './lib/ui/usePersistentState';
 
 const isWork = (v: unknown): v is WorkSettings =>
   typeof v === 'object' && v !== null &&
-  ['hoursPerDay', 'daysPerWeek', 'weeksOff'].every((k) => typeof (v as Record<string, unknown>)[k] === 'number') &&
+  ['hoursPerDay', 'daysPerWeek', 'daysOff', 'billablePct'].every((k) => typeof (v as Record<string, unknown>)[k] === 'number') &&
+  typeof (v as WorkSettings).holidays === 'boolean' &&
   isValidWork(v as WorkSettings);
 
 type View = 'converter' | 'taxes';
@@ -27,12 +32,21 @@ export function App() {
 
 function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   const t = useT();
-  const [work, setWork] = usePersistentState('ft.work', DEFAULT_WORK, isWork);
+  const [work, setWork] = usePersistentState('ft.work', DEFAULT_WORK, isWork, readWork);
   const [income, setIncome] = usePersistentState('ft.taxIncome', DEFAULT_INCOME, isTaxIncome);
   const [view, setView] = useState<View>(viewFromHash);
   const [theme, setTheme] = usePersistentState<Theme>('ft.theme', 'system', isTheme);
 
   useEffect(() => applyTheme(theme), [theme]);
+
+  // The converter's figures, for the fees card under Working time.
+  const [snapshot, setSnapshot] = useState<ConverterSnapshot | null>(null);
+
+  // Stable, so the converter's effect runs only when its amount changes.
+  const followConverter = useCallback(
+    (monthRon: number) => setIncome({ amount: Math.round(monthRon * 100) / 100, per: 'month', currency: 'RON' }),
+    [setIncome],
+  );
 
   useEffect(() => {
     const onHash = () => setView(viewFromHash());
@@ -48,22 +62,11 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
 
   return (
     <>
-      {/* Display switches in the strip above the header: language top-left, theme top-right. */}
-      <div className="lang-switch corner-left" role="group" aria-label={t.app.language}>
-        {LANGS.map((l) => (
-          <button key={l} type="button" lang={l} aria-pressed={lang === l} onClick={() => setLang(l)}>
-            {l.toUpperCase()}
-          </button>
-        ))}
-      </div>
+      {/* Language, theme and the advanced options together in the top-right corner. */}
       <div className="corner">
-        <div className="theme-switch" role="group" aria-label={t.app.theme}>
-          {THEMES.map((th) => (
-            <button key={th} type="button" aria-pressed={theme === th} aria-label={t.app.themes[th]} title={t.app.themes[th]} onClick={() => setTheme(th)}>
-              <span aria-hidden="true">{th === 'system' ? '◐' : th === 'light' ? '☀' : '☾'}</span>
-            </button>
-          ))}
-        </div>
+        <LangSlider lang={lang} setLang={setLang} />
+        <ThemeSlider theme={theme} setTheme={setTheme} />
+        <TopActions view={view} />
       </div>
       <header className="app-header">
         <div>
@@ -71,19 +74,19 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
           <p className="muted">{t.app.subtitle}</p>
         </div>
         <div className="header-controls">
-          <nav className="views" aria-label={t.app.sections}>
-            <button type="button" aria-current={view === 'converter' ? 'page' : undefined} onClick={() => go('converter')}>
-              <ConverterIcon />
-              {t.app.converter}
-            </button>
-            <button type="button" aria-current={view === 'taxes' ? 'page' : undefined} onClick={() => go('taxes')}>
-              <TaxesIcon />
-              {t.app.taxes}
-            </button>
-          </nav>
+          <ViewSwitch
+            value={view}
+            options={[
+              { value: 'converter', label: t.app.converter, icon: <ConverterIcon /> },
+              { value: 'taxes', label: t.app.taxes, icon: <TaxesIcon /> },
+            ]}
+            onChange={go}
+            label={t.app.sections}
+          />
         </div>
       </header>
       <main>
+        <SharedBanner />
         {view === 'converter' ? (
           <>
             <Converter
@@ -92,8 +95,11 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
                 setIncome({ amount: Math.round(yearRon / 12), per: 'month', currency: 'RON' });
                 go('taxes');
               }}
+              onIncome={followConverter}
+              onSnapshot={setSnapshot}
             />
             <Settings work={work} setWork={setWork} />
+            {snapshot && <Fees {...snapshot} />}
           </>
         ) : (
           <Taxes income={income} setIncome={setIncome} work={work} />

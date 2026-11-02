@@ -24,6 +24,11 @@ export function formatMoney(x: number): string {
   return fmt2.format(x);
 }
 
+/** A count such as days or a percentage: up to `decimals` decimals, none when it is whole (228, 5,5). */
+export function formatNumber(x: number, decimals = 1): string {
+  return new Intl.NumberFormat(lang === 'ro' ? 'ro-RO' : 'en-GB', { maximumFractionDigits: decimals }).format(x);
+}
+
 export function formatRate(x: number): string {
   return fmtRate.format(x);
 }

@@ -6,15 +6,23 @@ const CHANGE_EVENT = 'ft-storage';
 
 /**
  * useState backed by localStorage. A value equal to its default is removed rather than stored.
- * Storage may be unavailable (private mode), so every access is guarded.
+ * Storage may be unavailable (private mode), so every access is guarded. `upgrade` turns a value saved by an
+ * older version into the current shape (null if it can't).
  */
-export function usePersistentState<T>(key: string, initial: T, isValid: (v: unknown) => v is T): [T, (v: T) => void] {
+export function usePersistentState<T>(
+  key: string,
+  initial: T,
+  isValid: (v: unknown) => v is T,
+  upgrade?: (v: unknown) => T | null,
+): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
     try {
       const raw = localStorage.getItem(key);
       if (raw !== null) {
         const parsed: unknown = JSON.parse(raw);
         if (isValid(parsed)) return parsed;
+        const upgraded = upgrade?.(parsed);
+        if (upgraded) return upgraded;
       }
     } catch {
       // fall through to the default

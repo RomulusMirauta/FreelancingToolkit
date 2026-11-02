@@ -66,6 +66,8 @@ export const P = {
   CotaDividende: num('CotaDividende'),
   CotaConcediiPFA: num('CotaConcediiPFA'),
   BazaConcediiMaxSM: num('BazaConcediiMaxSM'),
+  CotaTVA: num('CotaTVA'),
+  PlafonTVA: num('PlafonTVA'),
 };
 
 /** n reference minimum wages (annual thresholds for income year 2026). */

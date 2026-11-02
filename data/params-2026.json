@@ -159,6 +159,15 @@
      "ro": "Baza lunară aleasă pentru concedii: între 1 și 3 salarii minime", "en": "Chosen monthly base for sick-leave insurance: 1 to 3 minimum wages",
      "valid": "2026", "legal": "OUG 158/2005 art. 1 alin. (2), cu modificările aduse de OUG 8/2025",
      "source": "https://monitorfiscal.ro/concediu-medical-pfa-liber-profesionisti/", "status": "din ghiduri fiscale 2026; de confirmat la CNAS",
-     "note": "Baza minimă e salariul minim la data contractului (4.050 lei) și nu se actualizează automat."}
+     "note": "Baza minimă e salariul minim la data contractului (4.050 lei) și nu se actualizează automat."},
+
+    {"key": "CotaTVA", "group": "TVA", "format": "pct", "value": 0.21, "unit": "",
+     "ro": "Cota standard de TVA", "en": "Standard VAT rate",
+     "valid": "de la 01.08.2025", "legal": "Cod fiscal art. 291 alin. (1) lit. a), modificat prin Legea 141/2025",
+     "source": "https://static.anaf.ro/static/10/Anaf/legislatie/L_141_2025.pdf", "status": "din ghiduri fiscale 2026; de confirmat", "note": "Cota redusă unică: 11%."},
+    {"key": "PlafonTVA", "group": "TVA", "format": "lei", "value": 395000, "unit": "lei/an",
+     "ro": "Plafonul de scutire de TVA pentru întreprinderile mici", "en": "VAT exemption threshold for small businesses",
+     "valid": "de la 01.09.2025", "legal": "Cod fiscal art. 310, modificat prin OG 22/2025",
+     "source": "https://startupcafe.ro/wp-content/uploads/2025/10/Ghid-ANAF-modificari-plafon-OG-22-2025.pdf", "status": "din ghiduri fiscale 2026; de confirmat", "note": "Dacă serviciile prestate clienților din străinătate (loc al prestării în afara României) intră în calculul plafonului: de confirmat cu un contabil."}
   ]
 }

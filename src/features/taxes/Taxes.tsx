@@ -16,8 +16,11 @@ import { AmountInput } from '../../lib/ui/AmountInput';
 import { formatMoney, formatRate } from '../../lib/ui/numbers';
 import { useLang } from '../../lib/i18n';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
+import { Fold } from '../../lib/ui/Fold';
 import { RegimeCard } from './RegimeCard';
 import { SideJob } from './SideJob';
+import { Vat } from './Vat';
+import { Calendar } from './Calendar';
 import { ListPicker } from './ListPicker';
 import { RegimeName } from './RegimeName';
 
@@ -71,42 +74,40 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
   const checkedOn = new Date(cy, cm - 1, cd).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <section className="card taxes" aria-labelledby="taxes-title">
-      <div className="card-head">
-        <h2 id="taxes-title">{t.title(PARAMS_YEAR)}</h2>
-        <p className="muted">{t.subtitle}</p>
-      </div>
+    <>
+      <Fold id="taxes" title={t.title(PARAMS_YEAR)} summary={t.foldSummary(formatMoney(annual / 12))} className="taxes">
+        <p className="muted subtitle">{t.subtitle}</p>
 
-      <IncomeInput value={income} onChange={setIncome} work={work} label={t.income} hint={t.incomeHint} main />
+        <IncomeInput value={income} onChange={setIncome} work={work} label={t.income} hint={t.incomeHint} main />
 
-      <p className="legend small">
-        <span className="delta pos">+</span>
-        <span className="delta neg">−</span>
-        <span className="delta eq">=</span>
-        {tb.legend}
-      </p>
+        <p className="legend small">
+          <span className="delta pos">+</span>
+          <span className="delta neg">−</span>
+          <span className="delta eq">=</span>
+          {tb.legend}
+        </p>
 
-      <div className="board">
-        {MAIN_REGIMES.map((r) => (
-          <RegimeCard
-            key={r}
-            regime={r}
-            annual={annual}
-            result={results[r]}
-            referenceRegime={reference}
-            referenceTakeHome={results[reference].takeHome}
-            isBest={annual > 0 && allowed.includes(r) && results[r].takeHome === best}
-            options={options}
-            setOptions={setOptions}
-            onSetReference={() => setReference(r)}
-          />
-        ))}
-      </div>
+        <div className="board">
+          {MAIN_REGIMES.map((r) => (
+            <RegimeCard
+              key={r}
+              regime={r}
+              annual={annual}
+              result={results[r]}
+              referenceRegime={reference}
+              referenceTakeHome={results[reference].takeHome}
+              isBest={annual > 0 && allowed.includes(r) && results[r].takeHome === best}
+              options={options}
+              setOptions={setOptions}
+              onSetReference={() => setReference(r)}
+            />
+          ))}
+        </div>
+      </Fold>
 
       <SideJob />
 
-      <section className="other-income" aria-labelledby="other-title">
-        <h3 id="other-title">{tb.otherTitle}</h3>
+      <Fold id="other" title={tb.otherTitle} className="other-income">
         <p className="muted small">{tb.otherNote}</p>
         <div className="board">
           {OTHER_REGIMES.map((r) => (
@@ -125,12 +126,16 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
             />
           ))}
         </div>
-      </section>
+      </Fold>
 
       <Solver options={options} work={work} />
 
+      <Vat annual={annual} />
+
+      <Calendar />
+
       <p className="disclaimer small">{t.disclaimer(PARAMS_YEAR, checkedOn)}</p>
-    </section>
+    </>
   );
 }
 
@@ -195,8 +200,8 @@ function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) 
   const columns = PERIODS.filter((p) => p === target.per || p === 'month' || p === 'year');
 
   return (
-    <section className="solver" aria-labelledby="solver-title">
-      <h3 id="solver-title">{ts.title}</h3>
+    <Fold id="solver" title={ts.title} summary={ts.foldSummary(formatMoney(target.amount), target.currency, periods[target.per].toLowerCase())} className="solver">
+      <div className="solver-body">
       <IncomeInput value={target} onChange={setTarget} work={work} label={ts.label} />
       <table className="breakdown">
         <caption className="sr-only">{ts.caption}</caption>
@@ -219,6 +224,7 @@ function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) 
         </tbody>
       </table>
       <p className="muted small">{ts.note}</p>
-    </section>
+      </div>
+    </Fold>
   );
 }

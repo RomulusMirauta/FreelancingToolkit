@@ -5,6 +5,8 @@ PLAN.local.md
 *.xlsx
 *.xlsm
 ~$*
+# Full-page screenshots kept as a local record of how the app looked
+screenshots/
 
 # Secrets, in case any are ever added
 .env

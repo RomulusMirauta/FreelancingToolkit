@@ -3,7 +3,7 @@ import { CURRENCIES, currencySymbol, type CurrencyInfo } from '../../lib/currenc
 import { useLang, useT } from '../../lib/i18n';
 
 /** Lower-case, without diacritics, so "zloty" finds "złoty" and "krona" finds "króna". */
-function fold(s: string): string {
+export function fold(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
 }
 

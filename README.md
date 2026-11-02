@@ -4,26 +4,34 @@
 
 A small installable web app (a PWA, Progressive Web App) for freelancers paid in one currency and taxed in Romania.
 
-- **Rate converter**: type an amount in any cell (for example 30 EUR per hour) and see it per hour, day, week, month, 3/6/9 months and year, in as many currencies as you like. It uses the National Bank of Romania (BNR) reference rates, refreshed every banking day. Currencies BNR does not publish (about 160 in all) use market rates from [ExchangeRate-API](https://www.exchangerate-api.com), marked as such. You can override any rate.
-- **Romanian taxes 2026**: compare take-home pay as an employee, PFA (real system or income norm), SRL (micro-enterprise or profit tax, with dividends) and copyright income, side by side. It also covers income on top of a job (CIM + PFA, CIM + copyright) and solves the reverse: what you need to earn to take home a given amount. Every line links to the law it comes from.
+- **Rate converter**: type an amount in any cell (for example 30 EUR per hour) and see it per hour, day, week, month, 3/6/9 months and year, in as many currencies as you like. It uses the National Bank of Romania (BNR) reference rates, refreshed every banking day. Currencies BNR does not publish (about 160 in all) use market rates from [ExchangeRate-API](https://www.exchangerate-api.com), marked as such. You can override any rate. Working time counts days off, public holidays and the share of billable hours, and a fees panel shows what you keep after a platform (Upwork, Fiverr, …) and the currency exchange.
+- **Romanian taxes 2026**: compare take-home pay as an employee, PFA (real system or income norm), SRL (micro-enterprise or profit tax, with dividends) and copyright income, side by side. It also covers income on top of a job (CIM + PFA, CIM + copyright) and solves the reverse: what you need to earn to take home a given amount. Every line links to the law it comes from. It also shows where you stand against the VAT threshold and a calendar of the next tax deadlines.
 
-The app is in Romanian by default, with an English version one click away (RO | EN, top left). Numbers follow the language: 1.234,56 in Romanian, 1,234.56 in English. A light, dark or automatic theme is in the top right.
+The app is in Romanian by default, with an English version one click away (RO | EN, top right). Numbers follow the language: 1.234,56 in Romanian, 1,234.56 in English. A light, dark or automatic theme is in the top right, next to the language and **Advanced options**.
 
 > Estimates only, not tax advice. Check with an accountant before deciding.
 
 ## Install it and use it offline
 
-As a PWA, the app can be installed like a regular app and keeps working without internet once opened:
+As a PWA, the app can be installed like a regular app and keeps working without internet once opened. It is free, takes about a minute, and **Advanced options → Install the app** (top right) shows the same steps:
 
-- **Desktop (Chrome, Edge)**: open the link above and click the install icon in the address bar.
-- **Android (Chrome)**: menu ⋮ → *Add to Home screen* / *Install app*.
-- **iPhone, iPad (Safari)**: Share → *Add to Home Screen*.
+- **Computer (Chrome or Edge)**
+  1. Open the link above.
+  2. In the address bar, on the right, click the install icon (a small screen with a down arrow), then **Install**.
+  3. The app opens in its own window and is in the Start menu and on the desktop.
+  No icon? Menu ⋮ → *Cast, save and share* → *Install page as app*. Firefox can't install apps: use Chrome or Edge.
+- **Android (Chrome)**
+  1. Open the link in Chrome and tap the three dots ⋮ at the top right.
+  2. Tap *Install app* (or *Add to Home screen*), then *Install*.
+- **iPhone or iPad (Safari)**
+  1. Open the link in Safari.
+  2. Tap Share (the square with an arrow pointing up), then *Add to Home Screen* → *Add*.
 
 It updates itself when a new version is published. Offline, it uses the exchange rates it last downloaded.
 
 ## Privacy
 
-Everything runs in your browser: no account, no cookies, no analytics, nothing is sent anywhere. Your settings are saved only on your device (browser storage). "Reset tab" and "Reset app" (bottom right) clear them.
+Everything runs in your browser: no account, no cookies, no analytics, nothing is sent anywhere. Your settings are saved only on your device (browser storage). "Reset tab" and "Reset app" (under **Tools**, bottom right) clear them. "Copy link" puts your page settings (not language or theme) in the link itself, so they go wherever you send it. The address also keeps the converter amount you typed and the sections you folded (`?amount=40&currency=EUR&per=hour&fold=fees`), so a bookmark opens the app the same way.
 
 ## Data sources
 

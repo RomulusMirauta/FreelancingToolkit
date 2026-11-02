@@ -1,20 +1,12 @@
 // import { useEffect, useRef, useState } from 'react';
 import { useT } from '../../lib/i18n';
+import { PAGE_FOLDS, PAGE_KEYS, PAGE_QUERY, type Page } from '../../lib/ui/settingsKeys';
+import { writeQuery } from '../../lib/ui/query';
+import { clearFolds, useClosedFolds, useFoldAll } from '../../lib/ui/folds';
+import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
 
-export type Page = 'converter' | 'taxes';
-
-/**
- * The settings each page owns, for "Reset page". Working time is shown on the converter, so it goes with it;
- * language and theme belong to the whole app and only "Reset app" clears them.
- */
-export const PAGE_KEYS: Record<Page, readonly string[]> = {
-  converter: ['ft.source', 'ft.columns', 'ft.addedCurrencies', 'ft.customRates', 'ft.work'],
-  taxes: ['ft.taxIncome', 'ft.taxOptions', 'ft.taxRef', 'ft.sideJob', 'ft.solverTarget'],
-};
-
-/** Settings of the whole app, cleared only by "Reset app". */
-export const APP_KEYS: readonly string[] = ['ft.lang', 'ft.theme'];
+export { APP_KEYS, PAGE_FOLDS, PAGE_KEYS, type Page } from '../../lib/ui/settingsKeys';
 
 /**
  * Floating "Reset tab" and "Reset app" buttons, stacked: one click resets instantly.
@@ -27,8 +19,11 @@ export const APP_KEYS: readonly string[] = ['ft.lang', 'ft.theme'];
  */
 export function ResetApp({ page }: { page: Page }) {
   const t = useT().reset;
-  const modified = useIsModified();
-  const pageModified = useIsModified(PAGE_KEYS[page]);
+  // Folded sections count as changes too: a reset unfolds them (the page's own, or all).
+  const closed = useClosedFolds();
+  const modified = useIsModified() || closed.size > 0;
+  const pageModified = useIsModified(PAGE_KEYS[page]) || PAGE_FOLDS[page].some((id) => closed.has(id));
+  const { anyOpen, toggleAll } = useFoldAll();
   // const [asking, setAsking] = useState(false);
   // const cancelRef = useRef<HTMLButtonElement>(null);
   //
@@ -42,8 +37,10 @@ export function ResetApp({ page }: { page: Page }) {
   //   return () => window.removeEventListener('keydown', onKey);
   // }, [asking]);
 
+  const menu = useHoverMenu();
+
   return (
-    <div className="reset-wrap">
+    <div className={`reset-wrap hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
       {/* {asking && (
         <div className="reset-confirm" role="alertdialog" aria-labelledby="reset-title" aria-describedby="reset-desc">
           <h2 id="reset-title">Reset the app?</h2>
@@ -54,7 +51,18 @@ export function ResetApp({ page }: { page: Page }) {
           </div>
         </div>
       )} */}
-      <div className="reset-row">
+      {/* Hidden behind "Tools" until hovered or clicked; opens upwards. */}
+      <div className="reset-row menu-pop" role="menu" aria-label={t.menu}>
+        <button
+          type="button"
+          className="reset-app"
+          aria-label={anyOpen ? t.foldAll : t.unfoldAll}
+          title={anyOpen ? t.foldAllTitle : t.unfoldAllTitle}
+          onClick={toggleAll}
+        >
+          <span className={`icon fold-icon${anyOpen ? '' : ' closed'}`} aria-hidden="true" />
+          <ResetLabel full={anyOpen ? t.foldAll : t.unfoldAll} short={anyOpen ? t.foldShort : t.unfoldShort} />
+        </button>
         <button
           type="button"
           className="reset-app"
@@ -78,6 +86,13 @@ export function ResetApp({ page }: { page: Page }) {
           <ResetLabel full={t.label} short={t.short} />
         </button>
       </div>
+      <button type="button" className="reset-app menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={t.menu}>
+        <span className="icon" aria-hidden="true"><ToolsIcon /></span>
+        <span>{t.menu}</span>
+        {/* Always there to draw the eye; it pulses while something can be reset. */}
+        <span className={`dot${modified ? ' pulse' : ''}`} aria-label={modified ? t.menuDot : undefined} aria-hidden={modified ? undefined : true} />
+        <span className="chev up" aria-hidden="true" />
+      </button>
     </div>
   );
 }
@@ -92,8 +107,10 @@ function ResetLabel({ full, short }: { full: string; short: string }) {
   );
 }
 
-/** Clears the page's saved settings and reloads on the same page. */
+/** Clears the page's saved settings, unfolds its sections and reloads on the same page. */
 function resetPage(page: Page) {
+  clearFolds(PAGE_FOLDS[page]);
+  writeQuery((params) => PAGE_QUERY[page].forEach((k) => params.delete(k)));
   try {
     for (const key of PAGE_KEYS[page]) localStorage.removeItem(key);
   } catch {
@@ -111,5 +128,15 @@ function resetApp() {
   } catch {
     // storage unavailable: nothing was saved, so the reload alone restores the defaults
   }
-  location.replace(location.pathname + location.search);
+  // No query string: a shared link's settings must not come back after a reset.
+  location.replace(location.pathname);
+}
+
+/** A wrench, for the "Tools" button. */
+function ToolsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+  );
 }

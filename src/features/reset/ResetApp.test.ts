@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_KEYS, PAGE_KEYS } from './ResetApp';
+import { APP_KEYS, PAGE_FOLDS, PAGE_KEYS } from './ResetApp';
 
 // The app's source files, as text.
 const SOURCES = import.meta.glob(['../../**/*.{ts,tsx}', '!../../**/*.test.ts'], { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
@@ -21,6 +21,17 @@ describe('reset buttons', () => {
     expect(found.size).toBeGreaterThan(8);
     const missing = [...found].filter((k) => !owned.includes(k));
     expect(missing).toEqual([]);
+  });
+
+  it('every foldable section belongs to a tab, so "Reset tab" unfolds it', () => {
+    const ids = new Set<string>();
+    for (const text of Object.values(SOURCES)) {
+      for (const m of text.matchAll(/<Fold\s+id="([A-Za-z]+)"/g)) ids.add(m[1]!);
+    }
+    expect(ids.size).toBe(9);
+    const owned = [...PAGE_FOLDS.converter, ...PAGE_FOLDS.taxes];
+    expect([...ids].filter((id) => !owned.includes(id))).toEqual([]);
+    expect(owned.filter((id) => !ids.has(id))).toEqual([]);
   });
 
   it('no setting belongs to two places', () => {

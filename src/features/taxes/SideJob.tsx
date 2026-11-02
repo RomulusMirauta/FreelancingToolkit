@@ -4,6 +4,7 @@ import { DEFAULT_SIDE_JOB, SIDE_KINDS, computeSideJob, type SideJobInput } from 
 import { formatMoney } from '../../lib/ui/numbers';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { Breakdown, NumberField } from './Breakdown';
+import { Fold } from '../../lib/ui/Fold';
 import { RegimeName } from './RegimeName';
 
 const isSideJob = (v: unknown): v is SideJobInput => {
@@ -21,8 +22,7 @@ export function SideJob() {
   const pct = (x: number) => `${(x * 100).toFixed(1).replace('.', t.locale === 'ro-RO' ? ',' : '.')}%`;
 
   return (
-    <section className="other-income side-job" aria-labelledby="side-title">
-      <h3 id="side-title">{tb.sideTitle}</h3>
+    <Fold id="sideJob" title={tb.sideTitle} className="other-income side-job">
       <p className="muted small">{tb.sideNote}</p>
       <div className="side-inputs">
         <NumberField label={tb.sideSalary} value={input.salaryMonthly} onChange={(v) => setInput({ ...input, salaryMonthly: v })} suffix={t.taxes.monthSuffix} />
@@ -58,6 +58,6 @@ export function SideJob() {
           );
         })}
       </div>
-    </section>
+    </Fold>
   );
 }
