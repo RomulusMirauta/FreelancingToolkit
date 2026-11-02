@@ -155,3 +155,7 @@ Every change since development of the app started, in the order it was made. Lat
 80. On phones the floating reset buttons shrink to "↺ Tab" and "↺ Tot" (EN "All"), so they cover less of the page; the full names stay as tooltips and for screen readers.
 81. The footer credits the market rates as well as BNR's.
 82. MIT license. The scripts for the private Excel workbook moved out of the public repo, next to the workbook.
+83. Published on GitHub Pages: <https://romulusmirauta.github.io/FreelancingToolkit/>.
+84. Installing as an app: PNG icons (192 and 512 px, a maskable one for Android, and an Apple touch icon, since iOS ignores SVG icons on the home screen) next to the SVG one, all available offline. Link previews (Open Graph) for sharing the app's link.
+85. README: the app's link, what a PWA is and how to install it on desktop, Android and iPhone, privacy, data sources and update times, deploying your own copy, and how to regenerate the tax golden file. `package.json` has the description, homepage and repository.
+

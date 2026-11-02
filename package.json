@@ -2,7 +2,13 @@
   "name": "freelancing-toolkit",
   "private": true,
   "version": "0.1.0",
+  "description": "Rate converter and Romanian 2026 tax calculator for freelancers (PWA).",
   "license": "MIT",
+  "homepage": "https://romulusmirauta.github.io/FreelancingToolkit/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RomulusMirauta/FreelancingToolkit.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -9,9 +9,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       // Precache the bundled font too, not only JS/CSS/HTML.
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
       manifest: {
         name: 'FreelancingToolkit',
         short_name: 'Freelancing',
@@ -22,7 +22,13 @@ export default defineConfig({
         display: 'standalone',
         start_url: './',
         scope: './',
-        icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+        // PNGs for installing on Android and desktop; the maskable one fills the whole shape Android crops it to.
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' },
+        ],
       },
     }),
   ],
