@@ -20,6 +20,7 @@ Steps 155– of the development history.
 - The grid's header shows each currency symbol in a small pill, like the chips and the rate cards.
 
 ### Fixed
+- Phones: a tap that slides a little, or a long press, on a button, chip, section title, list option or switch no longer selects its text.
 - Employee card: the "net in Jan–Jun, net in Jul–Dec" note shows only when the two differ; above a low salary they are the same, and it repeated one amount twice.
 - On phones, the Tools wrench (and the settings gear) turns back when its menu closes; before, it stayed turned until you tapped somewhere else.
 - With many currencies, "+ Add currency" no longer drops alone onto a row of its own: it follows the last currency and wraps together with it.
@@ -350,6 +351,7 @@ Every change since development of the app started, in the order it was made, gro
 165. `.gitignore` ignored every folder named `screenshots`, so the manifest's screenshots in `public/screenshots/` had not been committed (the install dialog would have asked for missing files). Now only the local record in the top-level `/screenshots/` is ignored.
 166. The employee card's half-year note (`employeeHalves`) appears only when July's minimum wage changes the net, i.e. for salaries near the minimum where the non-taxable amount or the personal deduction apply. At 27,776 RON/month both halves were 16,249.32 and the note said so twice. Test added.
 167. Tools button from prototype 09 (pick C): on phones the trigger is a 48 px transparent touch area with only the dot, 16 px with a 4 px ring and a wider pulse (`dot-halo-big`); the wrench and the word are hidden (the button keeps its `aria-label`). The chevron is gone on every screen.
+168. `user-select: none` (and `-webkit-touch-callout: none`) on every control: buttons, `summary`, list options, radio switches, menu items and checkbox labels. Only the Converter | Taxes switch and the sliders had it, so on phones a tap that moved, e.g. on "+ Add currency", selected the label. Inputs are set back to `text` explicitly, since iOS won't type into a field whose parent is unselectable. Page text and figures stay selectable for copying.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0

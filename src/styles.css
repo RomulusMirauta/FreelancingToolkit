@@ -133,6 +133,13 @@ h2 { font-size: var(--text-lg); font-weight: 650; }
 }
 
 .muted { color: var(--muted); }
+/* Controls: a tap that slides a little, or a long press, must not select their text (it did on phones, e.g. on
+   "+ Add currency"). Text and figures on the page stay selectable; fields stay editable (iOS stops typing in a
+   field inside an unselectable parent unless the field says otherwise). */
+button, summary, [role='option'], [role='radio'], [role='menuitem'], label:has(> input[type='checkbox']), label.toggle {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
 .small { font-size: 0.85rem; }
 
 .app-header { margin: var(--space-2) 0 var(--space-5); }
