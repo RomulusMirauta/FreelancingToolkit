@@ -20,6 +20,9 @@ Steps 155– of the development history.
 - The grid's header shows each currency symbol in a small pill, like the chips and the rate cards.
 
 ### Fixed
+- Phones: a swipe up or down that starts on the Converter | Taxes switch (or the theme and language switches) scrolls the page instead of switching.
+- Phones: a swipe that starts on an empty "Custom rate" field no longer leaves BNR's rate typed in it.
+- Phones: scrolling the "+ Add currency" list, or the platform and bank lists under Fees, no longer picks the item your finger started on; a tap picks it.
 - Phones: a tap that slides a little, or a long press, on a button, chip, section title, list option or switch no longer selects its text.
 - Employee card: the "net in Jan–Jun, net in Jul–Dec" note shows only when the two differ; above a low salary they are the same, and it repeated one amount twice.
 - On phones, the Tools wrench (and the settings gear) turns back when its menu closes; before, it stayed turned until you tapped somewhere else.
@@ -352,6 +355,8 @@ Every change since development of the app started, in the order it was made, gro
 166. The employee card's half-year note (`employeeHalves`) appears only when July's minimum wage changes the net, i.e. for salaries near the minimum where the non-taxable amount or the personal deduction apply. At 27,776 RON/month both halves were 16,249.32 and the note said so twice. Test added.
 167. Tools button from prototype 09 (pick C): on phones the trigger is a 48 px transparent touch area with only the dot, 16 px with a 4 px ring and a wider pulse (`dot-halo-big`); the wrench and the word are hidden (the button keeps its `aria-label`). The chevron is gone on every screen.
 168. `user-select: none` (and `-webkit-touch-callout: none`) on every control: buttons, `summary`, list options, radio switches, menu items and checkbox labels. Only the Converter | Taxes switch and the sliders had it, so on phones a tap that moved, e.g. on "+ Add currency", selected the label. Inputs are set back to `text` explicitly, since iOS won't type into a field whose parent is unselectable. Page text and figures stay selectable for copying.
+169. List options (`CurrencyPicker`, `ListPicker`) are picked on `click` instead of `pointerdown`. On touch, a press that turned into a scroll through the list had already picked the option under the finger and closed the list; the browser sends no click after a scroll. `mousedown` is cancelled instead, so the focus stays in the search field (with the mouse it used to fall to the page while the button was held). Checked with simulated touch: a drag through either list picks nothing, a tap picks, and a mouse click picks with the focus kept.
+170. Other presses that acted before the finger lifted: the section switch and the sliders had `touch-action: none`, so the page couldn't scroll from them and lifting the finger switched to the stop under it; now `pan-y`, so a vertical swipe scrolls (the browser cancels the press) and sideways drags still move the thumb. The custom-rate field filled in BNR's rate on `pointerdown`; now only for the mouse, touch fills it on focus. Simulated touch: before, an up swipe on Taxe switched the tab without scrolling and a swipe on the rate field left 5,3416 in it; after, the swipe scrolls 185 px with the tab kept and the field stays empty; tap and sideways drag still switch.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0

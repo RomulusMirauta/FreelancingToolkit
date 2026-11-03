@@ -145,11 +145,10 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
                   aria-selected={i === active}
                   className={[i === active ? 'active' : '', c.code === selected ? 'selected' : ''].join(' ').trim() || undefined}
                   onPointerEnter={() => setActive(i)}
-                  // pointerdown keeps focus in the input; click would blur it first.
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    pick(c.code);
-                  }}
+                  // Picked on click, not on press: on a phone a press may start a scroll through the list, and the
+                  // browser sends no click then. mousedown is cancelled so the focus stays in the search field.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pick(c.code)}
                 >
                   <strong>{c.code}</strong>
                   {/* Its own column, so names line up whether or not the currency has a symbol. */}

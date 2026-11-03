@@ -150,10 +150,10 @@ export function ListPicker<T extends string | number>({ value, options, onChange
                 aria-selected={o.value === value}
                 className={[i === active ? 'active' : '', o.value === value ? 'selected' : ''].join(' ').trim() || undefined}
                 onPointerEnter={() => setActive(i)}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  pick(o.value);
-                }}
+                // Picked on click, not on press: on a phone a press may start a scroll through the list, and the
+                // browser sends no click then. mousedown is cancelled so the focus stays where it was.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(o.value)}
               >
                 <strong>{o.label}</strong>
                 {o.value === value && <span className="check" aria-hidden="true">✓</span>}

@@ -100,8 +100,10 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
                 // can be changed instead of typing the whole rate. Filled before the press lands, so the caret goes
                 // where the click was; reached with Tab, the caret goes to the end. Left unchanged, it goes back
                 // to empty (BNR's rate).
+                // Mouse only: a finger's press may become a scroll, which would leave BNR's rate typed in the field.
+                // On touch the focus below fills it, with the caret at the end.
                 onPointerDown={(e) => {
-                  if (e.currentTarget.value === '') e.currentTarget.value = formatRate(published);
+                  if (e.pointerType === 'mouse' && e.currentTarget.value === '') e.currentTarget.value = formatRate(published);
                 }}
                 onFocus={(e) => {
                   const input = e.currentTarget;

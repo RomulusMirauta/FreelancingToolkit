@@ -547,7 +547,8 @@ footer { margin: 24px 0 8px; text-align: center; }
 .app-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
 .views {
   position: relative;
-  touch-action: none;
+  /* Sideways drags move the thumb; an up/down swipe scrolls the page (the browser cancels the press, so no tab changes). */
+  touch-action: pan-y;
   user-select: none;
   display: flex;
   gap: 4px;
@@ -1139,7 +1140,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 /* ---------- Sliders (language, theme): a thumb that glides between the stops, and can be dragged ---------- */
 .slider {
   position: relative; display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 999px;
-  background: var(--surface); touch-action: none; user-select: none; cursor: pointer;
+  background: var(--surface); touch-action: pan-y; user-select: none; cursor: pointer;
 }
 .slider button {
   position: relative; z-index: 1; width: var(--stop); height: 26px; padding: 0; border: 0; border-radius: 999px;
