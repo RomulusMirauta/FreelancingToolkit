@@ -11,6 +11,7 @@ Steps 155– of the development history.
 - Screenshots in the app's manifest, so Chrome's install dialog shows the app on desktop and on phones.
 
 ### Changed
+- The triangle on the dropdown buttons (platform, bank, currency, period) turns up while the list is open, like the other chevrons.
 - Tools: on phones only the pulsing dot, bigger and easy to tap, so it no longer covers the page; no chevron on any screen.
 - Phones: the settings button is just the gear, on the title's row, and the Converter | Taxes switch sits in the middle.
 - Phones: the converter starts with EUR and RON, which fit on the screen; USD and GBP are one tap away. Desktop still starts with four.
@@ -357,6 +358,7 @@ Every change since development of the app started, in the order it was made, gro
 168. `user-select: none` (and `-webkit-touch-callout: none`) on every control: buttons, `summary`, list options, radio switches, menu items and checkbox labels. Only the Converter | Taxes switch and the sliders had it, so on phones a tap that moved, e.g. on "+ Add currency", selected the label. Inputs are set back to `text` explicitly, since iOS won't type into a field whose parent is unselectable. Page text and figures stay selectable for copying.
 169. List options (`CurrencyPicker`, `ListPicker`) are picked on `click` instead of `pointerdown`. On touch, a press that turned into a scroll through the list had already picked the option under the finger and closed the list; the browser sends no click after a scroll. `mousedown` is cancelled instead, so the focus stays in the search field (with the mouse it used to fall to the page while the button was held). Checked with simulated touch: a drag through either list picks nothing, a tap picks, and a mouse click picks with the focus kept.
 170. Other presses that acted before the finger lifted: the section switch and the sliders had `touch-action: none`, so the page couldn't scroll from them and lifting the finger switched to the stop under it; now `pan-y`, so a vertical swipe scrolls (the browser cancels the press) and sideways drags still move the thumb. The custom-rate field filled in BNR's rate on `pointerdown`; now only for the mouse, touch fills it on focus. Simulated touch: before, an up swipe on Taxe switched the tab without scrolling and a swipe on the rate field left 5,3416 in it; after, the swipe scrolls 185 px with the tab kept and the field stays empty; tap and sideways drag still switch.
+171. Dropdown triangle from prototype 10 (pick C): `.currency-btn` drew a fixed triangle with two background gradients; it is now a border triangle in `::after` that rotates 180° while `aria-expanded` is true (no transition with reduced motion).
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0
