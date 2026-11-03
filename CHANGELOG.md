@@ -1,12 +1,32 @@
 # Changelog
 
-All notable changes to FreelancingToolkit. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+All notable changes to FreelancingToolkit. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/): 0.x are the development versions, 1.0.0 the first stable one. Each version lists its steps of the [development history](#development-history) below.
 
 ## [Unreleased]
 
-First version of the app, not yet published.
+Nothing yet.
 
-### Added
+## [1.0.0] - 2026-11-03
+
+The first stable version. Steps 113–154 of the development history.
+
+### New since 0.3.0
+- Every setting is in the address, only the changed ones: language, theme, currencies, custom rates, working time, fees, every tick and pick on the tax cards, the reference card, the amounts and the folded sections. A reload, a bookmark or a link opens the app the same way; a broken or out-of-range value is ignored.
+- "Copy link" is the address itself, without the viewer's language and theme. A link with your own settings says nothing changed; "Back to my settings" confirms with a toast after the reload.
+- BNR rates as one card per currency: the change against the previous banking day, a chart of the last 10 banking days, and the custom rate with "applied" or "BNR rate in use". A custom rate field starts from BNR's rate, so you can change a digit or two.
+- The tax page's gross income and the converter follow each other both ways.
+- "Settings & options" menu with a gear icon: the theme and language switches, "Copy link" and "Install the app".
+- New app icon: two coins with a drawn €.
+- Amounts are limited to 999,999,999.99; going past it shows a toast.
+- Design pass: design tokens (spacing, radii, shadows, motion), a "kept" bar with the net per year and the effective tax rate on every tax card, the converter grid works from the keyboard like a spreadsheet, sections open and close with a slide, tidy notes and figures in Working time and Fees, payment-calendar cards, a clearer VAT meter, and "Reset app" asks first.
+- 299 unit tests, including every setting's round trip through the address.
+
+### Fixed since 0.3.0
+- An income read from the address no longer looks changed when it is the default.
+- "Reset tab" on the converter also resets the tax page's income when that income only followed the converter.
+- An income norm card the income is too high for says "Over the limit" instead of looking like it beat the "Most money" card.
+
+### Everything in this version
 
 **Rate converter**
 - A grid of periods (hour, day, week, month, 3/6/9 months, year) by currencies. Every cell is editable and the rest follow; the default is 30 EUR/hour. It works like a spreadsheet from the keyboard: arrows move between cells, Enter goes down, Esc undoes the cell.
@@ -17,7 +37,7 @@ First version of the app, not yet published.
 - The rates as one card per currency: the rate in large type, its change against the previous banking day (▲ green: more lei for the same invoice, ▼ red: fewer) and a small chart of the last 10 banking days, then the custom rate.
 - A custom rate per currency, marked "custom".
 - Working-time settings (hours per day, days per week, days off, holidays, billable share), open by default.
-- Every section of both pages folds (chevron and a one-line summary), each in its own card; folded sections stay in the address, and a floating button folds or unfolds them all.
+- Every section of both pages folds (chevron and a one-line summary), each in its own card; folded sections stay in the address, and the floating "Tools" menu hides or shows them all.
 - Working-time quick picks: Full-time (8 h × 5 days), Part-time (4 h × 5 days), 4-day week (8 h × 4 days) and Weekends only (8 h × 2 days). They keep the days off, holidays and billable share, and the one matching the current values is highlighted. The defaults are shown as plain text instead of a reset link.
 - Working time in days: days off per year (leave, sick days), an option to take off the Romanian public holidays (worked out for the current year, Orthodox Easter included: 11 working days in 2026) and the share of billable hours (%). The hourly rate stays, the day, month and year amounts follow.
 - "Fees and currency exchange", its own collapsible card under Working time (its header sums it up: "You keep 89.55% · Upwork 10% · Wise 0.5%"). Two numbered steps, each a list with an editable % and a one-line explanation of the choice: 1 · Platform (Upwork, Fiverr, Freelancer.com, Malt, Guru, Toptal, Braintrust, Arc.dev, Contra, Freelancermap, or custom), 2 · Exchange and transfer (Wise, Revolut, Payoneer, bank, or custom). Then the path of one hour's pay: You invoice → Platform → Exchange → You keep, and the same per month in RON. By default it shows the common case, Upwork (10%) and a Romanian bank exchange (2%): you keep 88.2%.
@@ -44,11 +64,13 @@ First version of the app, not yet published.
 - Every 2026 parameter comes from `data/params-2026.json`, with its legal basis and source. The engine is tested against an independent Python implementation (`data/golden-2026.json`).
 
 **App**
-- Light/dark theme switch (automatic by default), first in the "Advanced options" menu in the top-right corner.
-- Romanian by default, with English in the "Advanced options" menu (Română | English). Numbers follow the language (1.234,56 / 1,234.56), and amounts can be typed either way.
-- Settings stay on the device. Floating "Reset tab" and "Reset app" buttons restore the defaults of the open page or of everything; each is disabled while it has nothing to reset. "Reset tab" is instant; "Reset app" asks first.
-- "Copy link" (Advanced options, top right): a link with the page settings as query parameters (language and theme stay the viewer's). Opening it replaces the settings for that visit, with "Back to my settings"; the query string is removed at once, so reloads and resets never apply it again.
-- "Install the app" (Advanced options, top right): Chrome and Edge's install dialog, or plain step-by-step instructions for computer, Android and iPhone, this device first. Hidden once installed.
+- Light/dark theme switch (automatic by default), first in the "Settings & options" menu (gear icon, top-right corner).
+- Romanian by default, with English in "Settings & options" (Română | English). Numbers follow the language (1.234,56 / 1,234.56), and amounts can be typed either way.
+- Settings stay on the device, and every changed one is in the address too (?lang=en&currencies=EUR,RON,PLN&platform=fiverr…), so a reload or a bookmark opens the app the same way. A broken or out-of-range value in the address is ignored.
+- The floating "Tools" menu (bottom right) hides or shows the sections and holds "Reset tab" and "Reset app", which restore the defaults of the open page or of everything; each is disabled while it has nothing to reset. "Reset tab" is instant; "Reset app" asks first.
+- "Copy link" (Settings & options): the address, marked as a shared link, without the viewer's language and theme. Opening it replaces the page settings for that visit, with "Back to my settings".
+- "Install the app" (Settings & options): Chrome and Edge's install dialog, or plain step-by-step instructions for computer, Android and iPhone, this device first. Hidden once installed.
+- Amounts go up to 999,999,999.99; past that a toast says so.
 - Installable and works offline (PWA). The deploy workflow for GitHub Pages runs on every push and on banking days after BNR publishes.
 
 ### To confirm
@@ -58,14 +80,52 @@ First version of the app, not yet published.
 - Whether the 3% tax-return discount is given again in 2027 (it was in 2026, by OUG 8/2026).
 - Platform and exchange fees are typical 2026 values from secondary sources (Upwork's varies per contract).
 
+## [0.3.0] - 2026-11-02
+
+Development version. Steps 86–112.
+
+### Added
+- Working time in days: days off, the Romanian public holidays (Orthodox Easter computed per year) and the share of billable hours, with quick picks for full-time, part-time, a 4-day week and weekends.
+- "Fees and currency exchange" card: platform and transfer lists with search, the path of an hour's pay and what reaches you per month (Upwork 10% and a bank exchange of 2% by default).
+- "VAT: what to watch" and the "Payment calendar" on the tax page.
+- "Copy link" with the settings, and "Install the app" with step-by-step instructions.
+- Every section folds, remembered in the address, with a "Tools" menu to hide or show them all and to reset.
+- Sliding switches for theme, language and Convertor | Taxe; the converter's amount in the address.
+
+### Fixed
+- The tax page's gross income follows every change of the converter, not only the "Taxes for this income" button.
+- Folded sections count as something to reset.
+
+## [0.2.0] - 2026-11-02
+
+Development version, the first on GitHub Pages. Steps 83–85.
+
+### Added
+- Published at <https://romulusmirauta.github.io/FreelancingToolkit/>.
+- PNG icons for installing on Android and iPhone, and link previews.
+- README with the live link, what a PWA is and how to install it.
+
+## [0.1.0] - 2026-11-02
+
+The first development version. Steps 1–82.
+
+### Added
+- Rate converter: a periods × currencies grid where every cell is editable, BNR rates refreshed every banking day, market rates for about 160 more currencies, currency chips with symbols, custom rates and working time.
+- Romanian taxes 2026: CIM, PFA (real system and income norm) and SRL (micro-enterprise, profit tax with and without salary) side by side, each with its options, a reference regime, "Most money", disadvantages and a line-by-line breakdown with links to the law; "Income on top of a job", copyright income and "How much do I want to earn? (net to gross)".
+- Romanian by default with English, an automatic/light/dark theme, "Reset tab" and "Reset app".
+- Installable and works offline (PWA); deploy workflow for GitHub Pages; MIT license.
+
 ## Development history
 
-Every change since development of the app started, in the order it was made. Later entries can change or undo earlier ones; the summary above describes the current state.
+Every change since development of the app started, in the order it was made, grouped by the version it shipped in. Later entries can change or undo earlier ones; the version notes above describe each version as released.
 
-### Before 2026-11-01
+### Before 0.1.0 (before 2026-11-01)
 - 2026 tax parameters (`data/params-2026.json`) with legal basis and sources, plus an independent Python reference implementation and its expected results (`data/golden-2026.json`). Both also feed a private 2026 Excel workbook.
 
-### 2026-11-01
+### 0.1.0 (2026-11-01 to 2026-11-02)
+
+*2026-11-01*
+
 1. Project set up: Vite, React and TypeScript (strict), Vitest, PWA plugin.
 2. BNR rate download script. The parser handles both namespaces of the BNR feed, and the first snapshot holds the rates of 30 Oct 2026 (EUR 5.3426).
 3. Rate converter: a periods × currencies grid where every cell is editable, EUR and RON columns, a default of 30 EUR/hour, working-time settings, the rate date with a staleness warning, and a custom rate per currency.
@@ -88,7 +148,8 @@ Every change since development of the app started, in the order it was made. Lat
 15. Column order changed to EUR, RON, USD, GBP.
 16. "+ Add currency" became a search box: by code or by name, ignoring diacritics, with keyboard support.
 
-### 2026-11-02
+*2026-11-02*
+
 17. Romanian version, now the default, with an RO | EN switch:
     - numbers follow the language, and amounts can be typed either way;
     - currency names in Romanian, searchable in both languages.
@@ -168,9 +229,15 @@ Every change since development of the app started, in the order it was made. Lat
 80. On phones the floating reset buttons shrink to "↺ Tab" and "↺ Tot" (EN "All"), so they cover less of the page; the full names stay as tooltips and for screen readers.
 81. The footer credits the market rates as well as BNR's.
 82. MIT license. The scripts for the private Excel workbook moved out of the public repo, next to the workbook.
+
+### 0.2.0 (2026-11-02)
+
 83. Published on GitHub Pages: <https://romulusmirauta.github.io/FreelancingToolkit/>.
 84. Installing as an app: PNG icons (192 and 512 px, a maskable one for Android, and an Apple touch icon, since iOS ignores SVG icons on the home screen) next to the SVG one, all available offline. Link previews (Open Graph) for sharing the app's link.
 85. README: the app's link, what a PWA is and how to install it on desktop, Android and iPhone, privacy, data sources and update times, deploying your own copy, and how to regenerate the tax golden file. `package.json` has the description, homepage and repository.
+
+### 0.3.0 (2026-11-02)
+
 86. Working-time quick picks above the fields: Full-time (8 h × 5 days), Part-time (4 h × 5 days), 4-day week (8 h × 4 days), Weekends only (8 h × 2 days). A pick keeps the weeks off, and the one matching the current values is highlighted. The "Reset to 8 h × 5 days × 52 weeks" link became plain text ("Default: 8 h × 5 days × 52 weeks").
 87. The hours × days on the working-time quick picks ("8 h × 5 days") stand out: full-strength text in its own small pill inside the button, like the currency symbol on a currency chip.
 88. Working time counts days, not weeks: "Days off per year" replaces "Weeks off per year" (a saved value is converted: weeks × days per week), a "Take off the public holidays" option counts the Romanian public holidays on your working days (Codul muncii art. 139, Orthodox Easter and Pentecost computed per year; 11 working days in 2026, scaled for shorter weeks), and "Billable hours (%)" lowers the hours you invoice. The summary shows working days and billable hours per year.
@@ -202,6 +269,9 @@ Every change since development of the app started, in the order it was made. Lat
 110. The "Or work backwards" note beside the grid has a small × on its title line, which hides the brace and the text (and the one-line hint on narrow screens). It stays hidden; "Reset tab" on the converter brings it back.
 111. Colours: "You keep" in the fees card is the app's teal accent instead of lime, since lime marks what can be edited; the platform and bank lists get the lime box, as they can be changed.
 112. The BNR rates are a small table with the headings Currency, Rate, Against EUR and Custom rate, instead of "Custom rate" repeated on every row; the custom-rate fields get the lime editable box, and one line under the table says what a custom rate does. On phones the Against EUR column is hidden.
+
+### 1.0.0 (2026-11-02 to 2026-11-03)
+
 113. Design pass (from a study of Wise, XE, Harvest, Stripe, Linear, Vercel Geist, Radix, Material 3, GOV.UK and NN/g): one set of design tokens in the stylesheet: a 4-pt spacing scale, three corner radii, two shadow levels, Material 3 motion durations and easings (menus open a little slower than they close), a short type scale and one numeric style (same-width digits on every figure that updates). Cards are rounder with a soft shadow and a little more room between them; the header gets the app icon and "Toolkit" in the accent colour.
 114. Tax board: the card with the most money is teal with a "★ Most money" tag instead of lime, since lime marks what can be edited. Each card adds a thin bar with the share of the gross you keep, and shows the net per year and the effective tax rate as two labelled figures, in the same place on every card so they compare line by line. Cards lift slightly on hover.
 115. Converter grid keyboard: arrows move between cells (left and right only at the edge of the text, or when it is all selected), Enter goes down and Shift+Enter up, Esc puts back the value from before the cell was entered.
@@ -244,3 +314,9 @@ Every change since development of the app started, in the order it was made. Lat
 152. "Copy link" is now the address itself, marked ?share=1 and without your language and theme (they stay the viewer's own); links made the old way (settings as JSON) still open. Opening one still sets your own settings aside, with "Back to my settings".
 153. Tests: every saved setting must have address parameters, every page's reset must clear exactly its parameters, no name may be used twice, every setting must read back the same from the address and its default write nothing, and broken values must be refused (22 new tests). They caught a real bug: an income read from the address had its fields in another order than the default, so the default income looked changed (the Tools dot lit up).
 154. "Settings & options" has a gear icon, which turns a little when the menu opens.
+
+[Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0
+[0.3.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/RomulusMirauta/FreelancingToolkit/releases/tag/v0.1.0
