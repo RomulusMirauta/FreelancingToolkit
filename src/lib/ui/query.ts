@@ -9,8 +9,13 @@ export function readQuery(): URLSearchParams {
 export function writeQuery(change: (params: URLSearchParams) => void): void {
   const params = readQuery();
   change(params);
-  // Commas stay readable: ?fold=converter,fees rather than converter%2Cfees.
-  const query = params.toString().replace(/%2C/g, ',');
+  // Commas and colons stay readable: ?fold=converter,fees&rates=USD:4.9, not converter%2Cfees and USD%3A4.9.
+  const query = readable(params);
   const url = `${location.pathname}${query ? `?${query}` : ''}${location.hash}`;
   if (url !== `${location.pathname}${location.search}${location.hash}`) history.replaceState(history.state, '', url);
+}
+
+/** The query string with commas and colons left as they are (both are fine in a query). */
+export function readable(params: URLSearchParams): string {
+  return params.toString().replace(/%2C/gi, ',').replace(/%3A/gi, ':');
 }

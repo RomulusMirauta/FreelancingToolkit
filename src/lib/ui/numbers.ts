@@ -1,6 +1,16 @@
 type NumberLang = 'ro' | 'en';
 
 let lang: NumberLang = 'ro';
+
+/**
+ * The largest amount anyone can type, link or have saved: nine digits before the decimal mark. Far above any
+ * freelancer's income, and small enough that every figure derived from it still fits its card.
+ */
+export const MAX_AMOUNT = 999_999_999.99;
+/** The most digits before the decimal mark an amount field takes. */
+export const MAX_WHOLE_DIGITS = 9;
+/** A sensible amount: a finite number from 0 to MAX_AMOUNT. */
+export const isSaneAmount = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= MAX_AMOUNT;
 let fmt2 = makeMoney('ro-RO');
 let fmtRate = makeRate('ro-RO');
 

@@ -10,6 +10,44 @@ export interface RateTable {
 
 export const BNR_RATES: RateTable = snapshot;
 
+/** One BNR fixing. */
+export interface DayRates {
+  date: string;
+  rates: Record<string, number>;
+}
+
+/** The last banking days' fixings, newest first (the first is the current one). Empty in an old snapshot. */
+export const BNR_HISTORY: DayRates[] = (snapshot as { history?: DayRates[] }).history ?? [];
+
+export interface RateChange {
+  /** The previous banking day (YYYY-MM-DD). */
+  previousDate: string;
+  /** RON per unit, today minus the previous banking day. */
+  change: number;
+  /** The same as a share of the previous rate (0.01 = 1%). */
+  share: number;
+}
+
+/**
+ * How a BNR rate moved since the previous banking day. Null when the history doesn't cover it
+ * (a market-rate currency, an old snapshot, or a history that doesn't start at `table`'s date).
+ */
+export function rateChange(code: string, history: DayRates[] = BNR_HISTORY, table: RateTable = BNR_RATES): RateChange | null {
+  const [today, previous] = history;
+  const now = table.rates[code];
+  const before = previous?.rates[code];
+  if (!today || today.date !== table.date || now === undefined || before === undefined || before <= 0) return null;
+  return { previousDate: previous!.date, change: now - before, share: (now - before) / before };
+}
+
+/** A currency's rates over the saved banking days, oldest first (for a small chart); days without it are skipped. */
+export function rateSeries(code: string, history: DayRates[] = BNR_HISTORY): { date: string; rate: number }[] {
+  return history
+    .filter((d) => d.rates[code] !== undefined)
+    .map((d) => ({ date: d.date, rate: d.rates[code]! }))
+    .reverse();
+}
+
 /** Market rates (ExchangeRate-API) for the currencies BNR does not publish. BNR always wins where it has a rate. */
 export const MARKET_RATES: RateTable & { provider: string } = market;
 

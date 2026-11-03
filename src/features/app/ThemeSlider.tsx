@@ -87,16 +87,20 @@ function Slider<T extends string>({ value, options, onChange, label, stop, class
 
 const THEME_ICONS: Record<Theme, string> = { system: '◐', light: '☀', dark: '☾' };
 
-/** The theme switch: ◐ automatic, ☀ light, ☾ dark. */
+/** The theme switch, in the "Settings & options" menu: ◐ Automatic, ☀ Light, ☾ Dark, each icon with its name. */
 export function ThemeSlider({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
   const t = useT().app;
   return (
     <Slider
       value={theme}
-      options={THEMES.map((th) => ({ value: th, content: THEME_ICONS[th], title: t.themes[th] }))}
+      options={THEMES.map((th) => ({
+        value: th,
+        content: <><i className="slider-icon">{THEME_ICONS[th]}</i>{t.themeShort[th]}</>,
+        title: t.themes[th],
+      }))}
       onChange={setTheme}
       label={t.theme}
-      stop={30}
+      stop={88}
       className="theme-slider"
     />
   );
@@ -104,16 +108,16 @@ export function ThemeSlider({ theme, setTheme }: { theme: Theme; setTheme: (t: T
 
 const LANG_NAMES: Record<Lang, string> = { ro: 'Română', en: 'English' };
 
-/** The language switch: RO | EN, each named in its own language. */
+/** The language switch, in the menu under the theme: Română | English, each named in its own language. */
 export function LangSlider({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   const t = useT().app;
   return (
     <Slider
       value={lang}
-      options={LANGS.map((l) => ({ value: l, content: l.toUpperCase(), title: LANG_NAMES[l], lang: l }))}
+      options={LANGS.map((l) => ({ value: l, content: LANG_NAMES[l], title: LANG_NAMES[l], lang: l }))}
       onChange={setLang}
       label={t.language}
-      stop={40}
+      stop={132}
       className="lang-slider"
     />
   );

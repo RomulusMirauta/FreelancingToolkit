@@ -7,13 +7,13 @@ A small installable web app (a PWA, Progressive Web App) for freelancers paid in
 - **Rate converter**: type an amount in any cell (for example 30 EUR per hour) and see it per hour, day, week, month, 3/6/9 months and year, in as many currencies as you like. It uses the National Bank of Romania (BNR) reference rates, refreshed every banking day. Currencies BNR does not publish (about 160 in all) use market rates from [ExchangeRate-API](https://www.exchangerate-api.com), marked as such. You can override any rate. Working time counts days off, public holidays and the share of billable hours, and a fees panel shows what you keep after a platform (Upwork, Fiverr, …) and the currency exchange.
 - **Romanian taxes 2026**: compare take-home pay as an employee, PFA (real system or income norm), SRL (micro-enterprise or profit tax, with dividends) and copyright income, side by side. It also covers income on top of a job (CIM + PFA, CIM + copyright) and solves the reverse: what you need to earn to take home a given amount. Every line links to the law it comes from. It also shows where you stand against the VAT threshold and a calendar of the next tax deadlines.
 
-The app is in Romanian by default, with an English version one click away (RO | EN, top right). Numbers follow the language: 1.234,56 in Romanian, 1,234.56 in English. A light, dark or automatic theme is in the top right, next to the language and **Advanced options**.
+The app is in Romanian by default, with an English version in **Settings & options** (top right). Numbers follow the language: 1.234,56 in Romanian, 1,234.56 in English. The same menu has the light, dark or automatic theme.
 
 > Estimates only, not tax advice. Check with an accountant before deciding.
 
 ## Install it and use it offline
 
-As a PWA, the app can be installed like a regular app and keeps working without internet once opened. It is free, takes about a minute, and **Advanced options → Install the app** (top right) shows the same steps:
+As a PWA, the app can be installed like a regular app and keeps working without internet once opened. It is free, takes about a minute, and **Settings & options → Install the app** (top right) shows the same steps:
 
 - **Computer (Chrome or Edge)**
   1. Open the link above.

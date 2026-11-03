@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { convert, crossRate } from './convert';
 import { CURRENCIES } from './currencies';
-import { BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale, type RateTable } from './rates';
+import { BNR_HISTORY, BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale, rateChange, rateSeries, type DayRates, type RateTable } from './rates';
 
 const table: RateTable = {
   date: '2026-10-30',
@@ -58,5 +58,33 @@ describe('market rates for the currencies BNR does not publish', () => {
   });
   it('the market snapshot agrees with BNR on EUR within 1%', () => {
     expect(Math.abs(MARKET_RATES.rates.EUR! / BNR_RATES.rates.EUR! - 1)).toBeLessThan(0.01);
+  });
+});
+
+describe('change against the previous banking day', () => {
+  const history: DayRates[] = [
+    { date: '2026-11-02', rates: { EUR: 5.3403, USD: 4.7658 } },
+    { date: '2026-10-30', rates: { EUR: 5.3426, USD: 4.7698 } },
+    { date: '2026-10-29', rates: { EUR: 5.3449 } },
+  ];
+  const today: RateTable = { date: '2026-11-02', source: 'test', rates: { EUR: 5.3403, USD: 4.7658, GBP: 6.3879 } };
+  it('is today minus the previous banking day (Monday against Friday)', () => {
+    const c = rateChange('EUR', history, today)!;
+    expect(c.previousDate).toBe('2026-10-30');
+    expect(c.change).toBeCloseTo(-0.0023, 9);
+    expect(c.share).toBeCloseTo(-0.0023 / 5.3426, 9);
+  });
+  it('is unknown without a previous day, or when the history is from another day', () => {
+    expect(rateChange('GBP', history, today)).toBeNull();
+    expect(rateChange('EUR', history, { ...today, date: '2026-11-03' })).toBeNull();
+    expect(rateChange('EUR', [], today)).toBeNull();
+  });
+  it('the series runs oldest first and skips days without the currency', () => {
+    expect(rateSeries('EUR', history).map((d) => d.date)).toEqual(['2026-10-29', '2026-10-30', '2026-11-02']);
+    expect(rateSeries('USD', history).map((d) => d.rate)).toEqual([4.7698, 4.7658]);
+  });
+  it('the bundled snapshot starts its history at its own date', () => {
+    expect(BNR_HISTORY[0]?.date).toBe(BNR_RATES.date);
+    expect(BNR_HISTORY[0]?.rates.EUR).toBe(BNR_RATES.rates.EUR);
   });
 });

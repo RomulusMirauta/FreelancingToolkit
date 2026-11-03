@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useT } from '../../lib/i18n';
 import type { Page } from '../../lib/ui/settingsKeys';
+import type { Lang } from '../../lib/i18n';
+import type { Theme } from '../../lib/ui/theme';
+import { LangSlider, ThemeSlider } from './ThemeSlider';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { restoreOwnSettings, shareUrl, sharedLinkState } from '../../lib/ui/share';
 
@@ -21,8 +24,17 @@ function detectDevice(): Device {
 
 const isInstalled = () => window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 
-/** "Advanced options" in the top-right corner: a menu (hover or click) with "Copy link" and "Install". */
-export function TopActions({ view }: { view: Page }) {
+/**
+ * "Settings & options" in the top-right corner: a menu (hover or click) with the theme and the language first (the
+ * same sliding switches as before, with names), then "Copy link" and "Install".
+ */
+export function TopActions({ view, theme, setTheme, lang, setLang }: {
+  view: Page;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  lang: Lang;
+  setLang: (l: Lang) => void;
+}) {
   const t = useT().app;
   const [copied, setCopied] = useState<'no' | 'yes' | 'manual'>('no');
   const [link, setLink] = useState('');
@@ -75,10 +87,20 @@ export function TopActions({ view }: { view: Page }) {
   return (
     <div className={`top-actions hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
       <button type="button" className="top-btn menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle}>
+        <GearIcon />
         <span>{t.advanced}</span>
         <span className="chev" aria-hidden="true" />
       </button>
       <div className="menu-pop" role="menu" aria-label={t.advanced}>
+        <div className="menu-theme" role="none">
+          <span id="menu-theme-label">{t.theme}</span>
+          <ThemeSlider theme={theme} setTheme={setTheme} />
+        </div>
+        <div className="menu-theme" role="none">
+          <span>{t.language}</span>
+          <LangSlider lang={lang} setLang={setLang} />
+        </div>
+        <div className="menu-sep" role="separator" />
         <button type="button" role="menuitem" onClick={copy} title={t.shareTitle}>
           <LinkIcon />
           <b>{copied === 'yes' ? t.copied : t.share}</b>
@@ -127,15 +149,34 @@ function InstallSteps({ onClose }: { onClose: () => void }) {
 /** Shown once, after opening a link with someone's settings. */
 export function SharedBanner() {
   const t = useT().app;
-  const [{ opened, hadOwn }] = useState(sharedLinkState);
+  const [{ opened, hadOwn, same }] = useState(sharedLinkState);
   const [hidden, setHidden] = useState(false);
   if (!opened || hidden) return null;
   return (
     <div className="shared-banner" role="status">
-      <span>{hadOwn ? t.sharedOpenedOwn : t.sharedOpened}</span>
-      {hadOwn && <button type="button" className="link-btn" onClick={restoreOwnSettings}>{t.restoreOwn}</button>}
-      <button type="button" className="link-btn" onClick={() => setHidden(true)}>{t.close}</button>
+      <span className="banner-icon" aria-hidden="true"><LinkIcon /></span>
+      <span className="banner-text">{same ? t.sharedSame : hadOwn ? t.sharedOpenedOwn : t.sharedOpened}</span>
+      {/* Real buttons: going back to your own settings is the main action, closing keeps the link's. */}
+      <span className="banner-actions">
+        {hadOwn && (
+          <button type="button" className="banner-btn primary" onClick={restoreOwnSettings}>
+            <span aria-hidden="true">↺</span> {t.restoreOwn}
+          </button>
+        )}
+        {/* With own settings replaced, closing means keeping the link's: the button says so. */}
+        <button type="button" className="banner-btn" onClick={() => setHidden(true)}>{hadOwn ? t.keepLink : t.close}</button>
+      </span>
     </div>
+  );
+}
+
+/** A gear, for "Settings & options"; it turns a little when the menu opens. */
+function GearIcon() {
+  return (
+    <svg className="gear" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
 

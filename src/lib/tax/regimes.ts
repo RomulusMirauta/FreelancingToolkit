@@ -1,3 +1,4 @@
+import { isSaneAmount } from '../ui/numbers';
 import { copyrightYear } from './copyright';
 import { employeeMonth, employeeYear } from './employee';
 import { P, mw } from './params';
@@ -48,7 +49,7 @@ export function mergeTaxOptions(saved: unknown): TaxOptions {
     for (const [k, v] of Object.entries(defaults)) {
       const sv = (s as Record<string, unknown>)[k];
       const okString = typeof sv !== 'string' || (k === 'ownerPay' && (sv === 'cim' || sv === 'mandate'));
-      if (typeof sv === typeof v && okString && (typeof sv !== 'number' || (Number.isFinite(sv) && sv >= 0))) defaults[k] = sv;
+      if (typeof sv === typeof v && okString && (typeof sv !== 'number' || isSaneAmount(sv))) defaults[k] = sv;
     }
   }
   return out as unknown as TaxOptions;

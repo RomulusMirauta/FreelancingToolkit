@@ -26,6 +26,22 @@ describe.each([
   });
 });
 
+describe('BNR history', () => {
+  const history = (bnr as { history?: { date: string; rates: Record<string, number> }[] }).history ?? [];
+  it('has up to 10 banking days, newest first, starting at the snapshot date', () => {
+    expect(history.length).toBeGreaterThan(1);
+    expect(history.length).toBeLessThanOrEqual(10);
+    expect(history[0]!.date).toBe(bnr.date);
+    for (let i = 1; i < history.length; i++) expect(history[i]!.date < history[i - 1]!.date).toBe(true);
+  });
+  it('every day has EUR and only positive rates', () => {
+    for (const day of history) {
+      expect(day.rates.EUR, day.date).toBeGreaterThan(3);
+      for (const rate of Object.values(day.rates)) expect(rate > 0).toBe(true);
+    }
+  });
+});
+
 describe('market snapshot', () => {
   it('names every currency it prices, in English and Romanian', () => {
     const names = market.names as Record<string, { en: string; ro: string }>;

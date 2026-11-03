@@ -15,11 +15,29 @@ export const PAGE_FOLDS: Record<Page, readonly string[]> = {
   taxes: ['taxes', 'sideJob', 'other', 'solver', 'vat', 'calendar'],
 };
 
-/** Address parameters each page owns, cleared by "Reset tab" (otherwise a reload would bring them back). */
+/**
+ * Address parameters each page owns, cleared by "Reset tab" (otherwise a reload would bring them back).
+ * A test checks this against every setting's parameters (urlState.ts).
+ */
 export const PAGE_QUERY: Record<Page, readonly string[]> = {
-  converter: ['amount', 'currency', 'per'],
-  taxes: [],
+  converter: [
+    'amount', 'currency', 'per',
+    'currencies', 'added', 'rates', 'goal_note',
+    'hours', 'days', 'days_off', 'holidays', 'billable',
+    'platform', 'platform_pct', 'transfer', 'transfer_pct',
+  ],
+  taxes: [
+    'income', 'income_currency', 'income_per', 'net', 'net_currency', 'net_per', 'salary', 'side', 'ref',
+    'dependants', 'children', 'under26',
+    'expenses_pfa', 'pfa_salary', 'pfa_pensioner', 'pfa_sick',
+    'norm', 'norm_salary', 'norm_pensioner', 'norm_sick',
+    'expenses_micro', 'micro_owner_paid', 'micro_pay', 'micro_other_employee', 'micro_single',
+    'expenses_profit_salary', 'profit_pay', 'expenses_profit',
+    'copyright_insured',
+  ],
 };
 
 /** Settings of the whole app (the viewer's own choice), cleared only by "Reset app" and never shared. */
 export const APP_KEYS: readonly string[] = ['ft.lang', 'ft.theme'];
+/** Their address parameters: in the address, but left out of a copied link. */
+export const APP_QUERY: readonly string[] = ['lang', 'theme'];

@@ -13,9 +13,10 @@ import {
 } from '../../lib/tax/regimes';
 import { solveForTakeHome } from '../../lib/tax/solve';
 import { AmountInput } from '../../lib/ui/AmountInput';
-import { formatMoney, formatRate } from '../../lib/ui/numbers';
+import { formatMoney, formatRate, isSaneAmount } from '../../lib/ui/numbers';
 import { useLang } from '../../lib/i18n';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
+import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
 import { Fold } from '../../lib/ui/Fold';
 import { RegimeCard } from './RegimeCard';
 import { SideJob } from './SideJob';
@@ -43,7 +44,7 @@ export const DEFAULT_INCOME: TaxIncome = {
 
 export function isTaxIncome(v: unknown): v is TaxIncome {
   const x = v as TaxIncome;
-  return typeof v === 'object' && v !== null && typeof x.amount === 'number' && x.amount >= 0 &&
+  return typeof v === 'object' && v !== null && isSaneAmount(x.amount) &&
     PERIODS.includes(x.per) && typeof x.currency === 'string' && KNOWN.has(x.currency);
 }
 
@@ -55,11 +56,71 @@ export function annualLei(i: TaxIncome, work: WorkSettings): number {
 const isOptions = (v: unknown): v is TaxOptions => JSON.stringify(mergeTaxOptions(v)) === JSON.stringify(v);
 const isRegime = (v: unknown): v is BoardRegime => MAIN_REGIMES.includes(v as BoardRegime);
 
+/**
+ * Every option on the cards, in the address, each only when changed: amounts (?expenses_pfa=1500&norm=60000),
+ * ticks (?pfa_pensioner=1), picks (?dependants=2&micro_pay=mandate). Out-of-range values fall back to the default.
+ */
+const OPTION_PARAMS: readonly [string, keyof TaxOptions, string][] = [
+  ['dependants', 'employee', 'dependants'], ['children', 'employee', 'schoolChildren'], ['under26', 'employee', 'under26'],
+  ['expenses_pfa', 'pfaReal', 'expensesMonthly'], ['pfa_salary', 'pfaReal', 'hasSalary'], ['pfa_pensioner', 'pfaReal', 'pensioner'], ['pfa_sick', 'pfaReal', 'sickLeave'],
+  ['norm', 'pfaNorm', 'normYearly'], ['norm_salary', 'pfaNorm', 'hasSalary'], ['norm_pensioner', 'pfaNorm', 'pensioner'], ['norm_sick', 'pfaNorm', 'sickLeave'],
+  ['expenses_micro', 'srlMicro', 'expensesMonthly'], ['micro_owner_paid', 'srlMicro', 'ownerEmployed'], ['micro_pay', 'srlMicro', 'ownerPay'],
+  ['micro_other_employee', 'srlMicro', 'otherEmployee'], ['micro_single', 'srlMicro', 'singleMicro'],
+  ['expenses_profit_salary', 'srlProfitSalary', 'expensesMonthly'], ['profit_pay', 'srlProfitSalary', 'ownerPay'],
+  ['expenses_profit', 'srlProfitNoSalary', 'expensesMonthly'],
+  ['copyright_insured', 'copyright', 'insured'],
+];
+/** The pickers' ranges: 0-4 dependants ("4+"), 0-10 children; both whole numbers. */
+const OPTION_MAX: Record<string, number> = { dependants: 4, schoolChildren: 10 };
+
+const optionValue = (o: TaxOptions, regime: keyof TaxOptions, field: string) => (o[regime] as unknown as Record<string, unknown>)[field];
+
+export const OPTIONS_QUERY: UrlQuery<TaxOptions> = {
+  key: 'ft.taxOptions',
+  names: OPTION_PARAMS.map(([p]) => p),
+  toParams: (o) => OPTION_PARAMS.map(([, r, f]) => {
+    const v = optionValue(o, r, f);
+    return typeof v === 'boolean' ? (v ? '1' : '0') : String(v);
+  }),
+  fromParams: (values, saved) => {
+    const out = structuredClone(mergeTaxOptions(saved)) as unknown as Record<string, Record<string, unknown>>;
+    OPTION_PARAMS.forEach(([, r, f], i) => {
+      const fallback = optionValue(DEFAULT_TAX_OPTIONS, r, f);
+      const s = values[i]!;
+      let v: unknown = null;
+      if (typeof fallback === 'boolean') v = s === '1' ? true : s === '0' ? false : null;
+      else if (typeof fallback === 'number') {
+        const n = numberParam(s);
+        const max = OPTION_MAX[f];
+        v = n !== null && (max === undefined || (Number.isInteger(n) && n <= max)) ? n : null;
+      } else v = s === 'cim' || s === 'mandate' ? s : null;
+      out[r]![f] = v ?? fallback;
+    });
+    return mergeTaxOptions(out);
+  },
+  isValid: isOptions,
+  defaults: DEFAULT_TAX_OPTIONS,
+  isDefault: (o) => JSON.stringify(o) === JSON.stringify(DEFAULT_TAX_OPTIONS),
+  sparse: true,
+};
+
+/** The card everything is compared with: ?ref=pfaReal (CIM, the default, has none). */
+export const REF_QUERY: UrlQuery<BoardRegime> = {
+  key: 'ft.taxRef',
+  names: ['ref'],
+  toParams: (r) => [r],
+  fromParams: ([s]) => s,
+  isValid: isRegime,
+  defaults: 'employee',
+};
+
 /** All regimes side by side: one income in, the monthly take-home of each out, compared to a reference. */
 export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncome: (i: TaxIncome) => void; work: WorkSettings }) {
   const { taxes: t, board: tb, locale } = useT();
   const [options, setOptions] = usePersistentState('ft.taxOptions', DEFAULT_TAX_OPTIONS, isOptions);
+  useUrlQuery(OPTIONS_QUERY, options);
   const [reference, setReference] = usePersistentState<BoardRegime>('ft.taxRef', 'employee', isRegime);
+  useUrlQuery(REF_QUERY, reference);
   const annual = annualLei(income, work);
 
   const results = useMemo(
@@ -97,6 +158,7 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
               referenceRegime={reference}
               referenceTakeHome={results[reference].takeHome}
               isBest={annual > 0 && allowed.includes(r) && results[r].takeHome === best}
+              notRanked={annual > 0 && !allowed.includes(r)}
               options={options}
               setOptions={setOptions}
               onSetReference={() => setReference(r)}
@@ -140,6 +202,25 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
 }
 
 const DEFAULT_TARGET: TaxIncome = { amount: 10_000, per: 'month', currency: 'RON' };
+
+/** An amount + currency + period in the address, under `prefix`, `prefix_currency` and `prefix_per`. */
+const incomeQuery = (key: string, prefix: string, defaults: TaxIncome): UrlQuery<TaxIncome> => ({
+  key,
+  names: [prefix, `${prefix}_currency`, `${prefix}_per`],
+  toParams: (v) => [String(v.amount), v.currency, v.per],
+  fromParams: ([amount, currency, per]) => {
+    const a = numberParam(amount!);
+    // Same key order as the saved value: settings are compared as JSON, so a different order would look changed.
+    return a === null ? null : { amount: a, per, currency: currency!.toUpperCase() };
+  },
+  isValid: isTaxIncome,
+  defaults,
+});
+
+/** The gross income: ?income=12000&income_currency=EUR&income_per=month. */
+export const INCOME_QUERY = incomeQuery('ft.taxIncome', 'income', DEFAULT_INCOME);
+/** "How much do I want to earn?": ?net=10000&net_currency=RON&net_per=month. */
+export const TARGET_QUERY = incomeQuery('ft.solverTarget', 'net', DEFAULT_TARGET);
 
 /** Amount + currency (searchable) + period, with the equivalent in lei per month and per year underneath. */
 function IncomeInput({ value, onChange, work, label, hint, main = false }: {
@@ -190,6 +271,7 @@ function IncomeInput({ value, onChange, work, label, hint, main = false }: {
 function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) {
   const { solver: ts, regimes, periods } = useT();
   const [target, setTarget] = usePersistentState('ft.solverTarget', DEFAULT_TARGET, isTaxIncome);
+  useUrlQuery(TARGET_QUERY, target);
   const targetLei = annualLei(target, work);
   const needed = useMemo(
     () => Object.fromEntries(MAIN_REGIMES.map((r) => [r, solveForTakeHome((a) => computeRegime(r, a, options).takeHome, targetLei)])) as Record<BoardRegime, number | null>,

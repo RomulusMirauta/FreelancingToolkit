@@ -1,15 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { CURRENCIES, MAIN_CODES } from '../../lib/currency/currencies';
-import { convert, crossRate } from '../../lib/currency/convert';
-import { BNR_RATES, MARKET_RATES, baseRate, effectiveRates, isMarketRate, isStale } from '../../lib/currency/rates';
+import { convert } from '../../lib/currency/convert';
+import { BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale } from '../../lib/currency/rates';
 import { useLang, useT } from '../../lib/i18n';
 import { PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
-import { formatEditable, formatMoney, formatRate, parseAmount } from '../../lib/ui/numbers';
+import { formatEditable, formatMoney, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
+import { notifyTooBig } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { Fold } from '../../lib/ui/Fold';
 import { AddCurrency } from './AddCurrency';
+import { RateTiles } from './RateTiles';
 import { writeSourceQuery } from './sourceQuery';
+import { ADDED_QUERY, COLUMNS_QUERY, DEFAULT_COLUMNS, GOAL_QUERY, RATES_QUERY, isCodes, isColumns, isFlag, isOverrides } from './converterQueries';
+import { useUrlQuery } from '../../lib/ui/urlQuery';
 
 /** The cell the user last typed into; every other cell is derived from it. */
 export interface SourceCell {
@@ -19,7 +23,6 @@ export interface SourceCell {
 }
 
 export const DEFAULT_SOURCE: SourceCell = { period: 'hour', currency: 'EUR', amount: 30 };
-const DEFAULT_COLUMNS = ['EUR', 'RON', 'USD', 'GBP'];
 const KNOWN = new Set(CURRENCIES.map((c) => c.code));
 const BY_CODE = new Map(CURRENCIES.map((c) => [c.code, c]));
 
@@ -27,12 +30,7 @@ const isSource = (v: unknown): v is SourceCell =>
   typeof v === 'object' && v !== null &&
   PERIODS.includes((v as SourceCell).period) &&
   KNOWN.has((v as SourceCell).currency) &&
-  typeof (v as SourceCell).amount === 'number' && (v as SourceCell).amount >= 0;
-const isCodes = (v: unknown): v is string[] =>
-  Array.isArray(v) && v.every((c) => typeof c === 'string' && KNOWN.has(c));
-const isColumns = (v: unknown): v is string[] => isCodes(v) && v.length > 0;
-const isOverrides = (v: unknown): v is Record<string, number> =>
-  typeof v === 'object' && v !== null && Object.values(v).every((x) => typeof x === 'number');
+  isSaneAmount((v as SourceCell).amount);
 
 interface Props {
   work: WorkSettings;
@@ -63,7 +61,12 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const [added, setAdded] = usePersistentState<string[]>('ft.addedCurrencies', [], isCodes);
   const [overrides, setOverrides] = usePersistentState('ft.customRates', {}, isOverrides);
   /** The "Or work backwards" note beside the grid; its × hides it (Reset tab brings it back). */
-  const [goalShown, setGoalShown] = usePersistentState('ft.goalNote', true, (v): v is boolean => typeof v === 'boolean');
+  const [goalShown, setGoalShown] = usePersistentState('ft.goalNote', true, isFlag);
+  // Every one of these is in the address too (?currencies=, ?added=, ?rates=, ?goal_note=).
+  useUrlQuery(COLUMNS_QUERY, shown);
+  useUrlQuery(ADDED_QUERY, added);
+  useUrlQuery(RATES_QUERY, overrides);
+  useUrlQuery(GOAL_QUERY, goalShown);
   const [editing, setEditing] = useState<{ period: Period; currency: string; text: string } | null>(null);
 
   // Chip order is also column order: EUR, RON, USD, GBP, then added currencies in the order they were added.
@@ -99,9 +102,41 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
     writeSourceQuery(source, source.amount === DEFAULT_SOURCE.amount && source.currency === DEFAULT_SOURCE.currency && source.period === DEFAULT_SOURCE.period);
   }, [source]);
 
+  /** The source when a cell got focus, so Esc can undo what was typed there. */
+  const startRef = useRef<SourceCell | null>(null);
+  /** Spreadsheet keys: arrows move between cells (left/right only at the edge of the text), Enter goes down,
+   *  Shift+Enter up, Esc puts back the value from before. Typing applies at once, as before. */
+  const onCellKey = (e: KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
+    const input = e.currentTarget;
+    const move = (r: number, c: number) => {
+      const next = scrollRef.current?.querySelector<HTMLInputElement>(`[data-cell="${r}-${c}"]`);
+      if (!next) return false;
+      e.preventDefault();
+      next.focus();
+      return true;
+    };
+    const { selectionStart: a, selectionEnd: b, value } = input;
+    const all = a === 0 && b === value.length;
+    if (e.key === 'ArrowUp') move(row - 1, col);
+    else if (e.key === 'ArrowDown') move(row + 1, col);
+    else if (e.key === 'ArrowLeft' && (all || (a === 0 && b === 0))) move(row, col - 1);
+    else if (e.key === 'ArrowRight' && (all || (a === value.length && b === value.length))) move(row, col + 1);
+    else if (e.key === 'Enter') {
+      if (!move(row + (e.shiftKey ? -1 : 1), col)) input.blur();
+    } else if (e.key === 'Escape') {
+      if (startRef.current) setSource(startRef.current);
+      input.blur();
+    }
+  };
+
   const onType = (period: Period, currency: string, text: string) => {
-    setEditing({ period, currency, text });
     const amount = parseAmount(text);
+    // Above the limit the keystroke is refused (the cell keeps its text), with a word in the corner.
+    if (amount !== null && !isSaneAmount(amount)) {
+      notifyTooBig();
+      return;
+    }
+    setEditing({ period, currency, text });
     if (amount !== null) setSource({ period, currency, amount });
   };
 
@@ -164,13 +199,13 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
             </tr>
           </thead>
           <tbody>
-            {PERIODS.map((period) => (
+            {PERIODS.map((period, row) => (
               <tr key={period} className={period === 'hour' ? 'start-row' : undefined}>
                 <th scope="row" className="period-col">
                   {t.periods[period]}
                   {period === 'hour' && <span className="start-tag">{tc.startHere}</span>}
                 </th>
-                {columns.map((code) => {
+                {columns.map((code, col) => {
                   const isEditing = editing?.period === period && editing.currency === code;
                   const isSourceCell = source.period === period && source.currency === code;
                   const invalid = isEditing && parseAmount(editing.text) === null;
@@ -180,19 +215,19 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                         className={`cell${isSourceCell ? ' source' : ''}${invalid ? ' invalid' : ''}`}
                         inputMode="decimal"
                         autoComplete="off"
+                        data-cell={`${row}-${col}`}
                         aria-label={tc.cellLabel(code, t.periods[period])}
                         aria-invalid={invalid || undefined}
                         title={isSourceCell ? tc.cellTitleSource : tc.cellTitleEdit}
                         value={isEditing ? editing.text : formatMoney(valueAt(period, code))}
                         onFocus={(e) => {
+                          startRef.current = source;
                           setEditing({ period, currency: code, text: formatEditable(valueAt(period, code)) });
                           requestAnimationFrame(() => e.target.select());
                         }}
                         onChange={(e) => onType(period, code, e.target.value)}
                         onBlur={() => setEditing(null)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                        }}
+                        onKeyDown={(e) => onCellKey(e, row, col)}
                       />
                     </td>
                   );
@@ -230,52 +265,14 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
             <a href={MARKET_RATES.provider} target="_blank" rel="noreferrer">{tc.marketBy}</a>
           </p>
         )}
-        {/* One table, so "Custom rate" is a column heading instead of a label repeated on every row. */}
-        <table className="rate-table">
-          <thead>
-            <tr>
-              <th scope="col">{tc.rateCurrency}</th>
-              <th scope="col">{tc.rateBnr}</th>
-              {anchor !== 'RON' && <th scope="col" className="rate-cross">{tc.rateCross(anchor)}</th>}
-              <th scope="col" className="rate-custom-col">{tc.custom}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {columns.filter((c) => c !== 'RON').map((code) => {
-              const custom = overrides[code];
-              return (
-                <tr key={code}>
-                  <th scope="row"><CurrencyCode code={code} /></th>
-                  <td>
-                    1 {code} = <strong>{formatRate(rates[code]!)}</strong> RON
-                    {custom !== undefined && <span className="badge">{tc.customBadge}</span>}
-                    {custom === undefined && isMarketRate(code) && <span className="badge market" title={tc.marketTitle}>{tc.marketBadge}</span>}
-                  </td>
-                  {anchor !== 'RON' && (
-                    <td className="muted rate-cross">{anchor !== code ? `1 ${anchor} = ${formatRate(crossRate(anchor, code, rates))} ${code}` : '—'}</td>
-                  )}
-                  <td className="rate-custom-col">
-                    <input
-                      className="custom-rate-input"
-                      inputMode="decimal"
-                      placeholder={formatRate(baseRate(code) ?? 0)}
-                      defaultValue={custom !== undefined ? String(custom) : ''}
-                      aria-label={tc.customLabel(code)}
-                      onChange={(e) => {
-                        const v = parseAmount(e.target.value);
-                        const next = { ...overrides };
-                        if (v && v > 0) next[code] = v;
-                        else delete next[code];
-                        setOverrides(next);
-                      }}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <p className="muted small rate-note">{tc.customNote}</p>
+        <RateTiles
+          codes={columns.filter((c) => c !== 'RON')}
+          rates={rates}
+          overrides={overrides}
+          setOverrides={setOverrides}
+          anchor={anchor}
+        />
+        <p className="muted small rate-note">{tc.changeNote} {tc.customNote}</p>
       </div>
     </Fold>
   );

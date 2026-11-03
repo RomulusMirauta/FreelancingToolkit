@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLang } from '../i18n';
-import { formatEditableGrouped, groupTyped, numberMarks, parseAmount } from './numbers';
+import { MAX_WHOLE_DIGITS, formatEditableGrouped, groupTyped, numberMarks, parseAmount } from './numbers';
+import { notifyTooBig } from './toast';
 
 /**
  * A money amount that groups thousands as it is typed (27.781,52 in Romanian, 27,781.52 in English).
@@ -59,6 +60,13 @@ export function AmountInput({ value, onChange }: { value: number; onChange: (v: 
             raw = raw.slice(0, at - 1) + decimal + raw.slice(at);
           }
           next = groupTyped(raw, at);
+        }
+        // Over nine digits before the decimal mark: the keystroke (or paste) is refused, with a word in the corner.
+        // Only when it adds digits, so a longer amount coming from elsewhere can still be shortened.
+        const whole = (s: string) => s.split(decimal)[0]!.replace(/\D/g, '').length;
+        if (whole(next.text) > MAX_WHOLE_DIGITS && whole(next.text) > whole(text)) {
+          notifyTooBig();
+          return;
         }
         caret.current = Math.min(next.caret, next.text.length);
         setText(next.text);

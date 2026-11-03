@@ -1,7 +1,10 @@
-// import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { PAGE_FOLDS, PAGE_KEYS, PAGE_QUERY, type Page } from '../../lib/ui/settingsKeys';
 import { writeQuery } from '../../lib/ui/query';
+import { DEFAULT_SOURCE } from '../converter/Converter';
+import { SOURCE_PARAMS, incomeFollowsConverter, sourceFollowsIncome } from '../converter/sourceQuery';
+import { INCOME_QUERY } from '../taxes/Taxes';
 import { clearFolds, useClosedFolds, useFoldAll } from '../../lib/ui/folds';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
@@ -9,13 +12,10 @@ import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
 export { APP_KEYS, PAGE_FOLDS, PAGE_KEYS, type Page } from '../../lib/ui/settingsKeys';
 
 /**
- * Floating "Reset tab" and "Reset app" buttons, stacked: one click resets instantly.
- * "Reset tab" clears only the open page's settings and stays on it.
- *
- * The confirmation panel below is commented out on purpose (the user asked for an instant reset).
- * To bring it back, uncomment the import, the state/effect, the panel, and switch onClick to
- * `setAsking(!asking)`. It is an in-page panel because window.confirm is suppressed in
- * embedded browsers such as VS Code's.
+ * Floating "Tools" menu: fold all, "Reset tab" and "Reset app".
+ * "Reset tab" is instant and clears only the open page's settings. "Reset app" asks first, in a small panel
+ * in the page (window.confirm is suppressed in embedded browsers such as VS Code's); Cancel has the focus,
+ * Esc or a click outside closes it.
  */
 export function ResetApp({ page }: { page: Page }) {
   const t = useT().reset;
@@ -24,33 +24,39 @@ export function ResetApp({ page }: { page: Page }) {
   const modified = useIsModified() || closed.size > 0;
   const pageModified = useIsModified(PAGE_KEYS[page]) || PAGE_FOLDS[page].some((id) => closed.has(id));
   const { anyOpen, toggleAll } = useFoldAll();
-  // const [asking, setAsking] = useState(false);
-  // const cancelRef = useRef<HTMLButtonElement>(null);
-  //
-  // useEffect(() => {
-  //   if (!asking) return;
-  //   cancelRef.current?.focus();
-  //   const onKey = (e: KeyboardEvent) => {
-  //     if (e.key === 'Escape') setAsking(false);
-  //   };
-  //   window.addEventListener('keydown', onKey);
-  //   return () => window.removeEventListener('keydown', onKey);
-  // }, [asking]);
-
+  const [asking, setAsking] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const menu = useHoverMenu();
 
+  useEffect(() => {
+    if (!asking) return;
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAsking(false);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (!menu.rootRef.current?.contains(e.target as Node)) setAsking(false);
+    };
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown);
+    };
+  }, [asking, menu.rootRef]);
+
   return (
-    <div className={`reset-wrap hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
-      {/* {asking && (
-        <div className="reset-confirm" role="alertdialog" aria-labelledby="reset-title" aria-describedby="reset-desc">
-          <h2 id="reset-title">Reset the app?</h2>
-          <p id="reset-desc">Your currencies, custom rates, working time and tax income go back to the defaults.</p>
+    <div className={`reset-wrap hover-menu${menu.open && !asking ? ' open' : ''}${asking ? ' asking' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
+      {asking && (
+        <div className="reset-confirm" role="alertdialog" aria-modal="false" aria-labelledby="reset-title" aria-describedby="reset-desc">
+          <h2 id="reset-title">{t.confirmTitle}</h2>
+          <p id="reset-desc">{t.confirmText}</p>
           <div className="actions">
-            <button ref={cancelRef} type="button" className="secondary" onClick={() => setAsking(false)}>Cancel</button>
-            <button type="button" className="danger" onClick={resetApp}>Reset</button>
+            <button ref={cancelRef} type="button" className="secondary" onClick={() => setAsking(false)}>{t.confirmCancel}</button>
+            <button type="button" className="danger" onClick={resetApp}>{t.confirmOk}</button>
           </div>
         </div>
-      )} */}
+      )}
       {/* Hidden behind "Tools" until hovered or clicked; opens upwards. */}
       <div className="reset-row menu-pop" role="menu" aria-label={t.menu}>
         <button
@@ -80,7 +86,10 @@ export function ResetApp({ page }: { page: Page }) {
           disabled={!modified}
           aria-label={t.label}
           title={modified ? t.titleOn : t.titleOff}
-          onClick={resetApp}
+          onClick={() => {
+            menu.setOpen(false);
+            setAsking(true);
+          }}
         >
           <span className="icon" aria-hidden="true">↺</span>
           <ResetLabel full={t.label} short={t.short} />
@@ -110,8 +119,19 @@ function ResetLabel({ full, short }: { full: string; short: string }) {
 /** Clears the page's saved settings, unfolds its sections and reloads on the same page. */
 function resetPage(page: Page) {
   clearFolds(PAGE_FOLDS[page]);
-  writeQuery((params) => PAGE_QUERY[page].forEach((k) => params.delete(k)));
+  // The tax income follows the converter: if it was only following it (not typed on the tax page), it goes
+  // back with the converter, so the two pages still agree after the reset.
+  // And the other way: a converter amount that only came from the tax page's income goes back with it.
+  const withIncome = page === 'converter' && incomeFollowsConverter(DEFAULT_SOURCE);
+  const withSource = page === 'taxes' && sourceFollowsIncome();
+  writeQuery((params) => {
+    PAGE_QUERY[page].forEach((k) => params.delete(k));
+    if (withIncome) INCOME_QUERY.names.forEach((k) => params.delete(k));
+    if (withSource) SOURCE_PARAMS.forEach((k) => params.delete(k));
+  });
   try {
+    if (withIncome) localStorage.removeItem(INCOME_QUERY.key);
+    if (withSource) localStorage.removeItem('ft.source');
     for (const key of PAGE_KEYS[page]) localStorage.removeItem(key);
   } catch {
     // storage unavailable: nothing was saved

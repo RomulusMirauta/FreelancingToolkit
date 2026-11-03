@@ -6,7 +6,7 @@ import {
   type BoardRegime, type Notice, type RegimeResult, type TaxOptions,
 } from '../../lib/tax/regimes';
 import { MICRO_CEILING_LEI, type OwnerPay } from '../../lib/tax/srl';
-import { formatMoney } from '../../lib/ui/numbers';
+import { formatMoney, formatNumber } from '../../lib/ui/numbers';
 import { Breakdown, NumberField, Toggle } from './Breakdown';
 import { ListPicker } from './ListPicker';
 import { RegimeName } from './RegimeName';
@@ -22,6 +22,8 @@ interface Props {
   referenceRegime: BoardRegime;
   referenceTakeHome: number;
   isBest: boolean;
+  /** Left out of "most money": the income is above what this regime allows (income norm over its limit). */
+  notRanked?: boolean;
   options: TaxOptions;
   setOptions: (o: TaxOptions) => void;
   onSetReference: () => void;
@@ -30,19 +32,18 @@ interface Props {
 }
 
 /** One regime: the monthly take-home up top with its difference to the reference, then options and details. */
-export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome, isBest, options, setOptions, onSetReference, canBeReference = true }: Props) {
+export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome, isBest, notRanked = false, options, setOptions, onSetReference, canBeReference = true }: Props) {
   const t = useT();
   const tb = t.board;
   const isRef = regime === referenceRegime;
   const diff = (result.takeHome - referenceTakeHome) / 12;
   const sign = Math.abs(diff) < 0.5 ? 'eq' : diff > 0 ? 'pos' : 'neg';
+  const pct = (x: number) => `${formatNumber(x * 100, 1)}%`;
 
   return (
     <article className={`regime${isBest ? ' is-best' : ''}${isRef ? ' is-ref' : ''}`} aria-labelledby={`rg-${regime}`}>
       <header className="regime-head">
         <h3 id={`rg-${regime}`} aria-label={t.regimes[regime]}><RegimeName label={t.regimes[regime]} /></h3>
-        {/* The lime card already shows it; this tells screen readers. */}
-        {isBest && <span className="sr-only">{tb.best}</span>}
         {canBeReference && (
           // Works like a radio button: exactly one card is the reference the others are compared with.
           <button
@@ -59,7 +60,13 @@ export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome,
       </header>
 
       <div className="regime-result">
-        <span className="small muted">{tb.finalMonthly}</span>
+        <span className="regime-result-top">
+          <span className="small muted">{tb.finalMonthly}</span>
+          {/* The winner gets a tag in the results colour (lime is kept for what can be edited). */}
+          {isBest && <span className="best-tag"><span aria-hidden="true">★</span> {tb.best}</span>}
+          {/* Says why a card with more money doesn't get the star (the reason is in the warning lower down). */}
+          {notRanked && <span className="not-ranked-tag" title={tb.notRankedTitle}>{tb.notRanked}</span>}
+        </span>
         <strong className="take-home">{formatMoney(result.takeHome / 12)} <span className="unit">RON</span></strong>
         {isRef ? (
           <span className="delta eq">= {tb.refBase}</span>
@@ -69,9 +76,13 @@ export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome,
             <span className="vs"> {tb.vsRef(t.regimes[referenceRegime])}</span>
           </span>
         )}
-        <span className="small muted">
-          {tb.perYear(formatMoney(result.takeHome))} · {tb.taxShare(`${(result.taxShare * 100).toFixed(1).replace('.', t.locale === 'ro-RO' ? ',' : '.')}%`)}
+        <span className="kept-meter" role="img" aria-label={tb.keptBar(pct(1 - result.taxShare))} title={tb.keptBar(pct(1 - result.taxShare))}>
+          <span style={{ width: `${Math.max(0, Math.min(1, 1 - result.taxShare)) * 100}%` }} />
         </span>
+        <dl className="regime-stats">
+          <div><dt>{tb.statYear}</dt><dd>{formatMoney(result.takeHome)} RON</dd></div>
+          <div><dt>{tb.statRate}</dt><dd>{pct(result.taxShare)}</dd></div>
+        </dl>
       </div>
 
       <Options regime={regime} options={options} setOptions={setOptions} />

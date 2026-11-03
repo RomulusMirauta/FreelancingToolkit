@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { useT } from '../../lib/i18n';
 import { DEFAULT_SIDE_JOB, SIDE_KINDS, computeSideJob, type SideJobInput } from '../../lib/tax/regimes';
-import { formatMoney } from '../../lib/ui/numbers';
+import { formatMoney, isSaneAmount } from '../../lib/ui/numbers';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
+import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
 import { Breakdown, NumberField } from './Breakdown';
 import { Fold } from '../../lib/ui/Fold';
 import { RegimeName } from './RegimeName';
@@ -10,7 +11,21 @@ import { RegimeName } from './RegimeName';
 const isSideJob = (v: unknown): v is SideJobInput => {
   const x = v as SideJobInput;
   return typeof v === 'object' && v !== null &&
-    typeof x.salaryMonthly === 'number' && x.salaryMonthly >= 0 && typeof x.sideMonthly === 'number' && x.sideMonthly >= 0;
+    isSaneAmount(x.salaryMonthly) && isSaneAmount(x.sideMonthly);
+};
+
+/** The two amounts in the address: ?salary=8000&side=5000 (both RON a month). */
+export const SIDE_JOB_QUERY: UrlQuery<SideJobInput> = {
+  key: 'ft.sideJob',
+  names: ['salary', 'side'],
+  toParams: (v) => [String(v.salaryMonthly), String(v.sideMonthly)],
+  fromParams: ([salary, side]) => {
+    const s = numberParam(salary!);
+    const x = numberParam(side!);
+    return s === null || x === null ? null : { salaryMonthly: s, sideMonthly: x };
+  },
+  isValid: isSideJob,
+  defaults: DEFAULT_SIDE_JOB,
 };
 
 /** A job plus a PFA or copyright income: the total take-home, compared with the salary alone. */
@@ -18,6 +33,7 @@ export function SideJob() {
   const t = useT();
   const tb = t.board;
   const [input, setInput] = usePersistentState('ft.sideJob', DEFAULT_SIDE_JOB, isSideJob);
+  useUrlQuery(SIDE_JOB_QUERY, input);
   const results = useMemo(() => SIDE_KINDS.map((k) => [k, computeSideJob(k, input)] as const), [input]);
   const pct = (x: number) => `${(x * 100).toFixed(1).replace('.', t.locale === 'ro-RO' ? ',' : '.')}%`;
 

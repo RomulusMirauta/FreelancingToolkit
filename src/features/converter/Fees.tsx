@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
-import { formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
+import { Notes } from '../../lib/ui/Notes';
+import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
+import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
 import { ListPicker } from '../taxes/ListPicker';
 import type { ConverterSnapshot } from './Converter';
 
@@ -61,8 +63,25 @@ export const isFees = (v: unknown): v is FeeSettings => {
 /** The share of the gross that reaches your account: the platform takes its cut, then the transfer its own. */
 export const keptShare = (f: FeeSettings) => (1 - f.platformPct / 100) * (1 - f.transferPct / 100);
 
+/** Platform and transfer in the address, each part only when changed: ?platform=fiverr&transfer=wise&transfer_pct=0.5. */
+export const FEES_QUERY: UrlQuery<FeeSettings> = {
+  key: 'ft.fees',
+  names: ['platform', 'platform_pct', 'transfer', 'transfer_pct'],
+  toParams: (f) => [f.platform, String(f.platformPct), f.transfer, String(f.transferPct)],
+  fromParams: ([platform, platformPct, transfer, transferPct]) => {
+    const p = numberParam(platformPct!);
+    const t = numberParam(transferPct!);
+    return p === null || t === null ? null : { platform: platform!.toLowerCase(), platformPct: p, transfer: transfer!.toLowerCase(), transferPct: t };
+  },
+  isValid: isFees,
+  defaults: DEFAULT_FEES,
+  sparse: true,
+};
+
 export function useFees() {
-  return usePersistentState('ft.fees', DEFAULT_FEES, isFees);
+  const [fees, setFees] = usePersistentState('ft.fees', DEFAULT_FEES, isFees);
+  useUrlQuery(FEES_QUERY, fees);
+  return [fees, setFees] as const;
 }
 
 /**
@@ -91,6 +110,13 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
   return (
     <Fold id="fees" title={t.title} summary={summary} className="settings fees">
       <p className="muted small">{t.intro}</p>
+
+      {/* The answer first (what reaches you a month), then the choices that lead to it. */}
+      <dl className="stat-row fee-summary" aria-label={t.flowLabel}>
+        <div className="stat-result"><dt>{t.sumReaches}</dt><dd>{formatMoney(monthRon * kept)} <span className="unit">{t.ronMonth}</span></dd></div>
+        <div className={kept < 1 ? 'stat-cut' : undefined}><dt>{t.sumFees}</dt><dd>{kept < 1 ? '−' : ''}{formatMoney(monthRon * (1 - kept))} <span className="unit">{t.ronMonth}</span></dd></div>
+        <div><dt>{t.sumKept}</dt><dd>{formatNumber(kept * 100, 2)}%</dd></div>
+      </dl>
 
       <div className="fee-steps" key={picks}>
         <FeeStep
@@ -143,13 +169,7 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
           <strong>{formatMoney(hour * kept)} <span className="unit">{anchor}/{t.hourUnit}</span></strong>
         </li>
       </ol>
-      <p className="fee-month">
-        {kept < 1
-          ? t.month(formatMoney(monthRon * kept), formatMoney(monthRon * (1 - kept)))
-          : t.monthNoFees(formatMoney(monthRon))}
-      </p>
-      <p className="muted small">{t.note}</p>
-      <p className="muted small">{t.defaults}</p>
+      <Notes items={t.notes} />
     </Fold>
   );
 }
@@ -171,7 +191,8 @@ function FeeStep<Id extends string>({ step, label, options, names, hints, select
 }) {
   const list = [
     ...options.map((o) => ({ value: o.id as Id | 'custom', label: o.id === 'none' ? names[o.id] : `${names[o.id]} · ${formatNumber(o.pct)}%` })),
-    { value: 'custom' as const, label: customLabel },
+    // Like the other choices ("Upwork · 10%"): "x%" until chosen, then the % typed beside the list.
+    { value: 'custom' as const, label: `${customLabel} · ${selected === 'custom' ? formatNumber(pct, 2) : 'x'}%` },
   ];
   return (
     <div className="fee-step">
@@ -190,16 +211,23 @@ function FeeStep<Id extends string>({ step, label, options, names, hints, select
         />
         <label className="fee-pct">
           <input
-            type="number"
             inputMode="decimal"
-            min={0}
-            max={99}
-            step={0.5}
-            defaultValue={pct}
+            autoComplete="off"
+            defaultValue={formatEditable(pct)}
             aria-label={pctLabel}
             onChange={(e) => {
               const v = parseAmount(e.target.value);
-              if (v !== null && v >= 0 && v < 100) onPct(v);
+              const ok = v !== null && v >= 0 && v < 100;
+              e.currentTarget.setAttribute('aria-invalid', String(!ok));
+              if (ok) onPct(v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+              e.preventDefault();
+              const v = Math.min(Math.max((parseAmount(e.currentTarget.value) ?? pct) + (e.key === 'ArrowUp' ? 0.5 : -0.5), 0), 99);
+              e.currentTarget.value = formatEditable(v);
+              e.currentTarget.setAttribute('aria-invalid', 'false');
+              onPct(v);
             }}
           />
           <span aria-hidden="true">%</span>

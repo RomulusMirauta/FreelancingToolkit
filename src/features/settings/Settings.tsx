@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
+import { Notes } from '../../lib/ui/Notes';
 import { holidaysOnWorkdays } from '../../lib/time/holidays';
 import { DEFAULT_WORK, HOLIDAY_YEAR, hoursIn, isValidWork, maxDaysOff, workDaysIn, type WorkSettings } from '../../lib/time/periods';
-import { formatNumber, parseAmount } from '../../lib/ui/numbers';
+import { formatEditable, formatNumber, parseAmount } from '../../lib/ui/numbers';
 
 interface Props {
   work: WorkSettings;
@@ -38,7 +39,7 @@ export function Settings({ work, setWork }: Props) {
     <Fold
       id="work"
       title={t.title}
-      summary={t.summary(work.hoursPerDay, work.daysPerWeek, formatNumber(workDaysIn(work)), Math.round(hoursIn('year', work)))}
+      summary={t.summary(formatNumber(work.hoursPerDay), formatNumber(work.daysPerWeek), formatNumber(workDaysIn(work)), formatNumber(hoursIn('year', work), 0))}
       className="settings"
     >
       <div className="chips settings-presets" role="group" aria-label={t.presets}>
@@ -67,16 +68,28 @@ export function Settings({ work, setWork }: Props) {
           <label key={f.key}>
             <span>{t[f.key]}</span>
             <input
-              type="number"
-              inputMode="decimal"
-              min={f.min}
-              max={fieldMax(f.key, work)}
-              step={f.step}
-              defaultValue={work[f.key]}
+              // Text with a decimal keypad, not type=number: no spinners, no scroll-wheel changes, a comma works.
+              inputMode={f.step < 1 ? 'decimal' : 'numeric'}
+              autoComplete="off"
+              defaultValue={formatEditable(work[f.key])}
               onChange={(e) => {
                 const v = parseAmount(e.target.value);
                 const next = { ...work, [f.key]: v };
-                if (v !== null && v >= f.min && isValidWork(next)) setWork(next);
+                const ok = v !== null && v >= f.min && v <= fieldMax(f.key, work) && isValidWork(next);
+                e.currentTarget.setAttribute('aria-invalid', String(!ok));
+                if (ok) setWork(next);
+              }}
+              onKeyDown={(e) => {
+                // Up and down step the value, as a number field would.
+                if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+                e.preventDefault();
+                const v = (parseAmount(e.currentTarget.value) ?? work[f.key]) + (e.key === 'ArrowUp' ? f.step : -f.step);
+                const clamped = Math.min(Math.max(v, f.min), fieldMax(f.key, work));
+                const next = { ...work, [f.key]: clamped };
+                if (!isValidWork(next)) return;
+                e.currentTarget.value = formatEditable(clamped);
+                e.currentTarget.setAttribute('aria-invalid', 'false');
+                setWork(next);
               }}
             />
           </label>
@@ -94,9 +107,14 @@ export function Settings({ work, setWork }: Props) {
           <span>{t.holidays(HOLIDAY_YEAR, formatNumber(holidayDays))}</span>
         </label>
       </div>
-      <p className="muted small">{t.billableHint}</p>
-      <p className="muted small">{t.note}</p>
-      <p className="muted small">{t.defaults}</p>
+      {/* What the settings come to, read-only: the figures every period of the converter is built from. */}
+      <dl className="stat-row" aria-label={t.statsLabel}>
+        <div><dt>{t.stats.week}</dt><dd>{formatNumber(hoursIn('week', work))}</dd></div>
+        <div><dt>{t.stats.month}</dt><dd>{formatNumber(hoursIn('month', work))}</dd></div>
+        <div><dt>{t.stats.year}</dt><dd>{formatNumber(hoursIn('year', work), 0)}</dd></div>
+        <div><dt>{t.stats.days}</dt><dd>{formatNumber(workDaysIn(work))}</dd></div>
+      </dl>
+      <Notes items={t.notes} />
     </Fold>
   );
 }

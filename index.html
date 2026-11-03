@@ -19,8 +19,10 @@
     <meta name="twitter:card" content="summary" />
     <title>FreelancingToolkit</title>
     <script>
+      // Before the page paints, so it never flashes the wrong theme: the address (?theme=) first, then the saved one.
       try {
-        var t = JSON.parse(localStorage.getItem('ft.theme'));
+        var q = new URLSearchParams(location.search).get('theme');
+        var t = q === 'light' || q === 'dark' || q === 'system' ? q : JSON.parse(localStorage.getItem('ft.theme'));
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>
