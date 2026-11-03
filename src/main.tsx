@@ -7,6 +7,7 @@ import { applyUrlState } from './urlState';
 // Bundled (not from a CDN) so the app keeps working offline; only the bold Latin subset used by the regime pills.
 import '@fontsource/space-grotesk/latin-700.css';
 import './styles.css';
+import './mobile.css';
 
 registerSW({ immediate: true });
 // Before the first render, so every setting is read from the link or the address.

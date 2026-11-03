@@ -90,6 +90,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
               </span>
               <input
                 className="custom-rate-input"
+                name={`rate-${code}`}
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder={formatRate(published)}

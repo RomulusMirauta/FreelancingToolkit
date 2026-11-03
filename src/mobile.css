@@ -1,0 +1,57 @@
+/* Phones (up to 600 px). Loaded after styles.css, so these rules win over the general ones. */
+
+/* Page padding, cards and the rate grid. */
+@media (max-width: 520px) {
+  #root { padding-left: 12px; padding-right: 12px; }
+  .card { padding: 12px; }
+  /* Narrow enough for EUR, RON and the slim brace on a 390 px screen. */
+  .cell { width: 5.9rem; padding: 6px 4px; }
+  .period-col { padding-right: 6px !important; }
+}
+
+/* Tax tables, and "start here" as an arrow pointing at the hour cell (screen readers still read the words). */
+@media (max-width: 520px) {
+  .breakdown th, .breakdown td { padding: 6px 4px; }
+  .kept .track { display: none; }
+  .start-tag { margin: 0 0 0 6px; padding: 0; background: none; font-size: 0; vertical-align: 0; }
+  .start-tag::after { content: '→'; font-size: 1.1rem; font-weight: 800; color: var(--edit); }
+}
+
+/* On phones the floating buttons shrink to one word each, so they cover as little of the page as possible. */
+@media (max-width: 600px) {
+  .reset-wrap { right: 10px; bottom: 10px; }
+  .reset-full { display: none; }
+  .reset-short { display: inline; }
+}
+
+/* Header: only the gear, on the title's row (no strip of its own above it); the tabs centred under the title. */
+@media (max-width: 600px) {
+  #root { padding-top: 12px; }
+  .corner { top: 18px; }
+  .top-actions .menu-trigger > span { display: none; }
+  .top-actions .menu-trigger { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+  .top-actions .menu-trigger .gear { width: 20px; height: 20px; }
+  .app-header { padding-right: 52px; margin-top: 0; }
+  .brand p { font-size: 0.8rem; }
+}
+/* The tabs centred under the app's name (icon and title), not under the whole row with the gear. */
+@media (max-width: 600px) {
+  .app-header { display: grid; grid-template-columns: minmax(0, max-content); }
+  .header-controls { justify-self: center; }
+}
+
+/* "See the taxes for this income" on one line, the amount on the next; the button as wide as the card. */
+@media (max-width: 600px) {
+  .cta { width: 100%; }
+  .cta-amount { display: block; }
+}
+@media (max-width: 520px) { .corner { right: 12px; } }
+
+/* Explanation notes in one column. */
+@media (max-width: 600px) { .notes > div { grid-template-columns: minmax(0, 1fr); } }
+
+/* Toast text may wrap. */
+@media (max-width: 600px) { .toast strong { white-space: normal; } }
+
+/* Toast in the bottom-left corner, clear of the Tools button. */
+@media (max-width: 600px) { .toast { left: 10px; bottom: 10px; max-width: calc(100vw - 150px); } }

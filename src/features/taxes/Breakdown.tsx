@@ -76,7 +76,7 @@ export function Toggle({ label, checked, onChange, hint }: {
 }) {
   return (
     <label className="toggle" title={hint}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input type="checkbox" name="option" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span>{label}</span>
     </label>
   );

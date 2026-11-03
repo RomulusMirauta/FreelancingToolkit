@@ -8,10 +8,21 @@ Steps 155– of the development history.
 
 ### Added
 - Visit counts with GoatCounter (free, no cookies): page views and three events, never the settings or amounts. The README shows them as badges (per week, month, year and total).
+- Screenshots in the app's manifest, so Chrome's install dialog shows the app on desktop and on phones.
+
+### Changed
+- Phones: the settings button is just the gear, on the title's row, and the Converter | Taxes switch sits in the middle.
+- Phones: the converter starts with EUR and RON, which fit on the screen; USD and GBP are one tap away. Desktop still starts with four.
+- Phones: the brace beside Day → Year stays, slim, with "or type your goal here" turned sideways; on screens too narrow for it, the line under the grid remains.
+- Phones: "start here" is an arrow after Hour, so the row is as tall as the others.
+- Phones: the Converter | Taxes switch is centred under the app's name, and the button to the tax page reads "See the taxes for this income" on one line and the amount on the next.
+- The grid's header shows each currency symbol in a small pill, like the chips and the rate cards.
 
 ### Fixed
+- On phones, the Tools wrench (and the settings gear) turns back when its menu closes; before, it stayed turned until you tapped somewhere else.
 - With many currencies, "+ Add currency" no longer drops alone onto a row of its own: it follows the last currency and wraps together with it.
 - The × of the one-line "Or work backwards" hint sits right after the text, not at the card's far edge.
+- Every form field has a name, so Chrome's DevTools no longer lists 50 issues.
 
 ## [1.0.0] - 2026-11-03
 
@@ -329,6 +340,12 @@ Every change since development of the app started, in the order it was made, gro
 157. "+ Add currency" sits right after the last currency chip, inside the same row, and wraps onto the next row only together with that chip (prototype C, chosen from six). Before, it was outside the chips: as soon as they took two rows, it dropped alone onto a third, even with room beside the last chip.
 158. Fix: GoatCounter's own script (count.js) sent the whole address with every count (`q=?amount=42&platform=fiverr…`), so amounts and settings reached GoatCounter, against the Privacy note. Found by checking the live site's requests. The app now sends the count itself, without the script: the page, its title, the screen width and the referring site's origin (never its path or query), and nothing from automated browsers. Tested: the counting address has only those fields.
 159. The README shows the visit counts under the app's link, as a row of badges in the app's colours (prototype A, chosen from five): "Views per week | per month | per year | total", read live from GoatCounter's public counter by shields.io. GoatCounter has no "today" for a static page, so there is no per-day badge.
+160. Install dialog: four screenshots in the manifest (dark theme, the top of each page): the converter and the tax page at 1280×800 for desktop (`form_factor: wide`) and at 824×1784 for phones (`narrow`), each with a label. They are in `public/screenshots/` and stay out of the offline cache, since they're only for installing. Chrome no longer warns that the richer install dialog is unavailable.
+161. Every form field has a `name` (grid cells by period and currency, custom rates by currency, the working-time fields by setting, fees by step, the searches, the card options and the copied link). Chrome's DevTools listed 50 "A form field element should have an id or name attribute" issues; now none. The manifest has no errors and the app is installable; the "icon.svg failed to load" seen in DevTools could not be reproduced on the live site, where the icon loads at 512×512 with the right type.
+162. Hover effects on the floating Tools button and the settings gear run only on devices with a mouse (`@media (hover: hover)`). On touch screens `:hover` stays on after a tap, so closing the menu left the wrench turned until the next tap elsewhere.
+163. Phone rules moved to `src/mobile.css`, loaded after `styles.css`. Screenshots at 360, 390, 520, 600, 700 and 1280 px, both tabs, were pixel-identical before and after the move. Two rules written after the phone blocks had been overriding them (the page's top and bottom padding, and the smaller Tools button), so only what actually applied was kept.
+164. Phone layout from prototype 08 (picks 1A, 2C, 3A, 4A): the gear-only settings button on the title's row with the tabs centred; `DEFAULT_COLUMNS` is EUR and RON when the screen is 600 px or narrower at load; a third brace mode, `slim` (44 px: the brace and a sideways label), between the full note and the line under the grid, with grid cells 5.9rem wide on phones so it fits at 390 px; "start here" drawn as an arrow (the words stay for screen readers); symbol pills in the grid's header on every screen. Also fixed the field names from step 161: the grid cells, custom rates and fees had lost their period, currency and step in the name (`-`, `rate-`, `fee-`).
+165. `.gitignore` ignored every folder named `screenshots`, so the manifest's screenshots in `public/screenshots/` had not been committed (the install dialog would have asked for missing files). Now only the local record in the top-level `/screenshots/` is ignored.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0

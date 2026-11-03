@@ -117,6 +117,7 @@ export function ListPicker<T extends string | number>({ value, options, onChange
             <input
               ref={searchRef}
               type="search"
+              name="search"
               value={query}
               placeholder={search.placeholder}
               aria-label={search.placeholder}

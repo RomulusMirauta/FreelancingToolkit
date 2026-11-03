@@ -7,7 +7,7 @@ import { notifyTooBig } from './toast';
  * A money amount that groups thousands as it is typed (27.781,52 in Romanian, 27,781.52 in English).
  * The thousands marks are added automatically: Backspace or Delete next to one removes the digit beyond it.
  */
-export function AmountInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+export function AmountInput({ value, onChange, name = 'amount' }: { value: number; onChange: (v: number) => void; name?: string }) {
   const lang = useLang();
   const ref = useRef<HTMLInputElement>(null);
   const [text, setText] = useState(() => formatEditableGrouped(value));
@@ -32,6 +32,7 @@ export function AmountInput({ value, onChange }: { value: number; onChange: (v: 
   return (
     <input
       ref={ref}
+      name={name}
       inputMode="decimal"
       value={text}
       // Lets the stylesheet size the box to the amount (see .income-main input).

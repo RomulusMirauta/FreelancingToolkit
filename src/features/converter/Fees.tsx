@@ -213,6 +213,7 @@ function FeeStep<Id extends string>({ step, label, options, names, hints, select
           <input
             inputMode="decimal"
             autoComplete="off"
+            name={`fee-${step}`}
             defaultValue={formatEditable(pct)}
             aria-label={pctLabel}
             onChange={(e) => {

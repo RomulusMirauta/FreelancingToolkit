@@ -91,7 +91,7 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
 
   return (
     <div className={`top-actions hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
-      <button type="button" className="top-btn menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle}>
+      <button type="button" className="top-btn menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={t.advanced} title={t.advanced}>
         <GearIcon />
         <span>{t.advanced}</span>
         <span className="chev" aria-hidden="true" />
@@ -122,7 +122,7 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
       {copied === 'manual' && (
         <div className="top-panel" role="dialog" aria-label={t.copyManual}>
           <p>{t.copyManual}</p>
-          <input readOnly value={link} onFocus={(e) => e.target.select()} autoFocus />
+          <input readOnly name="share-link" value={link} onFocus={(e) => e.target.select()} autoFocus />
           <button type="button" className="link-btn" onClick={() => setCopied('no')}>{t.close}</button>
         </div>
       )}

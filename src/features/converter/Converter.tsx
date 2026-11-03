@@ -144,7 +144,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
-  const braceFits = useBraceFits(scrollRef, columns.length);
+  const brace = useBrace(scrollRef, columns.length);
 
   const stale = isStale(BNR_RATES.date, new Date());
   const anchor = columns.includes('EUR') ? 'EUR' : columns[0]!;
@@ -192,7 +192,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
       </div>
 
       <div
-        className={`grid-scroll${braceFits ? '' : ' no-brace'}${scrolled ? ' scrolled' : ''}`}
+        className={`grid-scroll${brace === 'full' ? '' : brace === 'slim' ? ' slim-brace' : ' no-brace'}${scrolled ? ' scrolled' : ''}`}
         ref={scrollRef}
         // Shades the frozen Per column's edge once currencies pass under it.
         onScroll={(e) => setScrolled(e.currentTarget.scrollLeft > 0)}
@@ -223,6 +223,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                         className={`cell${isSourceCell ? ' source' : ''}${invalid ? ' invalid' : ''}`}
                         inputMode="decimal"
                         autoComplete="off"
+                        name={`${period}-${code}`}
                         data-cell={`${row}-${col}`}
                         aria-label={tc.cellLabel(code, t.periods[period])}
                         aria-invalid={invalid || undefined}
@@ -258,7 +259,8 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
       )}
 
       <button type="button" className="cta" onClick={() => onTaxes(valueAt('year', 'RON'))}>
-        {tc.cta(formatMoney(valueAt('month', 'RON')))}
+        {/* The amount never breaks: on phones it gets its own line. */}
+        {tc.cta} <span className="cta-amount">{tc.ctaAmount(formatMoney(valueAt('month', 'RON')))}</span>
       </button>
 
       <div className="rates">
@@ -287,13 +289,15 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
 }
 
 const BRACE_WIDTH = 260;
+const SLIM_BRACE_WIDTH = 44;
 
 /**
- * Whether the brace note fits beside the grid. With many columns it would be scrolled out of view,
- * so the one-line hint under the grid is shown instead. Measured without the note to avoid flip-flopping.
+ * How the brace note fits beside the grid: in full, slim (the brace and a few words turned sideways, on phones)
+ * or not at all. With many columns it would be scrolled out of view, so the one-line hint under the grid is shown
+ * instead. Measured without the note to avoid flip-flopping.
  */
-function useBraceFits(scrollRef: RefObject<HTMLDivElement | null>, columnCount: number): boolean {
-  const [fits, setFits] = useState(true);
+function useBrace(scrollRef: RefObject<HTMLDivElement | null>, columnCount: number): 'full' | 'slim' | 'none' {
+  const [fits, setFits] = useState<'full' | 'slim' | 'none'>('full');
   useLayoutEffect(() => {
     const box = scrollRef.current;
     if (!box) return;
@@ -302,7 +306,7 @@ function useBraceFits(scrollRef: RefObject<HTMLDivElement | null>, columnCount: 
       const note = box.querySelector<HTMLElement>('.goal-note');
       if (!table) return;
       const gridOnly = table.offsetWidth - (note?.offsetWidth ?? 0);
-      setFits(gridOnly + BRACE_WIDTH <= box.clientWidth);
+      setFits(gridOnly + BRACE_WIDTH <= box.clientWidth ? 'full' : gridOnly + SLIM_BRACE_WIDTH <= box.clientWidth ? 'slim' : 'none');
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -331,6 +335,7 @@ function GoalNote({ onClose }: { onClose: () => void }) {
         </span>
         <span className="goal-example">{tc.goalExample}</span>
       </div>
+      <span className="goal-slim">{tc.goalSlim}</span>
     </div>
   );
 }

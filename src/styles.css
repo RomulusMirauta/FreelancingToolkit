@@ -274,6 +274,15 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 /* The one-line hint's × follows the text, not the card's far edge. */
 .goal-hint-narrow .goal-close { position: static; display: inline-grid; vertical-align: middle; margin-left: 4px; }
 .no-brace .goal-note { display: none; }
+/* Slim: only the brace, with a few words turned sideways beside it; the hint under the grid stays hidden. */
+.goal-slim { display: none; }
+.slim-brace .goal-note { width: 44px; min-width: 44px; padding: 0 0 0 2px !important; }
+.slim-brace .goal-inner { inset: 0 0 0 2px; gap: 2px; }
+.slim-brace .goal-text { display: none; }
+.slim-brace .goal-slim {
+  display: block; align-self: center; writing-mode: vertical-rl; transform: rotate(180deg);
+  font-size: 0.78rem; font-weight: 600; color: var(--edit-text); white-space: nowrap;
+}
 .no-brace + .goal-hint-narrow { display: block; }
 
 /* Currency chips + add dropdown */
@@ -365,6 +374,11 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 .add-list li.active span { color: var(--text); }
 /* Currency symbol as a hint after the ISO code: "EUR €". */
 .cur-sym { margin-left: 0.3em; font-weight: 500; opacity: 0.85; }
+/* In the grid's header the symbol sits in a small pill too, like on the chips and the rate cards. */
+.rate-grid thead .cur-sym {
+  margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.8em; font-weight: 600; opacity: 1; letter-spacing: 0;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+}
 /* Currencies BNR doesn't publish: priced at market rates, and say so. */
 .rates a { color: var(--accent); }
 .market-tag { margin-left: auto; flex: none; font-size: 0.72rem !important; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
@@ -521,12 +535,6 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 
 footer { margin: 24px 0 8px; text-align: center; }
 
-@media (max-width: 520px) {
-  #root { padding: 12px; }
-  .card { padding: 12px; }
-  .cell { width: 6.25rem; padding: 6px 4px; }
-  .period-col { padding-right: 6px !important; }
-}
 
 /* Header navigation */
 .app-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
@@ -580,6 +588,7 @@ footer { margin: 24px 0 8px; text-align: center; }
   cursor: pointer;
   font-weight: 500;
 }
+.cta-amount { white-space: nowrap; }
 .cta:hover { background: var(--accent); color: var(--surface); }
 
 /* Taxes */
@@ -655,11 +664,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-@media (max-width: 520px) {
-  .breakdown th, .breakdown td { padding: 6px 4px; }
-  .kept .track { display: none; }
-  .start-tag { display: block; width: fit-content; margin: 2px 0 0; }
-}
 
 /* Floating reset button, always on top; the page gets bottom room so it never hides the footer. */
 #root { padding-bottom: 80px; }
@@ -667,14 +671,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 /* Page reset above app reset, both as wide as the wider one. */
 .reset-row { display: grid; gap: 8px; justify-items: stretch; }
 .reset-short { display: none; }
-/* On phones the floating buttons shrink to one word each, so they cover as little of the page as possible. */
-@media (max-width: 600px) {
-  .reset-wrap { right: 10px; bottom: 10px; }
-  .reset-full { display: none; }
-  .reset-short { display: inline; }
-  .reset-app { padding: 4px 12px 4px 4px; font-size: 0.85rem; gap: 6px; }
-  .reset-app .icon { width: 24px; height: 24px; }
-}
 .reset-app {
   display: inline-flex;
   align-items: center;
@@ -700,15 +696,19 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   font-size: 1rem;
   transition: transform 0.3s;
 }
-.reset-app:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 10px rgb(0 0 0 / 0.1), 0 12px 28px rgb(0 0 0 / 0.16); }
-.reset-app:not(.menu-trigger):hover:not(:disabled) .icon:not(.fold-icon) { transform: rotate(-120deg); }
+/* Hover effects only with a mouse: on touch, :hover sticks after a tap, so the wrench stayed turned after closing. */
+@media (hover: hover) {
+  .reset-app:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 10px rgb(0 0 0 / 0.1), 0 12px 28px rgb(0 0 0 / 0.16); }
+  .reset-app:not(.menu-trigger):hover:not(:disabled) .icon:not(.fold-icon) { transform: rotate(-120deg); }
+}
 /* The Tools wrench turns like a real one: around the nut in its open jaw (top right of the icon), not around
    its own centre. Opening the menu tightens it (clockwise), closing loosens it back. */
 .menu-trigger .icon svg {
   transform-origin: 72% 28%;
   transition: transform var(--dur-3) var(--ease-standard);
 }
-.menu-trigger:hover .icon svg, .reset-wrap.open .menu-trigger .icon svg { transform: rotate(60deg); }
+.reset-wrap.open .menu-trigger .icon svg { transform: rotate(60deg); }
+@media (hover: hover) { .menu-trigger:hover .icon svg { transform: rotate(60deg); } }
 /* The fold-all button's icon: the same drawn chevron as the sections, up = fold, down = unfold. */
 .fold-icon { position: relative; }
 .fold-icon::before {
@@ -941,10 +941,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .regime-details .breakdown { margin-top: 6px; font-size: 0.78rem; }
 .regime-details .breakdown th, .regime-details .breakdown td { padding: 4px 3px; }
 
-/* Keep the header clear of the corner language switch on narrow screens. */
-@media (max-width: 520px) {
-  .app-header { padding-right: 0; }
-}
 
 /* Copyright and other income types: apart from the board, for comparison only. */
 .other-income .fold-body > p { margin: 0 0 16px; }
@@ -1230,7 +1226,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .notes > div + div { padding-top: 8px; border-top: 1px solid var(--border); }
 .notes dt { font-weight: 650; color: var(--text); }
 .notes dd { margin: 0; color: var(--muted); }
-@media (max-width: 600px) { .notes > div { grid-template-columns: minmax(0, 1fr); } }
 
 /* Bottom-left toast (amounts over the limit), clear of the Tools button on the right. It uses the inverse
    colours of the page (whitish on the dark theme, near-black on the light one), so it stands out from the cards. */
@@ -1250,7 +1245,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .toast strong { font-size: 0.95rem; white-space: nowrap; }
 .toast .muted { color: var(--toast-muted); }
 /* On a narrow screen the message may wrap rather than run off the side. */
-@media (max-width: 600px) { .toast strong { white-space: normal; } }
 .toast-close {
   flex: none; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 50%;
   background: none; color: var(--toast-muted); font-size: 1.15rem; line-height: 1; cursor: pointer;
@@ -1263,7 +1257,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   60% { opacity: 1; }
   100% { opacity: 1; transform: none; }
 }
-@media (max-width: 600px) { .toast { left: 10px; bottom: 10px; max-width: calc(100vw - 150px); } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 /* However long a figure gets, it wraps inside its card instead of running out of it. */
@@ -1274,5 +1267,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 
 /* The gear on "Settings & options": a short turn when the menu opens (none for reduced motion). */
 .top-actions .menu-trigger .gear { flex: none; transition: transform var(--dur-3) var(--ease-standard); }
-.top-actions .menu-trigger:hover .gear, .top-actions.open .menu-trigger .gear { transform: rotate(60deg); }
+.top-actions.open .menu-trigger .gear { transform: rotate(60deg); }
+@media (hover: hover) { .top-actions .menu-trigger:hover .gear { transform: rotate(60deg); } }
 @media (prefers-reduced-motion: reduce) { .top-actions .menu-trigger .gear { transition: none; } }

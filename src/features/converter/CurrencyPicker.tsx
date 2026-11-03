@@ -107,6 +107,7 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
         <div className="add-pop" ref={popRef}>
           <input
             type="search"
+            name="currency-search"
             autoFocus
             role="combobox"
             aria-expanded="true"

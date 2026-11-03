@@ -71,6 +71,7 @@ export function Settings({ work, setWork }: Props) {
               // Text with a decimal keypad, not type=number: no spinners, no scroll-wheel changes, a comma works.
               inputMode={f.step < 1 ? 'decimal' : 'numeric'}
               autoComplete="off"
+              name={f.key}
               defaultValue={formatEditable(work[f.key])}
               onChange={(e) => {
                 const v = parseAmount(e.target.value);
@@ -97,6 +98,7 @@ export function Settings({ work, setWork }: Props) {
         <label className="settings-check">
           <input
             type="checkbox"
+            name="holidays"
             checked={work.holidays}
             onChange={(e) => {
               const next = { ...work, holidays: e.target.checked };
