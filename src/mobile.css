@@ -20,6 +20,11 @@
 /* On phones the floating buttons shrink to one word each, so they cover as little of the page as possible. */
 @media (max-width: 600px) {
   .reset-wrap { right: 10px; bottom: 10px; }
+  /* Tools is only its dot: bigger (16 px) on a 48 px touch area with no background, so it covers almost nothing. */
+  .reset-wrap > .menu-trigger { width: 48px; height: 48px; padding: 0; justify-content: center; border: 0; border-radius: 50%; background: none; box-shadow: none; }
+  .reset-wrap > .menu-trigger > .icon, .reset-wrap > .menu-trigger > .menu-word { display: none; }
+  .reset-wrap > .menu-trigger .dot { width: 16px; height: 16px; box-shadow: 0 0 0 4px var(--accent-soft); }
+  .reset-wrap > .menu-trigger .dot.pulse { animation-name: dot-halo-big; }
   .reset-full { display: none; }
   .reset-short { display: inline; }
 }
@@ -55,3 +60,10 @@
 
 /* Toast in the bottom-left corner, clear of the Tools button. */
 @media (max-width: 600px) { .toast { left: 10px; bottom: 10px; max-width: calc(100vw - 150px); } }
+
+/* The Tools dot's halo, scaled up with the dot. */
+@keyframes dot-halo-big {
+  0% { box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  70% { box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent); }
+  100% { box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 0 transparent; }
+}

@@ -1081,14 +1081,12 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 /* ---------- Menus that open on hover or click (Advanced options, Actions) ---------- */
 /* .top-actions is already relative and .reset-wrap fixed: both anchor their panel. */
 .menu-trigger { display: inline-flex; align-items: center; gap: 8px; }
-/* A small drawn chevron: down when closed, up when open (".up" starts pointing up, for menus that open upwards). */
+/* A small drawn chevron: down when closed, up when open. */
 .chev {
   width: 6px; height: 6px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
   transform: translateY(-2px) rotate(45deg); transition: transform 0.2s ease;
 }
 .hover-menu.open > .menu-trigger .chev { transform: translateY(2px) rotate(-135deg); }
-.chev.up { transform: translateY(2px) rotate(-135deg); }
-.hover-menu.open > .menu-trigger .chev.up { transform: translateY(-2px) rotate(45deg); }
 .menu-pop {
   opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px) scale(0.98);
   transition: opacity var(--dur-1) var(--ease-exit), transform var(--dur-2) var(--ease-exit), visibility 0s linear var(--dur-2);

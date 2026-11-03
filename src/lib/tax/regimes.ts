@@ -109,10 +109,13 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
     case 'employee': {
       const opts = o.employee;
       const y = employeeYear(annual / 12, opts);
+      const netH1 = employeeMonth(annual / 12, 1, opts).net;
+      const netH2 = employeeMonth(annual / 12, 2, opts).net;
       return {
         takeHome: y.net,
         taxShare: share(y.gross - y.net, y.gross),
-        notice: { kind: 'employeeHalves', netH1: employeeMonth(annual / 12, 1, opts).net, netH2: employeeMonth(annual / 12, 2, opts).net },
+        // Only when July's minimum wage changes the net (low salaries); above that both halves are the same.
+        notice: Math.abs(netH1 - netH2) >= 0.005 ? { kind: 'employeeHalves', netH1, netH2 } : undefined,
         lines: [
           { key: 'gross', annual: y.gross },
           { key: 'cas', annual: y.cas, kind: 'minus', sources: ['CotaCAS'] },

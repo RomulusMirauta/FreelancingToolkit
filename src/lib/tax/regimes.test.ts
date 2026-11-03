@@ -22,6 +22,11 @@ describe('tax board regimes', () => {
     }
   });
 
+  it('employee: the Jan–Jun / Jul–Dec note only when the two nets differ', () => {
+    expect(computeRegime('employee', 12 * 4_100, DEFAULT_TAX_OPTIONS).notice?.kind).toBe('employeeHalves');
+    expect(computeRegime('employee', 12 * 27_776.32, DEFAULT_TAX_OPTIONS).notice).toBeUndefined();
+  });
+
   it('employee at 30,000 lei gross: tax share as in the workbook (H2: 41.5%)', () => {
     const r = computeRegime('employee', 12 * 30_000, DEFAULT_TAX_OPTIONS);
     expect(r.taxShare).toBeCloseTo(0.415, 3);

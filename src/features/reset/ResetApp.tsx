@@ -97,10 +97,9 @@ export function ResetApp({ page }: { page: Page }) {
       </div>
       <button type="button" className="reset-app menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={t.menu}>
         <span className="icon" aria-hidden="true"><ToolsIcon /></span>
-        <span>{t.menu}</span>
+        <span className="menu-word">{t.menu}</span>
         {/* Always there to draw the eye; it pulses while something can be reset. */}
         <span className={`dot${modified ? ' pulse' : ''}`} aria-label={modified ? t.menuDot : undefined} aria-hidden={modified ? undefined : true} />
-        <span className="chev up" aria-hidden="true" />
       </button>
     </div>
   );

@@ -11,6 +11,7 @@ Steps 155– of the development history.
 - Screenshots in the app's manifest, so Chrome's install dialog shows the app on desktop and on phones.
 
 ### Changed
+- Tools: on phones only the pulsing dot, bigger and easy to tap, so it no longer covers the page; no chevron on any screen.
 - Phones: the settings button is just the gear, on the title's row, and the Converter | Taxes switch sits in the middle.
 - Phones: the converter starts with EUR and RON, which fit on the screen; USD and GBP are one tap away. Desktop still starts with four.
 - Phones: the brace beside Day → Year stays, slim, with "or type your goal here" turned sideways; on screens too narrow for it, the line under the grid remains.
@@ -19,6 +20,7 @@ Steps 155– of the development history.
 - The grid's header shows each currency symbol in a small pill, like the chips and the rate cards.
 
 ### Fixed
+- Employee card: the "net in Jan–Jun, net in Jul–Dec" note shows only when the two differ; above a low salary they are the same, and it repeated one amount twice.
 - On phones, the Tools wrench (and the settings gear) turns back when its menu closes; before, it stayed turned until you tapped somewhere else.
 - With many currencies, "+ Add currency" no longer drops alone onto a row of its own: it follows the last currency and wraps together with it.
 - The × of the one-line "Or work backwards" hint sits right after the text, not at the card's far edge.
@@ -346,6 +348,8 @@ Every change since development of the app started, in the order it was made, gro
 163. Phone rules moved to `src/mobile.css`, loaded after `styles.css`. Screenshots at 360, 390, 520, 600, 700 and 1280 px, both tabs, were pixel-identical before and after the move. Two rules written after the phone blocks had been overriding them (the page's top and bottom padding, and the smaller Tools button), so only what actually applied was kept.
 164. Phone layout from prototype 08 (picks 1A, 2C, 3A, 4A): the gear-only settings button on the title's row with the tabs centred; `DEFAULT_COLUMNS` is EUR and RON when the screen is 600 px or narrower at load; a third brace mode, `slim` (44 px: the brace and a sideways label), between the full note and the line under the grid, with grid cells 5.9rem wide on phones so it fits at 390 px; "start here" drawn as an arrow (the words stay for screen readers); symbol pills in the grid's header on every screen. Also fixed the field names from step 161: the grid cells, custom rates and fees had lost their period, currency and step in the name (`-`, `rate-`, `fee-`).
 165. `.gitignore` ignored every folder named `screenshots`, so the manifest's screenshots in `public/screenshots/` had not been committed (the install dialog would have asked for missing files). Now only the local record in the top-level `/screenshots/` is ignored.
+166. The employee card's half-year note (`employeeHalves`) appears only when July's minimum wage changes the net, i.e. for salaries near the minimum where the non-taxable amount or the personal deduction apply. At 27,776 RON/month both halves were 16,249.32 and the note said so twice. Test added.
+167. Tools button from prototype 09 (pick C): on phones the trigger is a 48 px transparent touch area with only the dot, 16 px with a 4 px ring and a wider pulse (`dot-halo-big`); the wrench and the word are hidden (the button keeps its `aria-label`). The chevron is gone on every screen.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0
