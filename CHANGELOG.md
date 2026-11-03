@@ -4,7 +4,14 @@ All notable changes to FreelancingToolkit. The format follows [Keep a Changelog]
 
 ## [Unreleased]
 
-Nothing yet.
+Steps 155– of the development history.
+
+### Added
+- Visit counts with GoatCounter (free, no cookies): page views and three events, never the settings or amounts.
+
+### Fixed
+- With many currencies, "+ Add currency" no longer drops alone onto a row of its own: it follows the last currency and wraps together with it.
+- The × of the one-line "Or work backwards" hint sits right after the text, not at the card's far edge.
 
 ## [1.0.0] - 2026-11-03
 
@@ -314,6 +321,12 @@ Every change since development of the app started, in the order it was made, gro
 152. "Copy link" is now the address itself, marked ?share=1 and without your language and theme (they stay the viewer's own); links made the old way (settings as JSON) still open. Opening one still sets your own settings aside, with "Back to my settings".
 153. Tests: every saved setting must have address parameters, every page's reset must clear exactly its parameters, no name may be used twice, every setting must read back the same from the address and its default write nothing, and broken values must be refused (22 new tests). They caught a real bug: an income read from the address had its fields in another order than the default, so the default income looked changed (the Tools dot lit up).
 154. "Settings & options" has a gear icon, which turns a little when the menu opens.
+
+### Unreleased
+
+155. Visit counts with GoatCounter (free, open source, no cookies, so no consent banner), in `src/lib/analytics.ts`, sent to romulusmirauta.goatcounter.com: a view of each page (/ and /taxes) and three events (copy-link, install-app, add-currency/<code>), never the address's settings or amounts, and nothing in development or on localhost. Offline visits aren't counted. The README's Privacy section says so. Tested.
+156. The × that hides the one-line "Or work backwards" hint (shown when the brace doesn't fit beside the grid) follows the text instead of sitting at the card's far right edge, so it reads as part of the hint.
+157. "+ Add currency" sits right after the last currency chip, inside the same row, and wraps onto the next row only together with that chip (prototype C, chosen from six). Before, it was outside the chips: as soon as they took two rows, it dropped alone onto a third, even with room beside the last chip.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0

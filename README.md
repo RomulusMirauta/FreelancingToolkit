@@ -31,7 +31,7 @@ It updates itself when a new version is published. Offline, it uses the exchange
 
 ## Privacy
 
-Everything runs in your browser: no account, no cookies, no analytics, nothing is sent anywhere. Your settings are saved only on your device (browser storage). "Reset tab" and "Reset app" (under **Tools**, bottom right) clear them. "Copy link" puts your page settings (not language or theme) in the link itself, so they go wherever you send it. The address also keeps the converter amount you typed and the sections you folded (`?amount=40&currency=EUR&per=hour&fold=fees`), so a bookmark opens the app the same way.
+Everything runs in your browser: no account, no cookies. The only thing sent anywhere is a visit count to [GoatCounter](https://www.goatcounter.com) (open source, no cookies, no personal data): which page was opened (Converter or Taxes) and three actions (link copied, app installed, currency added, with its code), never your settings or amounts. Your settings are saved only on your device (browser storage). "Reset tab" and "Reset app" (under **Tools**, bottom right) clear them. "Copy link" puts your page settings (not language or theme) in the link itself, so they go wherever you send it. The address also keeps the converter amount you typed and the sections you folded (`?amount=40&currency=EUR&per=hour&fold=fees`), so a bookmark opens the app the same way.
 
 ## Data sources
 

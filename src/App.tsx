@@ -14,6 +14,7 @@ import { usePersistentState } from './lib/ui/usePersistentState';
 import { useUrlQuery } from './lib/ui/urlQuery';
 import { LANG_QUERY, THEME_QUERY, WORK_QUERY, isWork } from './features/app/appQueries';
 import { Toast } from './lib/ui/toast';
+import { trackView } from './lib/analytics';
 
 
 type View = 'converter' | 'taxes';
@@ -64,6 +65,9 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  // A visit to each page, counted without the address's settings (see lib/analytics.ts).
+  useEffect(() => trackView(view), [view]);
 
   const go = (v: View) => {
     history.replaceState(null, '', v === 'taxes' ? '#taxes' : location.pathname + location.search);

@@ -6,6 +6,7 @@ import type { Theme } from '../../lib/ui/theme';
 import { LangSlider, ThemeSlider } from './ThemeSlider';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { restoreOwnSettings, shareUrl, sharedLinkState } from '../../lib/ui/share';
+import { trackEvent } from '../../lib/analytics';
 
 /** Chrome and Edge's install event; not in TypeScript's DOM types yet. */
 interface InstallPromptEvent extends Event {
@@ -47,7 +48,10 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
       e.preventDefault(); // show our own button instead of Chrome's mini-bar
       setPrompt(e as InstallPromptEvent);
     };
-    const onInstalled = () => setInstalled(true);
+    const onInstalled = () => {
+      setInstalled(true);
+      trackEvent('install-app');
+    };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
@@ -59,6 +63,7 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
   const copy = async () => {
     const url = shareUrl(view);
     setLink(url);
+    trackEvent('copy-link');
     try {
       await navigator.clipboard.writeText(url);
       setCopied('yes');

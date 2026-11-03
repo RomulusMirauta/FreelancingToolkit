@@ -271,8 +271,8 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 .goal-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .goal-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .goal-title .goal-close { position: static; flex: none; }
-.goal-hint-narrow { position: relative; padding-right: 26px; }
-.goal-hint-narrow .goal-close { top: 50%; transform: translateY(-50%); }
+/* The one-line hint's × follows the text, not the card's far edge. */
+.goal-hint-narrow .goal-close { position: static; display: inline-grid; vertical-align: middle; margin-left: 4px; }
 .no-brace .goal-note { display: none; }
 .no-brace + .goal-hint-narrow { display: block; }
 
@@ -285,6 +285,8 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
   margin-bottom: 12px;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The last chip and "+ Add currency" wrap as one, so the button never sits alone on a row. */
+.chips-last { display: inline-flex; align-items: center; gap: 6px; }
 .chip {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -326,8 +328,7 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
   padding: 5px 14px;
   cursor: pointer;
 }
-.add-btn:hover, .add-btn[aria-expanded='true'] { background: var(--accent-soft); }
-.add-pop {
+.add-btn:hover, .add-btn[aria-expanded='true'] { background: var(--accent-soft); }.add-pop {
   position: absolute;
   z-index: 50;
   top: calc(100% + 6px);

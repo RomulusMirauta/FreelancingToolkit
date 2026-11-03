@@ -10,6 +10,7 @@ import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { Fold } from '../../lib/ui/Fold';
 import { AddCurrency } from './AddCurrency';
+import { trackEvent } from '../../lib/analytics';
 import { RateTiles } from './RateTiles';
 import { writeSourceQuery } from './sourceQuery';
 import { ADDED_QUERY, COLUMNS_QUERY, DEFAULT_COLUMNS, GOAL_QUERY, RATES_QUERY, isCodes, isColumns, isFlag, isOverrides } from './converterQueries';
@@ -79,6 +80,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const add = (code: string) => {
     if (!chips.includes(code)) setAdded([...added, code]);
     if (!shown.includes(code)) setShown([...shown, code]);
+    trackEvent(`add-currency/${code}`);
   };
 
   const rates = useMemo(() => effectiveRates(BNR_RATES, overrides), [overrides]);
@@ -163,9 +165,9 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
 
       <div className="currency-bar">
         <div className="chips" role="group" aria-label={tc.currenciesShown}>
-          {chips.map((code) => {
+          {chips.map((code, i) => {
             const on = shown.includes(code);
-            return (
+            const button = (
               <button
                 key={code}
                 type="button"
@@ -178,9 +180,15 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                 <CurrencyCode code={code} />
               </button>
             );
+            // "+ Add currency" follows the last chip and wraps only together with it, never alone on a row.
+            return i < chips.length - 1 ? button : (
+              <div key={code} className="chips-last">
+                {button}
+                <AddCurrency exclude={chips} onAdd={add} />
+              </div>
+            );
           })}
         </div>
-        <AddCurrency exclude={chips} onAdd={add} />
       </div>
 
       <div
