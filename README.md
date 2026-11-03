@@ -2,6 +2,11 @@
 
 **Open the app: <https://romulusmirauta.github.io/FreelancingToolkit/>**
 
+![Views per week](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dweek&query=%24.count&label=Views%20per%20week&color=1f6f5c&labelColor=232826&cacheSeconds=600)
+![per month](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dmonth&query=%24.count&label=per%20month&color=1f6f5c&labelColor=232826&cacheSeconds=600)
+![per year](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dyear&query=%24.count&label=per%20year&color=1f6f5c&labelColor=232826&cacheSeconds=600)
+![total](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json&query=%24.count&label=total&color=1f6f5c&labelColor=232826&cacheSeconds=600)
+
 A small installable web app (a PWA, Progressive Web App) for freelancers paid in one currency and taxed in Romania.
 
 - **Rate converter**: type an amount in any cell (for example 30 EUR per hour) and see it per hour, day, week, month, 3/6/9 months and year, in as many currencies as you like. It uses the National Bank of Romania (BNR) reference rates, refreshed every banking day. Currencies BNR does not publish (about 160 in all) use market rates from [ExchangeRate-API](https://www.exchangerate-api.com), marked as such. You can override any rate. Working time counts days off, public holidays and the share of billable hours, and a fees panel shows what you keep after a platform (Upwork, Fiverr, …) and the currency exchange.

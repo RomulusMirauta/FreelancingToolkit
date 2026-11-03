@@ -7,7 +7,7 @@ All notable changes to FreelancingToolkit. The format follows [Keep a Changelog]
 Steps 155– of the development history.
 
 ### Added
-- Visit counts with GoatCounter (free, no cookies): page views and three events, never the settings or amounts.
+- Visit counts with GoatCounter (free, no cookies): page views and three events, never the settings or amounts. The README shows them as badges (per week, month, year and total).
 
 ### Fixed
 - With many currencies, "+ Add currency" no longer drops alone onto a row of its own: it follows the last currency and wraps together with it.
@@ -328,6 +328,7 @@ Every change since development of the app started, in the order it was made, gro
 156. The × that hides the one-line "Or work backwards" hint (shown when the brace doesn't fit beside the grid) follows the text instead of sitting at the card's far right edge, so it reads as part of the hint.
 157. "+ Add currency" sits right after the last currency chip, inside the same row, and wraps onto the next row only together with that chip (prototype C, chosen from six). Before, it was outside the chips: as soon as they took two rows, it dropped alone onto a third, even with room beside the last chip.
 158. Fix: GoatCounter's own script (count.js) sent the whole address with every count (`q=?amount=42&platform=fiverr…`), so amounts and settings reached GoatCounter, against the Privacy note. Found by checking the live site's requests. The app now sends the count itself, without the script: the page, its title, the screen width and the referring site's origin (never its path or query), and nothing from automated browsers. Tested: the counting address has only those fields.
+159. The README shows the visit counts under the app's link, as a row of badges in the app's colours (prototype A, chosen from five): "Views per week | per month | per year | total", read live from GoatCounter's public counter by shields.io. GoatCounter has no "today" for a static page, so there is no per-day badge.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0
