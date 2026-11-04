@@ -531,14 +531,6 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 .settings-grid label { display: grid; gap: 4px; font-size: 0.9rem; }
 .settings-grid input { width: 8rem; background: var(--edit-bg); border: 1.5px solid var(--edit); }
 .settings-grid input:focus { outline: none; box-shadow: 0 0 0 3px var(--edit-strong-bg); }
-.link-btn {
-  border: 0;
-  background: none;
-  color: var(--accent);
-  cursor: pointer;
-  padding: 6px 0;
-  text-decoration: underline;
-}
 
 footer { margin: 24px 0 8px; text-align: center; }
 
@@ -651,8 +643,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .breakdown tr.info th, .breakdown tr.info td { color: var(--muted); }
 .breakdown tr.total th, .breakdown tr.total td { font-weight: 700; border-top: 2px solid var(--text); }
 .breakdown tr.best th, .breakdown tr.best td { background: var(--accent-soft); }
-.breakdown tr.best th .link-btn { font-weight: 700; }
-.breakdown .link-btn { padding: 0; text-align: left; }
 
 .kept { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .kept .track { display: inline-block; width: 80px; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
@@ -772,6 +762,19 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   box-shadow: 0 8px 28px rgb(0 0 0 / 0.25); font-size: 0.9rem;
 }
 .top-panel p { margin: 0 0 8px; }
+/* Close: a × in the corner of a short panel, an outlined button at the end of a long one. */
+.top-panel.with-x { padding-right: 44px; }
+.panel-x {
+  position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer;
+}
+.panel-x:hover { background: var(--surface-2); color: var(--text); }
+.panel-btn {
+  display: block; margin: 12px 0 0 auto; padding: 6px 18px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer;
+}
+.panel-btn:hover { background: var(--surface-2); }
+.panel-x:focus-visible, .panel-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .top-panel input { width: 100%; }
 .install-steps h2 { font-size: 1rem; margin: 0 0 6px; }
 .install-steps details { border-top: 1px solid var(--border); padding: 8px 0; }
@@ -1194,18 +1197,18 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 
 /* The small folding rows inside cards (disadvantages, calculation details, install steps): the same drawn
    chevron as the section cards, instead of the browser's triangle. */
-.regime-cons > summary, .regime-details > summary, .install-steps details > summary {
+.regime-cons > summary, .regime-details > summary, .install-steps details > summary, .howto > summary {
   list-style: none; display: flex; align-items: center; gap: 8px; border-radius: 6px;
 }
 .regime-cons > summary::-webkit-details-marker, .regime-details > summary::-webkit-details-marker,
-.install-steps details > summary::-webkit-details-marker { display: none; }
-.regime-cons > summary::before, .regime-details > summary::before, .install-steps details > summary::before {
+.install-steps details > summary::-webkit-details-marker, .howto > summary::-webkit-details-marker { display: none; }
+.regime-cons > summary::before, .regime-details > summary::before, .install-steps details > summary::before, .howto > summary::before {
   content: ''; flex: none; width: 5px; height: 5px; margin: 0 3px 0 2px;
   border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
   transform: rotate(-45deg); transition: transform var(--dur-2) var(--ease-standard); opacity: 0.8;
 }
 .regime-cons[open] > summary::before, .regime-details[open] > summary::before,
-.install-steps details[open] > summary::before { transform: translateY(-1px) rotate(45deg); }
+.install-steps details[open] > summary::before, .howto[open] > summary::before { transform: translateY(-1px) rotate(45deg); }
 .regime-cons > summary:hover, .regime-details > summary:hover { color: var(--accent); }
 .regime-cons > summary:hover { color: var(--warn-text); text-decoration: underline; text-underline-offset: 3px; }
 
@@ -1264,6 +1267,22 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   60% { opacity: 1; }
   100% { opacity: 1; transform: none; }
 }
+/* The edge says the kind: lime = done, amber = a warning, teal = for your information. */
+.toast.warn { --toast-edge: #fbbf24; }
+.toast.info { --toast-edge: #5cc4a6; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .toast.warn { --toast-edge: #d97706; }
+  :root:not([data-theme='light']) .toast.info { --toast-edge: #1f6f5c; }
+}
+:root[data-theme='dark'] .toast.warn { --toast-edge: #d97706; }
+:root[data-theme='dark'] .toast.info { --toast-edge: #1f6f5c; }
+/* Undo, What's new: a small outlined button before the ×. */
+.toast-action {
+  flex: none; align-self: center; border: 1px solid var(--toast-edge); border-radius: 999px; background: none;
+  color: var(--toast-text); padding: 3px 12px; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.toast-action:hover { background: color-mix(in srgb, var(--toast-edge) 18%, transparent); }
+.toast-action:focus-visible { outline: 2px solid var(--toast-edge); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
 /* However long a figure gets, it wraps inside its card instead of running out of it. */

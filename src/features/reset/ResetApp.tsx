@@ -8,6 +8,8 @@ import { INCOME_QUERY } from '../taxes/Taxes';
 import { clearFolds, useClosedFolds, useFoldAll } from '../../lib/ui/folds';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
+import { notifyLater } from '../../lib/ui/toast';
+import { saveBeforeReset } from '../../lib/ui/undoReset';
 
 export { APP_KEYS, PAGE_FOLDS, PAGE_KEYS, type Page } from '../../lib/ui/settingsKeys';
 
@@ -117,6 +119,9 @@ function ResetLabel({ full, short }: { full: string; short: string }) {
 
 /** Clears the page's saved settings, unfolds its sections and reloads on the same page. */
 function resetPage(page: Page) {
+  // Instant, without asking: after the reload a toast offers to undo it.
+  saveBeforeReset();
+  notifyLater('pageReset', page);
   clearFolds(PAGE_FOLDS[page]);
   // The tax income follows the converter: if it was only following it (not typed on the tax page), it goes
   // back with the converter, so the two pages still agree after the reset.

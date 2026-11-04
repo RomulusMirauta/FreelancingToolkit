@@ -40,6 +40,13 @@ export function writeUrlQuery<T>(q: UrlQuery<T>, value: T): void {
   });
 }
 
+/** Address parameters dropped as broken while the page started, for the "some settings weren't valid" toast. */
+const dropped: string[] = [];
+export const droppedParams = (): readonly string[] => dropped;
+export function noteDropped(names: readonly string[]): void {
+  dropped.push(...names);
+}
+
 /**
  * Runs once before the first render. A valid value in the address wins over the saved one (and is saved);
  * a broken one is dropped from the address. Without one, a saved value is written into the address.
@@ -68,7 +75,10 @@ export function applyUrlQuery<T>(q: UrlQuery<T>): void {
     }
     return;
   }
-  if (present) writeQuery((p) => q.names.forEach((n) => p.delete(n)));
+  if (present) {
+    noteDropped(q.names.filter((n) => params.has(n)));
+    writeQuery((p) => q.names.forEach((n) => p.delete(n)));
+  }
   if (q.isValid(saved)) writeUrlQuery(q, saved);
 }
 

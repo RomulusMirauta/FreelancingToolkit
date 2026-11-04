@@ -3,6 +3,7 @@ import { useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
 import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
+import { refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
 import { ListPicker } from '../taxes/ListPicker';
@@ -216,7 +217,9 @@ function FeeStep<Id extends string>({ step, label, options, names, hints, select
             name={`fee-${step}`}
             defaultValue={formatEditable(pct)}
             aria-label={pctLabel}
+            onPaste={refuseNonNumberPaste}
             onChange={(e) => {
+              if (refuseWordIn(e.currentTarget)) return;
               const v = parseAmount(e.target.value);
               const ok = v !== null && v >= 0 && v < 100;
               e.currentTarget.setAttribute('aria-invalid', String(!ok));

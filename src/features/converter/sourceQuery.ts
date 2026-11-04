@@ -4,6 +4,7 @@ import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
 import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period } from '../../lib/time/periods';
 import { isSaneAmount } from '../../lib/ui/numbers';
 import { readQuery, writeQuery } from '../../lib/ui/query';
+import { noteDropped } from '../../lib/ui/urlQuery';
 
 /**
  * The converter cell the user typed into, in the address: ?amount=40&currency=EUR&per=hour. Names and values
@@ -120,7 +121,10 @@ export function applySourceQuery(defaultSource: Source): void {
     // storage unavailable: the address still shows the amount, the app opens on its defaults
     return;
   }
-  if (SOURCE_PARAMS.some((k) => params.has(k))) writeQuery((p) => SOURCE_PARAMS.forEach((k) => p.delete(k)));
+  if (SOURCE_PARAMS.some((k) => params.has(k))) {
+    noteDropped(SOURCE_PARAMS.filter((k) => params.has(k)));
+    writeQuery((p) => SOURCE_PARAMS.forEach((k) => p.delete(k)));
+  }
   const saved = readJson('ft.source') as Source | null;
   if (saved && typeof saved.amount === 'number' && KNOWN.has(saved.currency) && PERIODS.includes(saved.period)) {
     writeSourceQuery(saved, same(saved, defaultSource));

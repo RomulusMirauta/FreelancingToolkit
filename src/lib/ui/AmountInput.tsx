@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLang } from '../i18n';
 import { MAX_WHOLE_DIGITS, formatEditableGrouped, groupTyped, numberMarks, parseAmount } from './numbers';
-import { notifyTooBig } from './toast';
+import { notifyTooBig, refuseNonNumberPaste, refuseWord } from './toast';
 
 /**
  * A money amount that groups thousands as it is typed (27.781,52 in Romanian, 27,781.52 in English).
@@ -38,6 +38,7 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
       // Lets the stylesheet size the box to the amount (see .income-main input).
       style={{ '--chars': Math.max(text.length, 1) } as CSSProperties}
       aria-invalid={(text !== '' && parseAmount(text) === null) || undefined}
+      onPaste={refuseNonNumberPaste}
       onKeyDown={(e) => {
         const el = e.currentTarget;
         const at = el.selectionStart ?? 0;
@@ -47,6 +48,7 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
         if (e.key === 'Delete' && el.value[at] === group) el.setSelectionRange(at + 1, at + 1);
       }}
       onChange={(e) => {
+        if (refuseWord(text, e.target.value)) return;
         const native = e.nativeEvent as InputEvent;
         let raw = e.target.value;
         const at = e.target.selectionStart ?? raw.length;

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { applyUrlQuery, numberParam, writeUrlQuery, type UrlQuery } from './urlQuery';
+import { applyUrlQuery, droppedParams, numberParam, writeUrlQuery, type UrlQuery } from './urlQuery';
 
 // A tiny browser: an address that history.replaceState changes, and a storage map.
 let url: URL;
@@ -77,6 +77,16 @@ describe('amounts in the address', () => {
     applyUrlQuery(PAY);
     expect(url.search).toBe('?fold=x&pay=7&pay_per=month');
     expect(JSON.parse(store.get('ft.pay')!)).toEqual({ amount: 7, per: 'month' });
+  });
+
+  it('a broken value is noted, for the "some settings weren\'t valid" toast; a valid one is not', () => {
+    const before = droppedParams().length;
+    url = new URL('https://x.test/app/?pay=7&pay_per=month');
+    applyUrlQuery(PAY);
+    expect(droppedParams().length).toBe(before);
+    url = new URL('https://x.test/app/?pay=1e12&pay_per=month&fold=x');
+    applyUrlQuery(PAY);
+    expect(droppedParams().slice(before)).toEqual(['pay', 'pay_per']);
   });
 
   it('half a value (one parameter missing) is not used', () => {

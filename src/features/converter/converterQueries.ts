@@ -1,13 +1,14 @@
 import { CURRENCIES } from '../../lib/currency/currencies';
 import { isSaneAmount } from '../../lib/ui/numbers';
 import { numberParam, type UrlQuery } from '../../lib/ui/urlQuery';
+import { PHONE_QUERY } from '../../lib/ui/useIsPhone';
 
 /** The converter's settings and how each one reads in the address. */
 
 const KNOWN = new Set(CURRENCIES.map((c) => c.code));
 
 /** A phone shows two currencies without scrolling sideways, so it starts with EUR and RON; USD and GBP stay one tap away. */
-const isPhone = typeof matchMedia === 'function' && matchMedia('(max-width: 600px)').matches;
+const isPhone = typeof matchMedia === 'function' && matchMedia(PHONE_QUERY).matches;
 export const DEFAULT_COLUMNS = isPhone ? ['EUR', 'RON'] : ['EUR', 'RON', 'USD', 'GBP'];
 
 export const isCodes = (v: unknown): v is string[] =>

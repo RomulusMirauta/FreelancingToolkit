@@ -5,7 +5,7 @@ import { BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale } from '
 import { useLang, useT } from '../../lib/i18n';
 import { PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
 import { formatEditable, formatMoney, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
-import { notifyTooBig } from '../../lib/ui/toast';
+import { notifyTooBig, refuseNonNumberPaste, refuseWord } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { Fold } from '../../lib/ui/Fold';
@@ -132,6 +132,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   };
 
   const onType = (period: Period, currency: string, text: string) => {
+    if (editing && refuseWord(editing.text, text)) return;
     const amount = parseAmount(text);
     // Above the limit the keystroke is refused (the cell keeps its text), with a word in the corner.
     if (amount !== null && !isSaneAmount(amount)) {
@@ -235,6 +236,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                           requestAnimationFrame(() => e.target.select());
                         }}
                         onChange={(e) => onType(period, code, e.target.value)}
+                        onPaste={refuseNonNumberPaste}
                         onBlur={() => setEditing(null)}
                         onKeyDown={(e) => onCellKey(e, row, col)}
                       />

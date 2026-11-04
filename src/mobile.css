@@ -58,12 +58,51 @@
 /* Toast text may wrap. */
 @media (max-width: 600px) { .toast strong { white-space: normal; } }
 
-/* Toast in the bottom-left corner, clear of the Tools button. */
-@media (max-width: 600px) { .toast { left: 10px; bottom: 10px; max-width: calc(100vw - 150px); } }
+/* Toast in the bottom-left corner, clear of the Tools dot; a button (Undo, What's new) goes under the text. */
+@media (max-width: 600px) {
+  .toast { left: 10px; bottom: 10px; max-width: calc(100vw - 78px); flex-wrap: wrap; }
+  .toast > div { flex: 1 1 calc(100% - 40px); }
+  .toast-close { order: 2; }
+  .toast-action { order: 3; margin-left: 0; }
+}
 
 /* The Tools dot's halo, scaled up with the dot. */
 @keyframes dot-halo-big {
   0% { box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
   70% { box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent); }
   100% { box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 0 transparent; }
+}
+
+/* Tax page: no intro line; amount, currency and period on one row; the explanations folded under "How to read the
+   results"; every regime's net in a short list before the cards (★ most money, ⚠ not allowed at this income). */
+@media (max-width: 600px) {
+  .taxes .subtitle { display: none; }
+  .income-row-main { gap: 6px 8px; }
+  .income-row-main > .field { flex: none; }
+  .income-row-main > .income-main { flex: 1 1 0; min-width: 0; }
+  .income-row-main .income-main input { width: 100%; font-size: 1.1rem; }
+  .income-row-main .currency-btn { font-size: 1.05rem; min-width: 0; }
+  .howto { margin: 0 0 12px; }
+  .howto > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; padding: 4px 0; }
+  .howto[open] > summary { color: var(--text); }
+  .howto > p { margin: 6px 0 0; }
+  .rank-title { margin: 0 0 6px; font-size: 0.85rem; color: var(--muted); }
+  .rank { list-style: none; margin: 0 0 14px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); display: grid; gap: 2px; }
+  .rank li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; }
+  .rank li.best { background: var(--accent-soft); }
+  .rank .regime-name { font-size: 0.85rem; flex: 1; min-width: 0; }
+  .rank b { font-variant-numeric: var(--numeric); white-space: nowrap; }
+  .rank b small { font-weight: 500; color: var(--muted); }
+  .rank-mark { flex: none; width: 14px; color: var(--accent); }
+  .rank-mark.over { color: var(--warn); }
+}
+
+/* Net to gross: one column, "Gross", the target's period in large and the year small under it; the regime's pill
+   above its name, so every row is as tall as the others. */
+@media (max-width: 600px) {
+  .solver-cap { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .solver .breakdown th .regime-name { display: grid; justify-items: start; gap: 2px; }
+  .solver .breakdown th .kw-rest { font-size: 0.85rem; font-weight: 500; color: var(--muted); line-height: 1.25; }
+  .solver .breakdown td.solver-amount { white-space: nowrap; vertical-align: middle; font-size: 1.05rem; font-weight: 600; }
+  .solver .breakdown td.solver-amount small { display: block; font-size: 0.78rem; font-weight: 500; color: var(--muted); }
 }

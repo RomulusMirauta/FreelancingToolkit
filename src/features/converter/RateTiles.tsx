@@ -3,7 +3,7 @@ import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { baseRate, isMarketRate, rateChange, rateSeries } from '../../lib/currency/rates';
 import { useT } from '../../lib/i18n';
 import { formatNumber, formatRate, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
-import { notifyTooBig } from '../../lib/ui/toast';
+import { notifyTooBig, refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 
 interface Props {
   /** The currencies shown in the grid, RON left out. */
@@ -96,6 +96,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
                 placeholder={formatRate(published)}
                 defaultValue={custom !== undefined ? String(custom) : ''}
                 aria-label={tc.customLabel(code)}
+                onPaste={refuseNonNumberPaste}
                 // An empty field shows BNR's rate in grey; clicking it puts that rate in as text, so a digit or two
                 // can be changed instead of typing the whole rate. Filled before the press lands, so the caret goes
                 // where the click was; reached with Tab, the caret goes to the end. Left unchanged, it goes back
@@ -117,6 +118,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
                   if (v !== null && isBnr(v)) e.currentTarget.value = '';
                 }}
                 onChange={(e) => {
+                  if (refuseWordIn(e.currentTarget)) return;
                   const v = parseAmount(e.target.value);
                   if (v !== null && !isSaneAmount(v)) {
                     notifyTooBig();

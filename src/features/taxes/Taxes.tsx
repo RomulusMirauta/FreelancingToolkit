@@ -16,6 +16,7 @@ import { AmountInput } from '../../lib/ui/AmountInput';
 import { formatMoney, formatRate, isSaneAmount } from '../../lib/ui/numbers';
 import { useLang } from '../../lib/i18n';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
+import { useIsPhone } from '../../lib/ui/useIsPhone';
 import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
 import { Fold } from '../../lib/ui/Fold';
 import { RegimeCard } from './RegimeCard';
@@ -117,6 +118,7 @@ export const REF_QUERY: UrlQuery<BoardRegime> = {
 /** All regimes side by side: one income in, the monthly take-home of each out, compared to a reference. */
 export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncome: (i: TaxIncome) => void; work: WorkSettings }) {
   const { taxes: t, board: tb, locale } = useT();
+  const phone = useIsPhone();
   const [options, setOptions] = usePersistentState('ft.taxOptions', DEFAULT_TAX_OPTIONS, isOptions);
   useUrlQuery(OPTIONS_QUERY, options);
   const [reference, setReference] = usePersistentState<BoardRegime>('ft.taxRef', 'employee', isRegime);
@@ -139,14 +141,22 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
       <Fold id="taxes" title={t.title(PARAMS_YEAR)} summary={t.foldSummary(formatMoney(annual / 12))} className="taxes">
         <p className="muted subtitle">{t.subtitle}</p>
 
-        <IncomeInput value={income} onChange={setIncome} work={work} label={t.income} hint={t.incomeHint} main />
+        <IncomeInput value={income} onChange={setIncome} work={work} label={t.income} hint={phone ? undefined : t.incomeHint} main />
 
-        <p className="legend small">
-          <span className="delta pos">+</span>
-          <span className="delta neg">−</span>
-          <span className="delta eq">=</span>
-          {tb.legend}
-        </p>
+        {/* On phones the explanations fold away and a short list of every net comes first, so a result fits on the
+            first screen. */}
+        {phone ? (
+          <>
+            <details className="howto">
+              <summary>{tb.howTo}</summary>
+              <p className="muted small">{t.incomeHint}</p>
+              <Legend />
+            </details>
+            {annual > 0 && <Ranking results={results} allowed={allowed} best={best} />}
+          </>
+        ) : (
+          <Legend />
+        )}
 
         <div className="board">
           {MAIN_REGIMES.map((r) => (
@@ -197,6 +207,52 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
       <Calendar />
 
       <p className="disclaimer small">{t.disclaimer(PARAMS_YEAR, checkedOn)}</p>
+    </>
+  );
+}
+
+function Legend() {
+  const tb = useT().board;
+  return (
+    <p className="legend small">
+      <span className="delta pos">+</span>
+      <span className="delta neg">−</span>
+      <span className="delta eq">=</span>
+      {tb.legend}
+    </p>
+  );
+}
+
+/**
+ * Phones: every regime's monthly net, most first. ★ marks the most money among the allowed regimes; ⚠ marks one
+ * the income isn't allowed in (income norm over its limit), even when it shows more.
+ */
+function Ranking({ results, allowed, best }: { results: Record<BoardRegime, RegimeResult>; allowed: BoardRegime[]; best: number }) {
+  const { board: tb, regimes } = useT();
+  const order = [...MAIN_REGIMES].sort((a, b) => results[b].takeHome - results[a].takeHome);
+  return (
+    <>
+      <p className="rank-title">{tb.rankTitle}</p>
+      <ol className="rank">
+        {order.map((r) => {
+          const isBest = allowed.includes(r) && results[r].takeHome === best;
+          const over = !allowed.includes(r);
+          return (
+            <li key={r} className={isBest ? 'best' : undefined}>
+              <span
+                className={`rank-mark${over ? ' over' : ''}`}
+                role={isBest || over ? 'img' : undefined}
+                aria-label={isBest ? tb.best : over ? tb.notRanked : undefined}
+                title={isBest ? tb.best : over ? tb.notRankedTitle : undefined}
+              >
+                {isBest ? '★' : over ? '⚠' : ''}
+              </span>
+              <RegimeName label={regimes[r]} />
+              <b>{formatMoney(results[r].takeHome / 12)} <small>RON</small></b>
+            </li>
+          );
+        })}
+      </ol>
     </>
   );
 }
@@ -270,6 +326,7 @@ function IncomeInput({ value, onChange, work, label, hint, main = false }: {
 
 function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) {
   const { solver: ts, regimes, periods } = useT();
+  const phone = useIsPhone();
   const [target, setTarget] = usePersistentState('ft.solverTarget', DEFAULT_TARGET, isTaxIncome);
   useUrlQuery(TARGET_QUERY, target);
   const targetLei = annualLei(target, work);
@@ -280,17 +337,23 @@ function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) 
   // Show the answer in the target's currency: for its period, plus month and year as reference points.
   const inTarget = (yearLei: number, per: Period) => convert(rescale(yearLei, 'year', per, work), 'RON', target.currency, RATES);
   const columns = PERIODS.filter((p) => p === target.per || p === 'month' || p === 'year');
+  // Phones: one column, the target's period, with the year (or the month, for a yearly target) small under it.
+  const second: Period = target.per === 'year' ? 'month' : 'year';
+  const per = (p: Period) => `/ ${periods[p].toLowerCase()}`;
 
   return (
     <Fold id="solver" title={ts.title} summary={ts.foldSummary(formatMoney(target.amount), target.currency, periods[target.per].toLowerCase())} className="solver">
       <div className="solver-body">
       <IncomeInput value={target} onChange={setTarget} work={work} label={ts.label} />
+      {phone && <p className="solver-cap">{ts.phoneCaption(target.currency)}</p>}
       <table className="breakdown">
         <caption className="sr-only">{ts.caption}</caption>
         <thead>
           <tr>
             <th scope="col">{ts.regime}</th>
-            {columns.map((p) => <th key={p} scope="col">{ts.neededPer(periods[p].toLowerCase(), target.currency)}</th>)}
+            {phone
+              ? <th scope="col">{ts.gross}</th>
+              : columns.map((p) => <th key={p} scope="col">{ts.neededPer(periods[p].toLowerCase(), target.currency)}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -299,7 +362,13 @@ function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) 
             return (
               <tr key={r}>
                 <th scope="row"><RegimeName label={regimes[r]} /></th>
-                {columns.map((p) => <td key={p}>{a === null ? '—' : formatMoney(inTarget(a, p))}</td>)}
+                {phone ? (
+                  <td className="solver-amount">
+                    {a === null ? '—' : <>{formatMoney(inTarget(a, target.per))} {per(target.per)}<small>{formatMoney(inTarget(a, second))} {per(second)}</small></>}
+                  </td>
+                ) : (
+                  columns.map((p) => <td key={p}>{a === null ? '—' : formatMoney(inTarget(a, p))}</td>)
+                )}
               </tr>
             );
           })}

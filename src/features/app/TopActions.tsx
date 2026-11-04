@@ -7,6 +7,7 @@ import { LangSlider, ThemeSlider } from './ThemeSlider';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { restoreOwnSettings, shareUrl, sharedLinkState } from '../../lib/ui/share';
 import { trackEvent } from '../../lib/analytics';
+import { notify } from '../../lib/ui/toast';
 
 /** Chrome and Edge's install event; not in TypeScript's DOM types yet. */
 interface InstallPromptEvent extends Event {
@@ -51,6 +52,7 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
     const onInstalled = () => {
       setInstalled(true);
       trackEvent('install-app');
+      notify('installed');
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
@@ -59,6 +61,8 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
+
+  const menu = useHoverMenu();
 
   const copy = async () => {
     const url = shareUrl(view);
@@ -69,7 +73,11 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
       setCopied('yes');
       setTimeout(() => setCopied('no'), 2500);
     } catch {
-      setCopied('manual'); // clipboard blocked (embedded browsers): show the link to copy by hand
+      // Clipboard blocked (embedded browsers): the link to copy by hand, in its own panel, with the menu closed so
+      // the two don't overlap.
+      menu.setOpen(false);
+      setCopied('manual');
+      notify('copyBlocked');
     }
   };
 
@@ -87,7 +95,6 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
     }
   };
 
-  const menu = useHoverMenu();
 
   return (
     <div className={`top-actions hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
@@ -120,10 +127,10 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
         )}
       </div>
       {copied === 'manual' && (
-        <div className="top-panel" role="dialog" aria-label={t.copyManual}>
+        <div className="top-panel with-x" role="dialog" aria-label={t.copyManual}>
+          <button type="button" className="panel-x" aria-label={t.close} title={t.close} onClick={() => setCopied('no')}>×</button>
           <p>{t.copyManual}</p>
           <input readOnly name="share-link" value={link} onFocus={(e) => e.target.select()} autoFocus />
-          <button type="button" className="link-btn" onClick={() => setCopied('no')}>{t.close}</button>
         </div>
       )}
       {showSteps && <InstallSteps onClose={() => setShowSteps(false)} />}
@@ -146,7 +153,7 @@ function InstallSteps({ onClose }: { onClose: () => void }) {
           <ol>{t.steps[d].map((s) => <li key={s}>{s}</li>)}</ol>
         </details>
       ))}
-      <button type="button" className="link-btn" onClick={onClose}>{t.close}</button>
+      <button type="button" className="panel-btn" onClick={onClose}>{t.close}</button>
     </div>
   );
 }
