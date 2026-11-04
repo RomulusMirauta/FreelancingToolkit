@@ -13,6 +13,8 @@ const LATER = 'ft-toast-after-reload';
 const RATES_BEFORE = 'ft-rates-before';
 /** The last app version this browser ran; not an `ft.` key, so it never counts as a changed setting. */
 const SEEN_VERSION = 'ft-version';
+/** How long a toast takes to go out (the .toast.leaving animation). */
+const OUT_MS = 220;
 /** Where "What's new" leads. */
 const RELEASES = 'https://github.com/RomulusMirauta/FreelancingToolkit/releases';
 
@@ -175,7 +177,11 @@ export function addNote(queue: Note[], note: Note): Note[] {
 export function Toast() {
   const t = useT();
   const [queue, setQueue] = useState<Note[]>([]);
+  /** Counts the toasts that have gone, so the next one is a new element and comes in with its animation. */
+  const [gone, setGone] = useState(0);
+  const [leaving, setLeaving] = useState(false);
   const timer = useRef<number | undefined>(undefined);
+  const outTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const add = (n: Note) => setQueue((q) => addNote(q, n));
@@ -204,27 +210,43 @@ export function Toast() {
 
   const current = queue[0];
   const shown = current && describe(current, t);
-  const next = () => setQueue((q) => q.slice(1));
+  // It goes out downwards, the way it came in reversed (.toast.leaving, as long as OUT_MS), then the next one comes.
+  const close = () => {
+    window.clearTimeout(timer.current);
+    setLeaving(true);
+    window.clearTimeout(outTimer.current);
+    outTimer.current = window.setTimeout(() => {
+      setLeaving(false);
+      setQueue((q) => q.slice(1));
+      setGone((n) => n + 1);
+    }, OUT_MS);
+  };
 
-  // A toast with a button stays longer, so there is time to press it.
+  // A toast with a button stays longer, so there is time to press it. The same message again restarts it, even
+  // while it is going out.
   const hasAction = Boolean(shown?.action);
   useEffect(() => {
     if (!current) return;
-    timer.current = window.setTimeout(() => setQueue((q) => q.slice(1)), hasAction ? 10_000 : 6000);
+    window.clearTimeout(outTimer.current);
+    setLeaving(false);
+    timer.current = window.setTimeout(close, hasAction ? 10_000 : 6000);
     return () => window.clearTimeout(timer.current);
+    // close only uses refs and setters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, hasAction]);
+  useEffect(() => () => window.clearTimeout(outTimer.current), []);
 
   if (!shown) return null;
   return (
-    <div className={`toast ${shown.tone}`} role="status">
+    <div className={`toast ${shown.tone}${leaving ? ' leaving' : ''}`} role="status" key={gone}>
       <div>
         <strong>{shown.title}</strong>
         <span className="muted small">{shown.hint}</span>
       </div>
       {shown.action && (
-        <button type="button" className="toast-action" onClick={() => { next(); shown.action!.run(); }}>{shown.action.label}</button>
+        <button type="button" className="toast-action" onClick={() => { close(); shown.action!.run(); }}>{shown.action.label}</button>
       )}
-      <button type="button" className="toast-close" aria-label={t.app.close} title={t.app.close} onClick={next}>×</button>
+      <button type="button" className="toast-close" aria-label={t.app.close} title={t.app.close} onClick={close}>×</button>
     </div>
   );
 }

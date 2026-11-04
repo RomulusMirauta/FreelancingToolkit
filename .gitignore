@@ -29,3 +29,10 @@ dev-dist/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Visual tests: the build, results and report, and the reference screenshots (about 12 MB, made on this machine:
+# another system renders text differently, so they stay local)
+dist-visual/
+tests/visual/results/
+tests/visual/report/
+tests/visual/__screenshots__/

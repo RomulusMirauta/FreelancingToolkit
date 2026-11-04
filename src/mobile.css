@@ -13,7 +13,11 @@
 @media (max-width: 520px) {
   .breakdown th, .breakdown td { padding: 6px 4px; }
   .kept .track { display: none; }
-  .start-tag { margin: 0 0 0 6px; padding: 0; background: none; font-size: 0; vertical-align: 0; }
+  /* The arrow fills the space after the word and is centred in it; the negative margin reaches over the cell
+     gaps (the column's 6px and the cell's 4px; the words stay for screen readers), so it sits midway between the word and the first cell. */
+  .start-wrap { display: flex; align-items: center; }
+  .start-tag { flex: 1; margin: 0 -10px 0 0; padding: 0; background: none; font-size: 0; text-align: center; }
+  .start-tag > span { padding: 0; background: none; font-size: 0; vertical-align: 0; }
   .start-tag::after { content: '→'; font-size: 1.1rem; font-weight: 800; color: var(--edit); }
 }
 
@@ -64,6 +68,9 @@
   .toast > div { flex: 1 1 calc(100% - 40px); }
   .toast-close { order: 2; }
   .toast-action { order: 3; margin-left: 0; }
+  /* A little smaller on phones (prototype 13, C). */
+  .toast strong { font-size: 0.85rem; }
+  .toast .muted { font-size: 0.8rem; }
 }
 
 /* The Tools dot's halo, scaled up with the dot. */

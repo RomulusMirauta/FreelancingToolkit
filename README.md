@@ -60,7 +60,11 @@ npm run build      # type-check and build to dist/
 npm run preview    # serve the built app on http://localhost:4173
 npm run rates      # refresh src/data/rates.json (curs.bnr.ro) and src/data/market-rates.json (open.er-api.com)
 npm run symbols    # rewrite src/data/currency-symbols.json
+npm run test:visual         # on demand: compare both tabs on phones, a tablet and desktops with reference screenshots
+npm run test:visual:update  # save new reference screenshots, after checking that a change looks right
 ```
+
+The visual tests (Playwright, with the installed Chrome) build the app with fixed rates (`tests/visual/fixtures`) and a fixed date, then compare whole pages pixel by pixel. A failure leaves the expected, actual and diff images in `tests/visual/results` and an HTML report you can open directly, with no server: `tests/visual/report/index.html`. The reference screenshots stay on the machine that made them, since another system renders text differently: on a new machine, run `test:visual:update` first. When the BNR or market rates gain a currency, copy `src/data/*rates.json` into the fixtures and update the screenshots.
 
 ## How it fits together
 

@@ -214,9 +214,14 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 /* The hour row is where people start: lime tint and a tag. */
 .start-row .cell { background: var(--edit-bg); border-color: var(--edit); border-width: 1.5px; font-weight: 600; font-size: 1.05rem; }
 .start-row .period-col { font-weight: 700; color: var(--edit-text); }
-.start-tag {
+/* The tag fills the space after the word and is centred in it; the negative margin reaches over the gaps up to the
+   first cell (the column's 12px and the cell's 4px), so it sits midway between the word and the cell. The 12px
+   padding on each side keeps the column as wide as before (8px between the word and the tag at the least), and the
+   baseline keeps the tag on the word's line. */
+.start-wrap { display: flex; align-items: baseline; }
+.start-tag { flex: 1; margin-right: -16px; padding: 0 12px; text-align: center; }
+.start-tag > span {
   display: inline-block;
-  margin-left: 8px;
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--edit);
@@ -976,7 +981,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .vat-meter.over .vat-bar span { background: var(--danger); }
 .vat-meter.over strong { color: var(--danger); }
 .vat-cases { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
-.vat-source { margin-right: 10px; color: var(--accent); }
+/* Each source on its own line, the "§" kept with its text. */
+.vat-source { display: block; width: fit-content; margin-top: 4px; color: var(--accent); }
 
 /* Payment calendar. */
 .calendar .chips { margin-bottom: 12px; }
@@ -998,9 +1004,9 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .nd-meta .form-code { margin-right: 0; }
 .month-group h4 { margin: 14px 0 4px; font-size: var(--text-sm); font-weight: 650; }
 .month-group h4::first-letter { text-transform: uppercase; }
-.deadlines { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.deadlines li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto; gap: 4px 14px; align-items: baseline; padding: 9px 12px; border-radius: var(--radius-sm); font-size: var(--text-sm); }
-.deadlines li:nth-child(odd) { background: var(--surface-2); }
+/* Every deadline on its own card. */
+.deadlines { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.deadlines li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto; gap: 4px 14px; align-items: baseline; padding: 9px 12px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: var(--text-sm); }
 .deadlines time { font-weight: 600; }
 .deadline-when { white-space: nowrap; }
 .deadline-what .badge { margin-left: 8px; }
@@ -1267,6 +1273,13 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   60% { opacity: 1; }
   100% { opacity: 1; transform: none; }
 }
+/* Goes out the opposite way, a little quicker: down and fading (as long as OUT_MS in toast.tsx). */
+.toast.leaving { animation: toast-out 0.22s cubic-bezier(0.3, 0, 1, 1) forwards; pointer-events: none; }
+@keyframes toast-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(24px) scale(0.96); }
+}
+
 /* The edge says the kind: lime = done, amber = a warning, teal = for your information. */
 .toast.warn { --toast-edge: #fbbf24; }
 .toast.info { --toast-edge: #5cc4a6; }
@@ -1283,7 +1296,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 }
 .toast-action:hover { background: color-mix(in srgb, var(--toast-edge) 18%, transparent); }
 .toast-action:focus-visible { outline: 2px solid var(--toast-edge); outline-offset: 1px; }
-@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .toast, .toast.leaving { animation: none; } }
 
 /* However long a figure gets, it wraps inside its card instead of running out of it. */
 .take-home, .delta, .regime-stats dd, .stat-row dd, .rate-tile-rate, .income-total, .fold > summary > .muted, .breakdown td {

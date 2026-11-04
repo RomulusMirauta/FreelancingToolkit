@@ -56,7 +56,7 @@ export function Vat({ annual }: { annual: number }) {
       <p className="muted small">
         {t.toConfirm}{' '}
         {sources.map((s) => s && (
-          <a key={s.key} href={s.source} target="_blank" rel="noreferrer" className="vat-source" title={s.legal}>§ {s.legal}</a>
+          <a key={s.key} href={s.source} target="_blank" rel="noreferrer" className="vat-source" title={s.legal}>§{' '}{s.legal}</a>
         ))}
       </p>
     </Fold>

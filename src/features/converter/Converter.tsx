@@ -211,8 +211,10 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
             {PERIODS.map((period, row) => (
               <tr key={period} className={period === 'hour' ? 'start-row' : undefined}>
                 <th scope="row" className="period-col">
-                  {t.periods[period]}
-                  {period === 'hour' && <span className="start-tag">{tc.startHere}</span>}
+                  {period === 'hour' ? (
+                    // Together, so the tag (an arrow on phones) can sit midway between the word and the first cell.
+                    <span className="start-wrap">{t.periods[period]}<span className="start-tag"><span>{tc.startHere}</span></span></span>
+                  ) : t.periods[period]}
                 </th>
                 {columns.map((code, col) => {
                   const isEditing = editing?.period === period && editing.currency === code;

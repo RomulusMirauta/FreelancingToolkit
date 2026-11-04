@@ -2,14 +2,22 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')) as { version: string };
 
+// The visual tests (`--mode visual`) build with fixed BNR and market rates, so the daily rate updates don't change the screenshots.
+const fixtures = fileURLToPath(new URL('./tests/visual/fixtures/', import.meta.url)).replace(/\\/g, '/');
+
 // Served from GitHub Pages at /FreelancingToolkit/.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: './',
   // The app's version, for the "updated to vX" toast.
   define: { __APP_VERSION__: JSON.stringify(version) },
+  ...(mode === 'visual' && {
+    resolve: { alias: [{ find: /^.*\/data\/(rates|market-rates)\.json$/, replacement: `${fixtures}$1.json` }] },
+    build: { outDir: 'dist-visual' },
+  }),
   plugins: [
     react(),
     VitePWA({
@@ -50,4 +58,4 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
   },
-});
+}));

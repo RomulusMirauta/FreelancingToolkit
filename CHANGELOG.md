@@ -4,7 +4,9 @@ All notable changes to FreelancingToolkit. The format follows [Keep a Changelog]
 
 ## [Unreleased]
 
-Steps 155– of the development history.
+## [1.1.0] - 2026-11-04
+
+Steps 155–183 of the development history.
 
 ### Added
 - More messages in the bottom-left corner: a link with settings that aren't valid; copying blocked by the browser; offline, and back online (with newer BNR rates the app updates itself and says so); the app updated to a new version, with "What's new"; the app installed; "Reset tab" with an Undo button; a word pasted into an amount. Lime means done, amber a warning, teal for your information.
@@ -12,6 +14,9 @@ Steps 155– of the development history.
 - Screenshots in the app's manifest, so Chrome's install dialog shows the app on desktop and on phones.
 
 ### Changed
+- The messages in the bottom-left corner now go out with a short animation, down and fading, the way they come in reversed.
+- Phones: the messages in the bottom-left corner use slightly smaller text.
+- The "start here" tag (an arrow on phones) sits midway between "Hour" and the first cell.
 - Phones, tax page: a result is on the first screen. The intro line is gone, amount, currency and period sit on one row, the explanations fold under "How to read the results", and a short list shows every regime's monthly net, most first (★ most money, ⚠ not allowed at this income).
 - Phones, "How much do I want to earn?": one "Gross" column, the amount per month in large and per year small under it, with the regime's pill above its name, so the rows are even.
 - The triangle on the dropdown buttons (platform, bank, currency, period) turns up while the list is open, like the other chevrons.
@@ -23,7 +28,12 @@ Steps 155– of the development history.
 - Phones: the Converter | Taxes switch is centred under the app's name, and the button to the tax page reads "See the taxes for this income" on one line and the amount on the next.
 - The grid's header shows each currency symbol in a small pill, like the chips and the rate cards.
 
+### Development
+- Visual tests, run on demand (`npm run test:visual`): both tabs, both languages, at 360, 390, 412, 700, 1280 and 1440 px, compared pixel by pixel with reference screenshots, so an unwanted shift on a phone or a desktop shows up without checking by eye.
+
 ### Fixed
+- VAT: the § links to the law each start on a line of their own, and the "§" never stays alone at the end of a line.
+- Payment calendar: every deadline under "Later" has its card; every second one in a month used to have none.
 - A word put into an amount from the phone keyboard's clipboard strip (which types it in, without pasting) is refused with the same message as a pasted one.
 - The two "Close" buttons that looked like links: a × in the corner of the "copy this link" panel, an outlined button under the install steps.
 - When the browser blocks copying the link, the settings menu closes, so the panel with the link no longer sits on top of it.
@@ -370,8 +380,16 @@ Every change since development of the app started, in the order it was made, gro
 174. Copy blocked: `TopActions` closes its menu before showing the manual-copy panel (both had stayed open, overlapping). A button audit (every visible `button` and `summary` on both pages, in both menus and both panels, looking for no border and no fill) found only the two underlined "Close" buttons (`.link-btn`) out of style; the rest are plain by design (switch options, menu items, section titles, × icons). Prototype 12 compares two ways to fix them.
 175. The pasted-word toast never showed on the user's phone: Android keyboards put clipboard text in by typing it (`insertText`), with no paste event. `refuseWord(before, after)` checks what a change inserted (`insertedText`, the part between the common start and end) and refuses two or more characters without a digit; `refuseWordIn` does the same for the uncontrolled fields (custom rate, fee), remembering their last accepted text. One letter typed at a time is not caught (the field shows it as invalid). Browser check: on the old build a word typed in at once went into the grid cell, custom rate and fee with no toast; now refused in all four kinds of field.
 176. Close buttons from prototype 12 (the user's pick: B for the copy panel, A for the install steps): `.panel-x` (a × in the corner, the panel padded for it) and `.panel-btn` (outlined, on the right); `.link-btn` and its unused table rules removed. New browser check `taxe-mobil` (19 steps: the phone ranking's order, ★ and ⚠ against the cards, the folded help, the one-column net to gross for monthly and yearly targets, and the desktop unchanged); `toasts` grew to 41 steps.
+177. The hour row's label and arrow share a `.start-wrap`; on phones it is a flex row where the arrow fills the space after the word, centred, with a -10px right margin over the column's and the cell's padding. Measured at 360, 390 and 412 px in both languages: the arrow's centre is 0.0 px from the middle of the gap. Desktop screenshots unchanged.
+178. The same on desktop: `.start-tag` is now a flex item that fills the space after the word, with the pill inside it (`.start-tag > span`), centred. It reaches 16px over the column's and the cell's padding and has 12px of padding each side, so the column keeps its width (8px at least between the word and the tag) and the cells don't move; `align-items: baseline` and the pill's 2px lift keep it on the word's line. A first try had moved the grid 8px left and lowered the tag; measured against the pushed version at 700, 1280 and 1440 px in both languages, the cells and the tag's height are now identical, with 12px on each side of the tag. On phones the inner text keeps a 0 size and the arrow is pixel-identical to the approved one.
+179. Toast text on phones from prototype 13 (the user's pick, C): title 0.85rem, hint 0.8rem, same width as before (clear of the Tools dot). Full-width variants A and B, which would fit the longer titles on one line, were not chosen.
+180. Toast exit: closing (×, the button, or the timer) adds `.leaving` (`toast-out`, 0.22 s, down 24 px and fading) and removes the toast after `OUT_MS`; each new toast gets a fresh key so it plays `toast-in`. The same message arriving while one goes out brings it back. No animation with reduced motion. Browser check: 3 new steps in `toasts`.
+181. VAT sources: `.vat-source` is a block of its own width under the note (one link per line), with a no-break space after "§". At 360 px the first link took 3 lines with "§" left at the end of the note's line; now 2.
+182. Calendar "Later" list: the rows were striped with `:nth-child(odd)`, so the second deadline in a month had no background. Every row now has `--surface-2`, 6px apart.
+183. Visual tests with Playwright 1.64.1 (`@playwright/test`, the installed Chrome via `channel: 'chrome'`): `playwright.config.ts`, `tests/visual/app.ts` (`openApp`: fixed date 2026-11-04 with `page.clock`, `?lang=`, fonts loaded, all animations and transitions off) and `tests/visual/pages.pw.ts` (whole-page screenshots of both tabs in both languages). Six projects: phones at 360/390/412 (touch, 2x), 700, 1280 and 1440; dark scheme, service worker blocked. The web server runs `vite build --mode visual`, which aliases `src/data/rates.json` and `market-rates.json` to `tests/visual/fixtures` and builds to `dist-visual/`, then `vite preview` on port 4174. Zero tolerance (`maxDiffPixels: 0`, `threshold: 0`): the default colour threshold missed a card losing its background. Stable over 5 runs in a row (24/24 each). Negative controls, each caught: the calendar's striping back (12 tax-page tests), the VAT links inline again (12), the grid 1px to the right (12 converter tests), the phone arrow 1px to the right (the 6 phone converter tests). Not part of `npm test` or the deploy; results, report, build and the reference screenshots (12 MB, Windows rendering) are gitignored.
 
-[Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.3.0...v1.0.0
 [0.3.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v0.1.0...v0.2.0
