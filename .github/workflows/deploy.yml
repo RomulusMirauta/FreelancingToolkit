@@ -32,6 +32,9 @@ jobs:
         run: npm run rates
       # Tests and build run on the fresh rates. If either fails, nothing is committed or deployed,
       # and GitHub Pages keeps serving the last good version.
+      # The linters only look at the code, which a scheduled run doesn't change: they never hold up new rates.
+      - if: github.event_name != 'schedule'
+        run: npm run lint
       - run: npm test
       - run: npm run build
       - name: Commit the new rates snapshots

@@ -97,6 +97,8 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
 
 
   return (
+    // hoverProps only reads refs inside its event handlers, not while rendering.
+    // eslint-disable-next-line react/refs
     <div className={`top-actions hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
       <button type="button" className="top-btn menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={t.advanced} title={t.advanced}>
         <GearIcon />

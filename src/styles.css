@@ -121,7 +121,7 @@ body {
 #root {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 52px 16px 80px;
 }
 
 h1, h2 { margin: 0; line-height: 1.2; letter-spacing: -0.01em; }
@@ -142,7 +142,7 @@ button, summary, [role='option'], [role='radio'], [role='menuitem'], label:has(>
 input, textarea { -webkit-user-select: text; user-select: text; }
 .small { font-size: 0.85rem; }
 
-.app-header { margin: var(--space-2) 0 var(--space-5); }
+.app-header { margin: var(--space-2) 0 var(--space-5); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
 .app-header p { margin: 2px 0 0; font-size: var(--text-sm); }
 .brand { display: flex; align-items: center; gap: var(--space-3); }
 .brand-mark { flex: none; display: block; width: 44px; height: 44px; border-radius: 10px; box-shadow: var(--shadow-1); }
@@ -319,13 +319,14 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
   font-size: 0.9rem;
   letter-spacing: 0.03em;
   transition: background var(--dur-1) var(--ease-standard), border-color var(--dur-1) var(--ease-standard), color var(--dur-1);
+  display: inline-flex;
+  align-items: center;
 }
 .chip:hover { border-color: var(--accent); color: var(--text); }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .chip.on:hover { filter: brightness(1.1); }
 .chip:disabled { cursor: not-allowed; }
 /* On a chip the symbol sits in its own small pill, set apart from the code. */
-.chip { display: inline-flex; align-items: center; }
 .chip .cur-sym {
   margin-left: 6px;
   margin-right: -6px;
@@ -491,10 +492,13 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
   align-items: baseline;
   gap: 4px 12px;
   list-style: none;
+  margin: -6px -8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--dur-1);
 }
 .fold > summary::-webkit-details-marker { display: none; }
-.fold > summary h2 { margin: 0; }
-.fold > summary h2 { display: inline-flex; align-items: center; }
+.fold > summary h2 { margin: 0; display: inline-flex; align-items: center; }
 /* A drawn chevron, the same size folded and open: points right, turns down when open. */
 .fold > summary h2::before {
   content: ''; flex: none; width: 7px; height: 7px; margin: 0 12px 0 2px;
@@ -504,7 +508,6 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 .fold[open] > summary h2::before { transform: translateY(-2px) rotate(45deg); }
 .fold > summary:hover h2::before { border-color: var(--accent); }
 /* The whole summary row is the target, with a quiet hover. */
-.fold > summary { margin: -6px -8px; padding: 6px 8px; border-radius: var(--radius-sm); transition: background-color var(--dur-1); }
 .fold > summary:hover { background: var(--surface-2); }
 .fold > summary > .muted { font-size: var(--text-sm); }
 .fold[open] > summary { margin-bottom: var(--space-3); }
@@ -541,7 +544,6 @@ footer { margin: 24px 0 8px; text-align: center; }
 
 
 /* Header navigation */
-.app-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
 .views {
   position: relative;
   /* Sideways drags move the thumb; an up/down swipe scrolls the page (the browser cancels the press, so no tab changes). */
@@ -568,8 +570,9 @@ footer { margin: 24px 0 8px; text-align: center; }
   /* Same weight active or not, so the buttons keep their width and the switch never shifts. */
   font-weight: 600;
   transition: background 0.15s, color 0.15s;
+  position: relative;
+  z-index: 1;
 }
-.views button { position: relative; z-index: 1; }
 .views button:hover:not([aria-current='page']) { color: var(--text); }
 .views button[aria-current='page'] { color: var(--surface); }
 /* The green thumb glides (and stretches) to the open section; it can be dragged. */
@@ -598,7 +601,22 @@ footer { margin: 24px 0 8px; text-align: center; }
 
 /* Taxes */
 /* A filled triangle on the dropdown buttons (platform, bank, currency, period): down, and up while the list is open. */
-.currency-btn { position: relative; }
+.currency-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 5.5rem;
+  justify-content: space-between;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
 .currency-btn::after {
   content: ''; position: absolute; right: 10px; top: 50%; width: 0; height: 0;
   border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid currentColor;
@@ -609,7 +627,7 @@ footer { margin: 24px 0 8px; text-align: center; }
 .income .income-amount input, .income .currency-btn { background-color: var(--edit-bg); border: 1.5px solid var(--edit); }
 .income .currency-btn:focus-visible, .income .income-amount input:focus { outline: none; box-shadow: 0 0 0 3px var(--edit-strong-bg); }
 .income {display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin-bottom: 16px; }
-.income input { text-align: right; }
+.income input { text-align: right; font-variant-numeric: tabular-nums; }
 .income-hint, .income-total { flex-basis: 100%; margin: 0; }
 /* Hint and total read as one block under the fields. */
 .income-hint + .income-total { margin-top: -6px; }
@@ -665,12 +683,11 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
 
 /* Floating reset button, always on top; the page gets bottom room so it never hides the footer. */
-#root { padding-bottom: 80px; }
 .reset-wrap { position: fixed; right: 16px; bottom: 16px; z-index: 1000; display: grid; justify-items: end; gap: 8px; }
 /* Page reset above app reset, both as wide as the wider one. */
 .reset-row { display: grid; gap: 8px; justify-items: stretch; }
@@ -742,9 +759,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .reset-confirm p { margin: 0 0 12px; font-size: 0.9rem; color: var(--muted); }
 .reset-confirm .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .reset-confirm button { border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 500; }
-.reset-confirm .secondary { border: 1px solid var(--border); background: var(--surface); }
+.reset-confirm .secondary { border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .reset-confirm .danger { border: 1px solid var(--danger); background: var(--danger); color: var(--surface); }
-.reset-confirm .secondary { color: var(--text); }
 .reset-confirm .secondary:hover { background: var(--surface-2); }
 .reset-confirm .danger:hover { filter: brightness(1.08); }
 
@@ -825,11 +841,9 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .lang-switch button:hover:not([aria-pressed='true']), .theme-switch button:hover:not([aria-pressed='true']) { color: var(--text); }
 
 /* Tax board: every regime side by side. The taxes view gets a wider page. */
-.income-main input { font-size: 1.2rem; font-weight: 700; background: var(--edit-bg); border: 2px solid var(--edit); }
+.income-main input { font-size: 1.2rem; font-weight: 700; background: var(--edit-bg); border: 2px solid var(--edit); width: clamp(8rem, calc(var(--chars, 9) * 1ch + 1.4em), 15rem); }
 /* The amount box grows with the amount (one digit ≈ 1ch with tabular figures), between a tidy minimum and maximum. */
-.income input { font-variant-numeric: tabular-nums; }
-.income-main input { width: clamp(8rem, calc(var(--chars, 9) * 1ch + 1.4em), 15rem); }
-.income-amount input { width: clamp(7rem, calc(var(--chars, 9) * 1ch + 1.4em), 13rem); }
+.income-amount input { width: clamp(7rem, calc(var(--chars, 9) * 1ch + 1.4em), 13rem); text-align: right; }
 /* Currency and period beside the gross income: same border, height, size and weight as the amount. */
 .income-row-main .currency-btn { font-size: 1.2rem; font-weight: 700; border-width: 2px; padding-top: 6px; padding-bottom: 6px; }
 /* Labels sized to the larger boxes: Venit brut, Monedă, Per. */
@@ -853,6 +867,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   background: var(--surface);
   box-shadow: var(--shadow-1);
   transition: box-shadow var(--dur-2) var(--ease-standard), border-color var(--dur-2);
+  min-width: 0;
 }
 .regime:not(.is-best):hover { box-shadow: var(--shadow-2); }
 .regime > :first-child { border-radius: 13px 13px 0 0; }
@@ -890,7 +905,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .regime-name .kw-pill { flex: none; }
 .regime-name .kw-rest { min-width: 0; }
 .regime.is-ref:not(.is-best) { border-color: var(--muted); box-shadow: 0 0 0 2px var(--muted); }
-.regime.is-best .delta.ref { color: var(--best-text); }
+.regime.is-best .delta.ref { color: var(--best-text); background: var(--best); }
 .regime-head {
   display: flex;
   justify-content: space-between;
@@ -933,14 +948,12 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .delta.neg { background: var(--neg-bg); color: var(--neg); }
 .delta.eq { background: var(--eq-bg); color: var(--eq); }
 .delta.ref { background: var(--muted); color: var(--surface); }
-.regime.is-best .delta.ref { background: var(--best); }
 
 /* Options: the editable part of each card, tinted like the converter's editable cells. */
 /* The options area takes up the extra height, so notes, disadvantages and details line up at the bottom of every card in a row. */
 .regime-options { flex: 1 0 auto; display: grid; align-content: start; gap: 8px; padding: 10px 12px; background: var(--edit-bg); border-top: 1px solid var(--border); }
-.regime-options .field { font-size: 0.82rem; }
+.regime-options .field { font-size: 0.82rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 /* Label on the left, a compact input on the right: long labels wrap, inputs stay the size of their content. */
-.regime-options .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .regime-options .field > span:first-child { flex: 1; min-width: 0; }
 .regime-options .field-input { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 .regime-options .field-input input { border-color: var(--edit); }
@@ -1023,21 +1036,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .side-inputs .field-input input { width: 9rem; background: var(--edit-bg); border-color: var(--edit); }
 
 /* Currency choice on the taxes page: looks like a select, opens the searchable list. */
-.currency-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 5.5rem;
-  justify-content: space-between;
-  padding: 6px 28px 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background-color: var(--surface);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
 .currency-btn .muted { flex: 1; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 9rem; }
 .add-list li.selected strong { color: var(--accent); }
 .list-pop { width: auto; min-width: 11rem; }
@@ -1050,8 +1048,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .list-pop input + .add-list { margin-top: 6px; }
 /* Longer lists in two columns, read down the first, then the second. */
 .list-pop.two-cols { width: min(470px, calc(100vw - 32px)); }
-.list-pop.two-cols .add-list { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; }
-.list-pop.two-cols .add-list { overflow: visible; }
+.list-pop.two-cols .add-list { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; overflow: visible; }
 .list-pop.two-cols .add-list li strong { flex: 1 1 auto; min-width: 0; white-space: normal; }
 .list-empty { margin: 8px 4px 2px; }
 /* In a card's options, the list button gets the lime box like the other inputs. */
@@ -1064,8 +1061,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .pay-choice .segmented button { padding: 4px 10px; font-size: 0.82rem; }
 /* As wide as its two buttons, not the whole card. */
 .pay-choice .segmented { justify-self: start; width: fit-content; }
-
-.income-amount input { text-align: right; }
 
 /* Reference choice in each card header: one card is the comparison base, like a radio button. */
 .ref-toggle {
@@ -1094,7 +1089,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .theme-switch button { padding: 4px 8px; font-size: 0.9rem; line-height: 1; }
 
 /* A strip at the top for the corner switches (theme, language), so they never cover the header at any width. */
-#root { padding-top: 52px; }
 
 /* ---------- Menus that open on hover or click (Advanced options, Actions) ---------- */
 /* .top-actions is already relative and .reset-wrap fixed: both anchor their panel. */
@@ -1302,7 +1296,6 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .take-home, .delta, .regime-stats dd, .stat-row dd, .rate-tile-rate, .income-total, .fold > summary > .muted, .breakdown td {
   overflow-wrap: anywhere;
 }
-.regime { min-width: 0; }
 
 /* The gear on "Settings & options": a short turn when the menu opens (none for reduced motion). */
 .top-actions .menu-trigger .gear { flex: none; transition: transform var(--dur-3) var(--ease-standard); }

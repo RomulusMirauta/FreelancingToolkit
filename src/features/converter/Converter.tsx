@@ -147,6 +147,8 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const brace = useBrace(scrollRef, columns.length);
 
+  // Read on every render on purpose, so a page left open notices when the rates get old.
+  // eslint-disable-next-line react/purity
   const stale = isStale(BNR_RATES.date, new Date());
   const anchor = columns.includes('EUR') ? 'EUR' : columns[0]!;
   const hourAnchor = valueAt('hour', anchor);

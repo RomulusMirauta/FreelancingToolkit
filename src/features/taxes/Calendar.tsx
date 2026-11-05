@@ -24,6 +24,8 @@ function groupByMonth(list: Deadline[]): [string, Deadline[]][] {
 export function Calendar() {
   const { calendar: t, locale } = useT();
   const [filter, setFilter] = useState<Filter>('all');
+  // Read on every render on purpose, so a page left open moves on to the next day.
+  // eslint-disable-next-line react/purity
   const today = new Date();
   const list = upcomingDeadlines(today).filter((d) => filter === 'all' || d.audience.includes(filter));
   const monthly = nextMonthly(today);

@@ -20,6 +20,8 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
       shownLang.current = lang;
       setText(formatEditableGrouped(value));
     }
+    // Only changes from outside: following `text` too would reformat the amount while it is being typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, lang]);
 
   useLayoutEffect(() => {

@@ -40,6 +40,8 @@ export function Fold({ id, title, summary, className, children }: {
       running.current = null;
     };
     if (open) {
+      // Opening ends a close still in progress, before the first frame (this is a layout effect).
+      // eslint-disable-next-line react/set-state-in-effect
       setClosing(false);
       running.current = body.animate(
         [{ height: '0px', opacity: 0 }, { height, opacity: 1 }],

@@ -48,6 +48,8 @@ export function ResetApp({ page }: { page: Page }) {
   }, [asking, menu.rootRef]);
 
   return (
+    // hoverProps only reads refs inside its event handlers, not while rendering.
+    // eslint-disable-next-line react/refs
     <div className={`reset-wrap hover-menu${menu.open && !asking ? ' open' : ''}${asking ? ' asking' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
       {asking && (
         <div className="reset-confirm" role="alertdialog" aria-modal="false" aria-labelledby="reset-title" aria-describedby="reset-desc">
