@@ -10,6 +10,7 @@
       "tax": 163,
       "net": 2574,
       "cam": 84,
+      "employer_top_up": 0,
       "employer_cost": 4134
     },
     "4325 H2": {
@@ -22,6 +23,7 @@
       "tax": 182,
       "net": 2699,
       "cam": 93,
+      "employer_top_up": 0,
       "employer_cost": 4418
     },
     "5000 H1": {
@@ -34,6 +36,7 @@
       "tax": 283,
       "net": 2967,
       "cam": 113,
+      "employer_top_up": 0,
       "employer_cost": 5113
     },
     "5000 H2": {
@@ -46,6 +49,7 @@
       "tax": 269,
       "net": 2981,
       "cam": 113,
+      "employer_top_up": 0,
       "employer_cost": 5113
     },
     "10000 H2": {
@@ -58,6 +62,7 @@
       "tax": 650,
       "net": 5850,
       "cam": 225,
+      "employer_top_up": 0,
       "employer_cost": 10225
     },
     "6000 H1 2 dep u26 1 child": {
@@ -70,6 +75,7 @@
       "tax": 277,
       "net": 3623,
       "cam": 135,
+      "employer_top_up": 0,
       "employer_cost": 6135
     }
   },
@@ -196,17 +202,17 @@
       "take_home": 228295.91999999998
     },
     "509850": {
-      "regime": "profit",
+      "regime": "micro",
       "revenue": 509850,
       "salary_gross": 50250,
       "cam": 1062,
-      "company_tax": 73366.08,
-      "profit": 385171.92,
-      "dividend_tax": 61627.5072,
-      "net_dividends": 323544.4128,
+      "company_tax": 5098.5,
+      "profit": 453439.5,
+      "dividend_tax": 72550.32,
+      "net_dividends": 380889.18,
       "cass_dividends": 9720.0,
       "salary_net": 31638,
-      "take_home": 345462.4128
+      "take_home": 402807.18
     },
     "600000": {
       "regime": "profit",

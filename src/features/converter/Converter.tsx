@@ -237,7 +237,8 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                         onFocus={(e) => {
                           startRef.current = source;
                           setEditing({ period, currency: code, text: formatEditable(valueAt(period, code)) });
-                          requestAnimationFrame(() => e.target.select());
+                          // Only if focus stayed: select() would pull it back from wherever a fast Tab has moved it.
+                          requestAnimationFrame(() => { if (document.activeElement === e.target) e.target.select(); });
                         }}
                         onChange={(e) => onType(period, code, e.target.value)}
                         onPaste={refuseNonNumberPaste}

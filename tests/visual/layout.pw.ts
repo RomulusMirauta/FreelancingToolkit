@@ -77,7 +77,8 @@ for (const lang of LANGS) {
     expect(links.length).toBeGreaterThanOrEqual(2);
     for (const [i, l] of links.entries()) {
       expect(l.starts).toBe(true);
-      expect(l.markTop).toBe(l.nextTop);
+      // Under a pixel: WebKit reports the two text nodes 0.008 px apart; a § on its own line is a whole line away.
+      expect(Math.abs(l.markTop - l.nextTop)).toBeLessThan(1);
       expect(l.left).toBe(l.parentLeft);
       if (i > 0) expect(l.top).toBeGreaterThanOrEqual(links[i - 1]!.bottom);
     }
@@ -95,6 +96,52 @@ for (const lang of LANGS) {
     }
   });
 }
+
+test('VAT: the share from clients in Romania drives the bar, stays in the address and survives a reload', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  const meter = page.locator('.vat-meter');
+  const field = meter.locator('input');
+  await expect(field).toHaveValue('100');
+  await expect(meter).toHaveClass(/near/);
+  const full = parseFloat(await page.locator('.vat-bar > span').evaluate((el) => (el as HTMLElement).style.width));
+
+  await field.fill('20');
+  await expect(meter).toHaveClass(/under/);
+  await expect(meter.locator('.vat-verdict')).toHaveText('Ești sub plafon.');
+  expect(parseFloat(await page.locator('.vat-bar > span').evaluate((el) => (el as HTMLElement).style.width))).toBeCloseTo(full / 5, 3);
+  await expect(page).toHaveURL(/vat_romania=20/);
+
+  await field.fill('101');
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
+  await expect(meter).toHaveClass(/under/);
+
+  await field.fill('20');
+  await page.reload();
+  await expect(meter.locator('input')).toHaveValue('20');
+  await expect(meter).toHaveClass(/under/);
+});
+
+test('VAT: the verdict has its own line, and the field shares a line with its question', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  const boxes = await page.evaluate(() => {
+    const box = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+    const words = document.createRange();
+    words.selectNodeContents(document.querySelector('.vat-meter p strong')!);
+    const rects = [...words.getClientRects()];
+    return {
+      strongBottom: Math.max(...rects.map((r) => r.bottom)),
+      verdictTop: box('.vat-verdict').top,
+      label: box('.vat-romania > span:first-child'),
+      field: box('.vat-romania .fee-pct'),
+      head: box('.vat-meter-head strong'),
+    };
+  });
+  expect(boxes.verdictTop).toBeGreaterThanOrEqual(boxes.strongBottom - 1);
+  expect(boxes.field.left).toBeGreaterThan(boxes.label.right);
+  expect(boxes.field.top).toBeLessThan(boxes.label.bottom);
+  expect(boxes.field.bottom).toBeGreaterThan(boxes.label.top);
+  expect(Math.abs(boxes.field.right - boxes.head.right)).toBeLessThanOrEqual(1);
+});
 
 /** A toast waiting for the page, the way a reload hands one over. */
 const withToast = (page: Page) =>
@@ -126,4 +173,13 @@ test('toast goes out with its animation, then disappears', async ({ page }) => {
   await expect(toast).toHaveClass(/leaving/);
   expect(await toast.evaluate((el) => getComputedStyle(el).animationName)).toBe('toast-out');
   await expect(toast).toHaveCount(0);
+});
+
+test('Tab goes through the table even when pressed faster than a frame', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  await page.locator('[data-cell="0-0"]').focus();
+  // Selecting the text a frame later used to pull focus back and hold it in the table.
+  for (let i = 0; i < 60; i++) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-cell'))).toBe(false);
 });

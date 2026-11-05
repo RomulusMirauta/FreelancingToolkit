@@ -18,8 +18,13 @@ export interface EmployeeMonth {
   tax: number;
   net: number;
   cam: number;
+  /** CAS and CASS the employer pays on top, for a salary under the minimum base. */
+  employerTopUp: number;
   employerCost: number;
 }
+
+/** The least that CAS and CASS are due on: the minimum wage less the untaxed amount (Cod fiscal art. 146 alin. (5^6), art. 168 alin. (6^1); OUG 89/2025). */
+export const contributionFloor = (half: Half) => (half === 1 ? P.SalMin - P.SumaNetax1 : P.SalMinIul - P.SumaNetax2);
 
 /**
  * One month of salary. Half 1 is January–June, half 2 is July–December: the minimum wage,
@@ -44,9 +49,12 @@ export function employeeMonth(gross: number, half: Half, opts: EmployeeOptions =
   deduction = Math.min(deduction, beforeDeduction);
   const tax = rnd((beforeDeduction - deduction) * P.CotaImpozit);
   const cam = rnd(base * P.CotaCAM);
+  // The employee's net is not touched: the employer bears the difference (art. 146 alin. (5^9)). Assumes none of the exceptions in alin. (5^7).
+  const floor = contributionFloor(half);
+  const employerTopUp = gross > 0 && gross < floor ? rnd(floor * P.CotaCAS) - cas + rnd(floor * P.CotaCASS) - cass : 0;
   return {
     gross, mw: MW, nontaxable, cas, cass, deduction, tax,
-    net: gross - cas - cass - tax, cam, employerCost: gross + cam,
+    net: gross - cas - cass - tax, cam, employerTopUp, employerCost: gross + cam + employerTopUp,
   };
 }
 
@@ -57,6 +65,7 @@ export interface EmployeeYear {
   tax: number;
   net: number;
   cam: number;
+  employerTopUp: number;
   employerCost: number;
 }
 
@@ -67,6 +76,6 @@ export function employeeYear(monthlyGross: number, opts: EmployeeOptions = {}): 
   const sum = (k: keyof EmployeeYear) => 6 * h1[k] + 6 * h2[k];
   return {
     gross: sum('gross'), cas: sum('cas'), cass: sum('cass'), tax: sum('tax'),
-    net: sum('net'), cam: sum('cam'), employerCost: sum('employerCost'),
+    net: sum('net'), cam: sum('cam'), employerTopUp: sum('employerTopUp'), employerCost: sum('employerCost'),
   };
 }

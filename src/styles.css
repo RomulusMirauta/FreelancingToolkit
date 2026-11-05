@@ -15,6 +15,9 @@
   --danger: #b3261e;
   /* Lime marks things the user can edit. */
   --edit: #65a30d;
+  --start-tag-bg: #4d7c0f;
+  --delta-vs-opacity: 1;
+  --best-ref-opacity: 1;
   --edit-bg: #f3fbe4;
   --edit-strong-bg: #e2f5c0;
   --edit-text: #3f6212;
@@ -66,12 +69,15 @@
     --warn-solid: #fbbf24; --on-warn: #1f1500;
     --danger: #ff8a80;
     --edit: #a3e635;
+    --start-tag-bg: #a3e635;
+    --delta-vs-opacity: 1;
+    --best-ref-opacity: 0.75;
     --edit-bg: rgb(163 230 53 / 0.07);
     --edit-strong-bg: rgb(163 230 53 / 0.16);
     --edit-text: #d9f99d;
     --pos: #4ade80; --pos-bg: rgb(74 222 128 / 0.15);
-    --neg: #f87171; --neg-bg: rgb(248 113 113 / 0.15);
-    --eq: #a1a1aa; --eq-bg: rgb(161 161 170 / 0.15);
+    --neg: #f87171; --neg-bg: rgb(248 113 113 / 0.08);
+    --eq: #a1a1aa; --eq-bg: rgb(161 161 170 / 0.08);
     --head: #2f3835;
     --on-accent: #08241c;
     --shadow-1: 0 1px 2px rgb(0 0 0 / 0.3);
@@ -95,12 +101,15 @@
   --warn-solid: #fbbf24; --on-warn: #1f1500;
   --danger: #ff8a80;
   --edit: #a3e635;
+  --start-tag-bg: #a3e635;
+  --delta-vs-opacity: 1;
+  --best-ref-opacity: 0.75;
   --edit-bg: rgb(163 230 53 / 0.07);
   --edit-strong-bg: rgb(163 230 53 / 0.16);
   --edit-text: #d9f99d;
   --pos: #4ade80; --pos-bg: rgb(74 222 128 / 0.15);
-  --neg: #f87171; --neg-bg: rgb(248 113 113 / 0.15);
-  --eq: #a1a1aa; --eq-bg: rgb(161 161 170 / 0.15);
+  --neg: #f87171; --neg-bg: rgb(248 113 113 / 0.08);
+  --eq: #a1a1aa; --eq-bg: rgb(161 161 170 / 0.08);
   --head: #2f3835;
   --on-accent: #08241c;
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.3);
@@ -224,7 +233,7 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
   display: inline-block;
   padding: 1px 7px;
   border-radius: 999px;
-  background: var(--edit);
+  background: var(--start-tag-bg);
   color: var(--surface);
   font-size: 0.7rem;
   font-weight: 700;
@@ -943,7 +952,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
-.delta .vs { font-weight: 400; font-size: 0.78rem; opacity: 0.9; }
+.delta .vs { font-weight: 400; font-size: 0.78rem; opacity: var(--delta-vs-opacity); }
 .delta.pos { background: var(--pos-bg); color: var(--pos); }
 .delta.neg { background: var(--neg-bg); color: var(--neg); }
 .delta.eq { background: var(--eq-bg); color: var(--eq); }
@@ -977,11 +986,15 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 
 /* VAT: the threshold meter and the cases by client location. */
 .vat-meter { margin: 0 0 18px; max-width: 640px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+/* The question above the bar: its field lines up with the percentage under it. */
+.vat-romania { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); font-size: var(--text-sm); font-weight: 600; }
+.vat-romania .fee-pct { flex: none; font-weight: 400; }
+.vat-romania input { width: 4rem; }
+.vat-verdict { display: block; margin-top: 2px; }
 .vat-meter-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: var(--text-sm); color: var(--muted); }
 .vat-meter-head strong { color: var(--text); font-size: var(--text-lg); }
 .vat-bar { position: relative; height: 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
 .vat-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-3) var(--ease-standard); }
-.vat-tick { position: absolute; left: 80%; top: 0; bottom: 0; width: 2px; background: var(--muted); opacity: 0.45; }
 .vat-scale { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--text-xs); color: var(--muted); }
 .vat-meter p { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0 0; font-size: var(--text-sm); }
 .state-icon {
@@ -1083,6 +1096,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .ref-toggle:hover:not(.on) { opacity: 1; background: rgb(255 255 255 / 0.12); }
 .ref-toggle.on { opacity: 1; background: #fff; border-color: #fff; color: var(--fam); cursor: default; }
 .regime.is-best .ref-toggle { color: var(--best-text); border-color: color-mix(in srgb, var(--best-text) 45%, transparent); }
+.regime.is-best .ref-toggle:not(.on, :hover) { opacity: var(--best-ref-opacity); }
 .regime.is-best .ref-toggle:hover:not(.on) { background: color-mix(in srgb, var(--best-text) 12%, transparent); }
 .regime.is-best .ref-toggle.on { background: var(--best-text); border-color: var(--best-text); color: var(--best); }
 

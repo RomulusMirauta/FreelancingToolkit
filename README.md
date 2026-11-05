@@ -1,11 +1,8 @@
 # FreelancingToolkit
 
-**Open the app: <https://romulusmirauta.github.io/FreelancingToolkit/>**
+### <br>Open the app: <https://romulusmirauta.github.io/FreelancingToolkit/>
 
-![Views per week](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dweek&query=%24.count&label=Views%20per%20week&color=1f6f5c&labelColor=232826&cacheSeconds=600)
-![per month](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dmonth&query=%24.count&label=per%20month&color=1f6f5c&labelColor=232826&cacheSeconds=600)
-![per year](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dyear&query=%24.count&label=per%20year&color=1f6f5c&labelColor=232826&cacheSeconds=600)
-![total](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json&query=%24.count&label=total&color=1f6f5c&labelColor=232826&cacheSeconds=600)
+<p><br><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dweek&amp;query=%24.count&amp;label=Views%20per%20week&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="Views per week" width="174"> <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dmonth&amp;query=%24.count&amp;label=per%20month&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="per month" width="130"> <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dyear&amp;query=%24.count&amp;label=per%20year&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="per year" width="116"> <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulusmirauta.goatcounter.com%2Fcounter%2FTOTAL.json&amp;query=%24.count&amp;label=total&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="total" width="84"><br><br></p>
 
 A small installable web app (a PWA, Progressive Web App) for freelancers paid in one currency and taxed in Romania.
 
@@ -63,10 +60,11 @@ npm run symbols    # rewrite src/data/currency-symbols.json
 npm run lint       # Oxlint for the code, Stylelint for the CSS (also runs when code is deployed, not on the daily rates update)
 npm run test:visual         # on demand: compare both tabs on phones, a tablet and desktops with reference screenshots
 npm run test:visual:update  # save new reference screenshots, after checking that a change looks right
+npm run test:browsers       # on demand: the exact layout checks in WebKit (close to Safari) and Firefox
 npm run release:check       # before a release: lint, unit tests, build and the visual tests
 ```
 
-The visual tests (Playwright, with the installed Chrome) build the app with fixed rates (`tests/visual/fixtures`) and a fixed date, then compare whole pages pixel by pixel. `tests/visual/layout.pw.ts` also measures specific layout decisions, so a failure there says what moved. A failure leaves the expected, actual and diff images in `tests/visual/results` and an HTML report you can open directly, with no server: `tests/visual/report/index.html`. The reference screenshots stay on the machine that made them, since another system renders text differently: on a new machine, run `test:visual:update` first. When the BNR or market rates gain a currency, copy `src/data/*rates.json` into the fixtures and update the screenshots.
+The visual tests (Playwright, with the installed Chrome) build the app with fixed rates (`tests/visual/fixtures`) and a fixed date, then compare whole pages pixel by pixel. `tests/visual/layout.pw.ts` also measures specific layout decisions, so a failure there says what moved, and `tests/visual/contrast.pw.ts` checks text contrast in both themes, including rare states it forces. A failure leaves the expected, actual and diff images in `tests/visual/results` and an HTML report you can open directly, with no server: `tests/visual/report/index.html`. The reference screenshots stay on the machine that made them, since another system renders text differently: on a new machine, run `test:visual:update` first. When the BNR or market rates gain a currency, copy `src/data/*rates.json` into the fixtures and update the screenshots. `test:browsers` needs the engines once: `npx playwright install webkit firefox`; it has no reference screenshots, since each engine draws text its own way.
 
 ## How it fits together
 

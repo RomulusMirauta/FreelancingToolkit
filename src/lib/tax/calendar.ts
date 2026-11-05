@@ -29,14 +29,15 @@ const on = (y: number, m: number, d: number) => nextWorkingDay(new Date(y, m - 1
 export function deadlinesIn(y: number): Deadline[] {
   return [
     // Income of the previous year (Declarația unică, D212): PFA, copyright, CASS on dividends and rents.
-    { kind: 'bonus', date: on(y, 4, 15), year: y - 1, audience: ['pfa', 'srl'] },
+    // The discount is on income tax, so not for an SRL owner whose D212 only has CASS on dividends.
+    { kind: 'bonus', date: on(y, 4, 15), year: y - 1, audience: ['pfa'] },
     { kind: 'du', date: on(y, 5, 25), year: y - 1, audience: ['pfa', 'srl'] },
     // Quarterly micro-enterprise and profit tax (D100), the 25th of the month after the quarter.
     { kind: 'microQ4', date: on(y, 1, 25), year: y - 1, audience: ['srl'] },
     ...[1, 2, 3].map((q) => ({ kind: 'microQ' as const, date: on(y, q * 3 + 1, 25), year: y, quarter: q, audience: ['srl' as const] })),
-    // Annual accounts within 150 days of the year end (Legea contabilității 82/1991, art. 36).
-    { kind: 'statements', date: nextWorkingDay(new Date(y - 1, 11, 31 + 150)), year: y - 1, audience: ['srl'] },
-    // Annual profit tax return (D101): the 25th of the sixth month after the year end.
+    // Annual accounts of a company with a calendar financial year (Legea contabilității 82/1991, art. 36 alin. (1) lit. a)).
+    { kind: 'statements', date: on(y, 5, 31), year: y - 1, audience: ['srl'] },
+    // Annual profit tax return (D101, Cod fiscal art. 42 alin. (1)).
     { kind: 'd101', date: on(y, 6, 25), year: y - 1, audience: ['srl'] },
   ];
 }
@@ -51,11 +52,21 @@ export function upcomingDeadlines(from: Date, months = 12): Deadline[] {
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
-/** The next monthly deadline (the 25th: salaries D112, dividend tax, VAT D300), on or after `from`. */
+/** What falls due on the 25th of a month; December's comes early, on the 21st or the working day before it (Cod de procedură fiscală, art. 155 alin. (2)). */
+function monthlyDue(y: number, m: number): Date {
+  if (m !== 12) return on(y, m, 25);
+  let x = new Date(y, 11, 21);
+  while (isDayOff(x)) x = new Date(y, 11, x.getDate() - 1);
+  return x;
+}
+
+/** The next monthly deadline (salaries D112, dividend tax, VAT D300), on or after `from`. */
 export function nextMonthly(from: Date): Date {
   const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  const thisMonth = on(start.getFullYear(), start.getMonth() + 1, 25);
-  return thisMonth >= start ? thisMonth : on(start.getFullYear(), start.getMonth() + 2, 25);
+  const thisMonth = monthlyDue(start.getFullYear(), start.getMonth() + 1);
+  if (thisMonth >= start) return thisMonth;
+  const next = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  return monthlyDue(next.getFullYear(), next.getMonth() + 1);
 }
 
 /** Whole days from `from` to `to` (calendar days, ignoring the time of day). */

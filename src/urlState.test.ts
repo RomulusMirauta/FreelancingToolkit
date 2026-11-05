@@ -60,6 +60,7 @@ describe('a changed setting reads back the same', () => {
     'ft.solverTarget': { amount: 9000, per: 'year', currency: 'USD' },
     'ft.sideJob': { salaryMonthly: 7000, sideMonthly: 2500 },
     'ft.taxRef': 'srlMicro',
+    'ft.vatRomania': 20,
     'ft.taxOptions': {
       ...DEFAULT_TAX_OPTIONS,
       employee: { dependants: 2, under26: true, schoolChildren: 3 },
@@ -112,6 +113,8 @@ describe('a broken address value is not used', () => {
 
   it('numbers out of range: negative, too big, a fee of 100%, an impossible working week', () => {
     expect(bad('ft.customRates', ['USD:-4'])).toBe(true);
+    expect(bad('ft.vatRomania', ['101'])).toBe(true);
+    expect(bad('ft.vatRomania', ['-1'])).toBe(true);
     expect(bad('ft.customRates', ['USD:0'])).toBe(true);
     expect(bad('ft.customRates', ['USD:1e40'])).toBe(true);
     expect(bad('ft.fees', ['upwork', '100', 'bank', '2'])).toBe(true);

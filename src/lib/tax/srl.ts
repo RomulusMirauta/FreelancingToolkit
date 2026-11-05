@@ -7,8 +7,8 @@ export type OwnerPay = 'cim' | 'mandate';
 
 /**
  * One month of a mandate contract (income assimilated to salary): CAS, CASS and income tax at the salary
- * rates, but no personal deduction and no untaxed minimum-wage amount. CAM is included; sources disagree on
- * whether it is due on mandate contracts, which the app flags as "to confirm".
+ * rates, but no personal deduction and no untaxed minimum-wage amount. CAM is due as well (Cod fiscal
+ * art. 220^4 alin. (1) lit. d) and e)).
  */
 export function mandateMonth(gross: number): { cas: number; cass: number; tax: number; cam: number; net: number } {
   const cas = rnd(gross * P.CotaCAS);
@@ -25,7 +25,8 @@ export function ownerSalaryYear(employed: boolean, pay: OwnerPay = 'cim'): { gro
   return { gross: 6 * P.SalMin + 6 * P.SalMinIul, cam: 6 * h1.cam + 6 * h2.cam, net: 6 * h1.net + 6 * h2.net };
 }
 
-export const MICRO_CEILING_LEI = P.PlafonMicroEUR * P.CursEURPlafon;
+// Rounded to the ban: the bare product is a hair under 509,850, which would put revenue of exactly the ceiling over it.
+export const MICRO_CEILING_LEI = Math.round(P.PlafonMicroEUR * P.CursEURPlafon * 100) / 100;
 
 export function microEligible(revenue: number, ownerEmployed: boolean, otherEmployee = false, singleMicro = true): boolean {
   return revenue <= MICRO_CEILING_LEI && (ownerEmployed || otherEmployee) && singleMicro;

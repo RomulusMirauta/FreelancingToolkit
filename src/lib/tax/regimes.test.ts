@@ -2,10 +2,44 @@ import { describe, expect, it } from 'vitest';
 import golden from '../../../data/golden-2026.json';
 import { compareYear } from './compare';
 import { copyrightYear } from './copyright';
-import { employeeYear } from './employee';
+import { employeeMonth, employeeYear } from './employee';
 import { pfaYear } from './pfa';
 import { BOARD_REGIMES, DEFAULT_TAX_OPTIONS, computeRegime, computeSideJob, mergeTaxOptions } from './regimes';
-import { mandateMonth } from './srl';
+import { mandateMonth, srlYear } from './srl';
+
+describe('salary under the minimum base', () => {
+  it('the employer pays the rest of CAS and CASS, and the net stays', () => {
+    const h1 = employeeMonth(3000, 1);
+    expect(h1.employerTopUp).toBe(263); // 938 + 375 at the 3,750 base, less 750 + 300
+    expect(h1.employerCost).toBe(3000 + h1.cam + 263);
+    expect(h1.net).toBe(3000 - 750 - 300 - h1.tax);
+    expect(employeeMonth(3000, 2).employerTopUp).toBe(394); // 1,031 + 413 at the 4,125 base, less 750 + 300
+  });
+
+  it('stops at the base, and an empty salary owes nothing', () => {
+    expect(employeeMonth(3750, 1).employerTopUp).toBe(0);
+    expect(employeeMonth(4125, 2).employerTopUp).toBe(0);
+    expect(employeeMonth(0, 1).employerTopUp).toBe(0);
+  });
+
+  it('the card shows the note and the line only when they apply', () => {
+    const notes = (monthly: number) => computeRegime('employee', 12 * monthly, DEFAULT_TAX_OPTIONS).notes?.map((n) => n.kind);
+    expect(notes(3000)).toEqual(['belowMinimum']);
+    expect(notes(4000)).toEqual(['belowMinimum']); // under July's base only; the January-June top-up is 0
+    expect(notes(4200)).toEqual(['untaxedAmount']);
+    expect(notes(5000)).toEqual([]);
+    const lines = computeRegime('employee', 36_000, DEFAULT_TAX_OPTIONS).lines.map((l) => l.key);
+    expect(lines).toContain('employerTopUp');
+    expect(computeRegime('employee', 60_000, DEFAULT_TAX_OPTIONS).lines.map((l) => l.key)).not.toContain('employerTopUp');
+  });
+});
+
+describe('micro-enterprise ceiling', () => {
+  it('revenue of exactly 100,000 EUR at the 31.12.2025 rate is still micro', () => {
+    expect(srlYear(509_850).regime).toBe('micro');
+    expect(srlYear(509_850.01).regime).toBe('profit');
+  });
+});
 
 describe('tax board regimes', () => {
   it('with default options, match the comparison engine (and so the golden file)', () => {
@@ -48,10 +82,24 @@ describe('tax board regimes', () => {
     expect(r.lines.find((l) => l.key === 'netIncome')!.annual).toBe(108_000);
   });
 
-  it('PFA sick-leave insurance costs 1% of the minimum wage a month and is not deductible', () => {
-    const base = computeRegime('pfaReal', 120_000, DEFAULT_TAX_OPTIONS).takeHome;
-    const o = { ...DEFAULT_TAX_OPTIONS, pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, sickLeave: true } };
-    expect(base - computeRegime('pfaReal', 120_000, o).takeHome).toBeCloseTo(12 * 40.5, 6);
+  it('PFA sick-leave insurance is 1% of the declared income, between 1 and 3 minimum wages of each month, and not deductible', () => {
+    const cost = (annual: number, expensesMonthly = 0) => {
+      const pfaReal = { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly };
+      const off = { ...DEFAULT_TAX_OPTIONS, pfaReal };
+      const on = { ...DEFAULT_TAX_OPTIONS, pfaReal: { ...pfaReal, sickLeave: true } };
+      return computeRegime('pfaReal', annual, off).takeHome - computeRegime('pfaReal', annual, on).takeHome;
+    };
+    expect(cost(120_000)).toBeCloseTo(12 * 100, 6); // 10,000 a month, inside the limits
+    expect(cost(120_000, 8_000)).toBeCloseTo(6 * 40.5 + 6 * 43.25, 6); // 2,000 a month: the minimum wage of each half
+    expect(cost(600_000)).toBeCloseTo(6 * 121.5 + 6 * 129.75, 6); // 50,000 a month: three minimum wages
+    expect(cost(150_000)).toBeCloseTo(6 * 121.5 + 6 * 125, 6); // 12,500 a month: over the limit only until June
+  });
+
+  it('PFA on an income norm pays sick-leave insurance on the norm, not on the revenue', () => {
+    const norm = { ...DEFAULT_TAX_OPTIONS.pfaNorm, normYearly: 72_000 };
+    const off = { ...DEFAULT_TAX_OPTIONS, pfaNorm: norm };
+    const on = { ...DEFAULT_TAX_OPTIONS, pfaNorm: { ...norm, sickLeave: true } };
+    expect(computeRegime('pfaNorm', 300_000, off).takeHome - computeRegime('pfaNorm', 300_000, on).takeHome).toBeCloseTo(720, 6);
   });
 
   it('SRL owner paid by mandate: no personal deduction, so a lower net than CIM; still a micro-enterprise', () => {

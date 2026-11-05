@@ -36,3 +36,5 @@ dist-visual/
 tests/visual/results/
 tests/visual/report/
 tests/visual/__screenshots__/
+tests/visual/results-browsers/
+tests/visual/report-browsers/

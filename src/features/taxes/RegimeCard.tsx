@@ -5,6 +5,7 @@ import {
   NORM_LIMIT_LEI, SICK_LEAVE_MONTHLY_MAX, SICK_LEAVE_MONTHLY_MIN, ownerSalaryTaxesMonthly,
   type BoardRegime, type Notice, type RegimeResult, type TaxOptions,
 } from '../../lib/tax/regimes';
+import { contributionFloor } from '../../lib/tax/employee';
 import { MICRO_CEILING_LEI, type OwnerPay } from '../../lib/tax/srl';
 import { formatMoney, formatNumber } from '../../lib/ui/numbers';
 import { Breakdown, NumberField, Toggle } from './Breakdown';
@@ -87,6 +88,7 @@ export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome,
 
       <Options regime={regime} options={options} setOptions={setOptions} />
       {result.notice && <NoticeText notice={result.notice} />}
+      {result.notes?.map((n) => <NoticeText key={n.kind} notice={n} />)}
       {regime === 'pfaReal' && <p className="regime-note">{t.notices.pfaAlso}</p>}
       {((regime === 'srlMicro' && options.srlMicro.ownerEmployed && options.srlMicro.ownerPay === 'mandate') ||
         (regime === 'srlProfitSalary' && options.srlProfitSalary.ownerPay === 'mandate')) && (
@@ -215,6 +217,10 @@ function NoticeText({ notice }: { notice: Notice }) {
         : <p className="regime-note">{tn.normOk(formatMoney(P.PlafonNormaEUR), formatMoney(NORM_LIMIT_LEI))}</p>;
     case 'employeeHalves':
       return <p className="regime-note">{tn.employeeHalves(formatMoney(notice.netH1), formatMoney(notice.netH2))}</p>;
+    case 'belowMinimum':
+      return <p className="regime-note">{tn.belowMinimum(formatMoney(contributionFloor(1)), formatMoney(contributionFloor(2)))}</p>;
+    case 'untaxedAmount':
+      return <p className="regime-note">{tn.untaxedAmount(formatMoney(P.SumaNetax1), formatMoney(P.SumaNetax2))}</p>;
   }
 }
 

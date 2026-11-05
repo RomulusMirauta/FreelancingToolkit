@@ -58,7 +58,7 @@ export function mergeTaxOptions(saved: unknown): TaxOptions {
 export type LineKey =
   | 'gross' | 'revenue' | 'expenses' | 'netIncome' | 'taxedNorm' | 'flat'
   | 'cas' | 'cass' | 'incomeTax' | 'ownerGross' | 'cam' | 'microTax' | 'profitTax' | 'profit'
-  | 'dividendTax' | 'cassDividends' | 'netDividends' | 'ownerNet' | 'takeHome' | 'employerCam' | 'employerCost' | 'sickLeave'
+  | 'dividendTax' | 'cassDividends' | 'netDividends' | 'ownerNet' | 'takeHome' | 'employerCam' | 'employerTopUp' | 'employerCost' | 'sickLeave'
   | 'salaryNet' | 'sideNet';
 
 export interface ResultLine {
@@ -73,7 +73,9 @@ export type Notice =
   | { kind: 'microOk' }
   | { kind: 'microFallback'; reason: 'ceiling' | 'noEmployee' | 'otherMicro' }
   | { kind: 'normLimit'; overLimit: boolean }
-  | { kind: 'employeeHalves'; netH1: number; netH2: number };
+  | { kind: 'employeeHalves'; netH1: number; netH2: number }
+  | { kind: 'belowMinimum' }
+  | { kind: 'untaxedAmount' };
 
 export interface RegimeResult {
   /** Annual take-home in lei. */
@@ -82,18 +84,27 @@ export interface RegimeResult {
   taxShare: number;
   lines: ResultLine[];
   notice?: Notice;
+  /** Further notes under the main notice. */
+  notes?: Notice[];
 }
 
 const CAS_KEYS = ['CotaCAS', 'PragCAS1', 'PragCAS2', 'SalMinRef'];
 const CASS_TIER_KEYS = ['CotaCASS', 'CASSPrag1', 'CASSPrag2', 'CASSPrag3', 'SalMinRef'];
 export const NORM_LIMIT_LEI = P.PlafonNormaEUR * P.CursEURMediu2025;
 
-/**
- * Optional sick-leave insurance for a PFA: 1% a month of a chosen base between 1 and 3 minimum wages.
- * The base is the minimum wage when the contract is signed and does not follow the July raise.
- */
+/** The range of the optional sick-leave insurance over the year: the lowest month and the highest. */
 export const SICK_LEAVE_MONTHLY_MIN = P.CotaConcediiPFA * P.SalMin;
-export const SICK_LEAVE_MONTHLY_MAX = P.CotaConcediiPFA * P.SalMin * P.BazaConcediiMaxSM;
+export const SICK_LEAVE_MONTHLY_MAX = P.CotaConcediiPFA * P.SalMinIul * P.BazaConcediiMaxSM;
+
+/**
+ * Optional sick-leave insurance for a PFA over a year: 1% a month of the income declared for CASS, kept between
+ * 1 and 3 minimum wages (OUG 158/2005 art. 5). The limits follow the minimum wage of each month, so they rise in July.
+ */
+export function sickLeaveYearly(declaredYearly: number): number {
+  const half = (minWage: number) =>
+    6 * P.CotaConcediiPFA * Math.min(Math.max(declaredYearly / 12, minWage), P.BazaConcediiMaxSM * minWage);
+  return half(P.SalMin) + half(P.SalMinIul);
+}
 
 /** What the owner's minimum-wage job costs in taxes each month (CAS, CASS, income tax, CAM), as a yearly average. */
 export function ownerSalaryTaxesMonthly(): number {
@@ -109,13 +120,19 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
     case 'employee': {
       const opts = o.employee;
       const y = employeeYear(annual / 12, opts);
-      const netH1 = employeeMonth(annual / 12, 1, opts).net;
-      const netH2 = employeeMonth(annual / 12, 2, opts).net;
+      const h1 = employeeMonth(annual / 12, 1, opts);
+      const h2 = employeeMonth(annual / 12, 2, opts);
+      const netH2 = h2.net;
+      const netH1 = h1.net;
       return {
         takeHome: y.net,
         taxShare: share(y.gross - y.net, y.gross),
         // Only when July's minimum wage changes the net (low salaries); above that both halves are the same.
         notice: Math.abs(netH1 - netH2) >= 0.005 ? { kind: 'employeeHalves', netH1, netH2 } : undefined,
+        notes: [
+          ...(y.employerTopUp > 0 ? [{ kind: 'belowMinimum' as const }] : []),
+          ...(h1.nontaxable > 0 || h2.nontaxable > 0 ? [{ kind: 'untaxedAmount' as const }] : []),
+        ],
         lines: [
           { key: 'gross', annual: y.gross },
           { key: 'cas', annual: y.cas, kind: 'minus', sources: ['CotaCAS'] },
@@ -123,6 +140,7 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
           { key: 'incomeTax', annual: y.tax, kind: 'minus', sources: ['CotaImpozit', 'DedPlafon', 'DedU26', 'DedCopil', 'SumaNetax1', 'SumaNetax2'] },
           { key: 'takeHome', annual: y.net, kind: 'total' },
           { key: 'employerCam', annual: y.cam, kind: 'info', sources: ['CotaCAM'] },
+          ...(y.employerTopUp > 0 ? [{ key: 'employerTopUp' as const, annual: y.employerTopUp, kind: 'info' as const, sources: ['SalMin', 'SalMinIul', 'SumaNetax1', 'SumaNetax2'] }] : []),
           { key: 'employerCost', annual: y.employerCost, kind: 'info' },
         ],
       };
@@ -134,7 +152,7 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
       const opt = norm ? o.pfaNorm : o.pfaReal;
       const r = pfaYear(annual, { expenses, norm: norm ? o.pfaNorm.normYearly : undefined, hasSalary: opt.hasSalary, pensioner: opt.pensioner });
       // Not deductible, so it comes straight off the take-home.
-      const sickLeave = opt.sickLeave ? 12 * SICK_LEAVE_MONTHLY_MIN : 0;
+      const sickLeave = opt.sickLeave ? sickLeaveYearly(norm ? o.pfaNorm.normYearly : annual - expenses) : 0;
       const paid = r.cas + r.cass + r.tax + sickLeave;
       return {
         takeHome: r.takeHome - sickLeave,

@@ -67,14 +67,17 @@ def employee_month(gross: float, half: int, dependants: int = 0, under26: bool =
     deduction = min(deduction, before_deduction)
     tax = rnd((before_deduction - deduction) * P["CotaImpozit"])
     cam = rnd(base * P["CotaCAM"])
+    # Under the minimum base the employer pays the rest of CAS and CASS (art. 146 alin. (5^6), (5^9)); the net stays.
+    floor = MW - nt_amount
+    top_up = rnd(floor * P["CotaCAS"]) - cas + rnd(floor * P["CotaCASS"]) - cass if 0 < gross < floor else 0
     return {"gross": gross, "mw": MW, "nontaxable": nt, "cas": cas, "cass": cass,
             "deduction": deduction, "tax": tax, "net": gross - cas - cass - tax,
-            "cam": cam, "employer_cost": gross + cam}
+            "cam": cam, "employer_top_up": top_up, "employer_cost": gross + cam + top_up}
 
 
 def employee_year(gross: float, **kw) -> dict:
     h1, h2 = employee_month(gross, 1, **kw), employee_month(gross, 2, **kw)
-    return {k: 6 * h1[k] + 6 * h2[k] for k in ("gross", "cas", "cass", "tax", "net", "cam", "employer_cost")}
+    return {k: 6 * h1[k] + 6 * h2[k] for k in ("gross", "cas", "cass", "tax", "net", "cam", "employer_top_up", "employer_cost")}
 
 
 # --- Contributions on non-salary income (income year 2026) ----------------------------------
@@ -138,7 +141,7 @@ def owner_salary_year(employed: bool) -> dict:
 
 def micro_eligible(revenue: float, owner_employed: bool, other_employee: bool = False,
                    single_micro: bool = True) -> bool:
-    ceiling = P["PlafonMicroEUR"] * P["CursEURPlafon"]
+    ceiling = round(P["PlafonMicroEUR"] * P["CursEURPlafon"], 2)
     return revenue <= ceiling and (owner_employed or other_employee) and single_micro
 
 

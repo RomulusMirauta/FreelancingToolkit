@@ -6,7 +6,7 @@ export type Page = 'converter' | 'taxes';
  */
 export const PAGE_KEYS: Record<Page, readonly string[]> = {
   converter: ['ft.source', 'ft.columns', 'ft.addedCurrencies', 'ft.customRates', 'ft.work', 'ft.fees', 'ft.goalNote'],
-  taxes: ['ft.taxIncome', 'ft.taxOptions', 'ft.taxRef', 'ft.sideJob', 'ft.solverTarget'],
+  taxes: ['ft.taxIncome', 'ft.taxOptions', 'ft.taxRef', 'ft.sideJob', 'ft.solverTarget', 'ft.vatRomania'],
 };
 
 /** The foldable sections of each page (their ids in ?fold=…), so "Reset tab" unfolds its own. */
@@ -27,7 +27,7 @@ export const PAGE_QUERY: Record<Page, readonly string[]> = {
     'platform', 'platform_pct', 'transfer', 'transfer_pct',
   ],
   taxes: [
-    'income', 'income_currency', 'income_per', 'net', 'net_currency', 'net_per', 'salary', 'side', 'ref',
+    'income', 'income_currency', 'income_per', 'net', 'net_currency', 'net_per', 'salary', 'side', 'ref', 'vat_romania',
     'dependants', 'children', 'under26',
     'expenses_pfa', 'pfa_salary', 'pfa_pensioner', 'pfa_sick',
     'norm', 'norm_salary', 'norm_pensioner', 'norm_sick',

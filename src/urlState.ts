@@ -5,6 +5,7 @@ import { FEES_QUERY } from './features/converter/Fees';
 import { applySourceQuery } from './features/converter/sourceQuery';
 import { SIDE_JOB_QUERY } from './features/taxes/SideJob';
 import { INCOME_QUERY, OPTIONS_QUERY, REF_QUERY, TARGET_QUERY } from './features/taxes/Taxes';
+import { VAT_QUERY } from './features/taxes/Vat';
 import { applyUrlQuery, type UrlQuery } from './lib/ui/urlQuery';
 
 /**
@@ -18,7 +19,7 @@ type AnyQuery = UrlQuery<any>;
 /** Read before the converter's amount: its tax income is worked out with the working time and custom rates. */
 const BEFORE_SOURCE: readonly AnyQuery[] = [LANG_QUERY, THEME_QUERY, WORK_QUERY, RATES_QUERY, COLUMNS_QUERY, ADDED_QUERY, GOAL_QUERY, FEES_QUERY];
 /** Read after it, so an income in the address wins over the one worked out from the converter. */
-const AFTER_SOURCE: readonly AnyQuery[] = [INCOME_QUERY, TARGET_QUERY, SIDE_JOB_QUERY, OPTIONS_QUERY, REF_QUERY];
+const AFTER_SOURCE: readonly AnyQuery[] = [INCOME_QUERY, TARGET_QUERY, SIDE_JOB_QUERY, OPTIONS_QUERY, REF_QUERY, VAT_QUERY];
 
 export const URL_QUERIES: readonly AnyQuery[] = [...BEFORE_SOURCE, ...AFTER_SOURCE];
 

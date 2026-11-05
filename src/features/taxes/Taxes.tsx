@@ -303,7 +303,7 @@ function IncomeInput({ value, onChange, work, label, hint, main = false }: {
         <span>{t.currency}</span>
         <CurrencyPicker
           triggerClass="currency-btn"
-          triggerLabel={t.currency}
+          triggerLabel={`${t.currency}: ${value.currency}`}
           selected={value.currency}
           onPick={(code) => onChange({ ...value, currency: code })}
           trigger={<><span title={info ? (lang === 'ro' ? info.ro : info.name) : undefined}><CurrencyCode code={value.currency} /></span></>}

@@ -19,9 +19,15 @@ describe('payment calendar', () => {
       microQ1: '2026-04-27', // Saturday 25 April
       microQ2: '2026-07-27',
       microQ3: '2026-10-26',
-      statements: '2026-06-02', // 30 May is a Saturday, 1 June a holiday
+      statements: '2026-06-02', // 31 May is a Sunday and Pentecost, 1 June a holiday
       d101: '2026-06-25',
     });
+  });
+
+  it('has the annual accounts due on 31 May, in a leap year too', () => {
+    const statements = (y: number) => iso(deadlinesIn(y).find((d) => d.kind === 'statements')!.date);
+    expect(statements(2028)).toBe('2028-05-31');
+    expect(statements(2027)).toBe('2027-05-31');
   });
 
   it('shows the next twelve months, soonest first', () => {
@@ -34,7 +40,10 @@ describe('payment calendar', () => {
 
   it('finds the next 25th', () => {
     expect(iso(nextMonthly(new Date(2026, 10, 2)))).toBe('2026-11-25');
-    expect(iso(nextMonthly(new Date(2026, 10, 26)))).toBe('2026-12-28'); // 25–27 December are days off
+    expect(iso(nextMonthly(new Date(2026, 10, 26)))).toBe('2026-12-21'); // December's falls due on the 21st
+    expect(iso(nextMonthly(new Date(2026, 11, 21)))).toBe('2026-12-21');
+    expect(iso(nextMonthly(new Date(2026, 11, 22)))).toBe('2027-01-25'); // and on past the new year
+    expect(iso(nextMonthly(new Date(2024, 11, 2)))).toBe('2024-12-20'); // 21 December 2024 was a Saturday: the working day before
     expect(daysUntil(new Date(2026, 10, 2, 23), new Date(2026, 10, 25))).toBe(23);
   });
 });
