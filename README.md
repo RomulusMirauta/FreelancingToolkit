@@ -79,6 +79,7 @@ The visual tests (Playwright, with the installed Chrome) build the app with fixe
 | `scripts/fetch-bnr-rates.mjs` | Downloads the BNR feed. The feed has no CORS header, so rates are bundled at build time. If the download fails, the committed snapshot is kept. |
 | `scripts/fetch-market-rates.mjs` | Downloads market rates and currency names (EN/RO) for the currencies BNR does not publish. BNR always wins where it has a rate. Same fallback as above. |
 | `scripts/gen-currency-symbols.mjs` | Writes the fixed currency-symbol table, so every browser shows the same symbols; rerun it when the currency list grows. |
+| `.github/workflows/checks.yml` | Runs on every pull request to `main`: lint → test → build. |
 | `.github/workflows/deploy.yml` | Runs on every push to `main` and on banking days after BNR publishes: refresh rates → test → build → commit the new rates → GitHub Pages. If tests or build fail, nothing is committed or deployed and the site keeps its last good version. |
 
 ## Deploying your own copy

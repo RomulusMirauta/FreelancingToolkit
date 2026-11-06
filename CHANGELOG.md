@@ -4,6 +4,11 @@ All notable changes to FreelancingToolkit. The format follows [Keep a Changelog]
 
 ## [Unreleased]
 
+Step 201 of the development history.
+
+### Development
+- Work now goes through a `dev` branch, and a pull request to `main` runs the linters, unit tests and build before anything reaches production.
+
 ## [1.2.0] - 2026-11-05
 
 Steps 184–200 of the development history.
@@ -439,6 +444,7 @@ Every change since development of the app started, in the order it was made, gro
 198. Light-theme contrast, prototype 18 (the user's pick, A): tokens `--start-tag-bg`, `--delta-vs-opacity` and `--best-ref-opacity` change the light theme only; the dark theme keeps its values. axe no longer reports these three.
 199. README: the view counter is bigger, prototype 17 (the user's pick, D): the four badges share one paragraph and are sized with `width` (GitHub's `height:auto` cancels `height`), so their text is 16 px, with about the same space above the "Open the app" line, between it and the badges, and under the badges. The "Open the app" line above them is a level 3 heading (20 px), the nearest size GitHub allows, so the two read alike.
 200. Dark-theme pills, prototype 19 (the user's pick, C): `--neg-bg` and `--eq-bg` go from 15% to 8% and the small text is no longer faded. New `tests/visual/contrast.pw.ts` measures text contrast with axe (new dev dependency `axe-core`) in both themes, with the rare states forced: a rate up, down and flat, and a card worse than the reference. It runs with `test:visual`, on every project; before the fix it failed on the three problems.
+201. `dev` branch and `.github/workflows/checks.yml`: on a pull request to `main`, lint, unit tests and build, with read-only permissions and the committed rates. `main` stays open to direct pushes, for hotfixes and the rates bot.
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.1.0...v1.2.0
