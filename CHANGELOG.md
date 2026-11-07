@@ -4,10 +4,11 @@ All notable changes to FreelancingToolkit. The format follows [Keep a Changelog]
 
 ## [Unreleased]
 
-Step 201 of the development history.
+Steps 201–202 of the development history.
 
 ### Development
 - Work now goes through a `dev` branch, and a pull request to `main` runs the linters, unit tests and build before anything reaches production.
+- Development tools updated (Playwright, Vite, Vitest, Oxlint and the React plugin); nothing changes in the app.
 
 ## [1.2.0] - 2026-11-05
 
@@ -396,7 +397,7 @@ Every change since development of the app started, in the order it was made, gro
 153. Tests: every saved setting must have address parameters, every page's reset must clear exactly its parameters, no name may be used twice, every setting must read back the same from the address and its default write nothing, and broken values must be refused (22 new tests). They caught a real bug: an income read from the address had its fields in another order than the default, so the default income looked changed (the Tools dot lit up).
 154. "Settings & options" has a gear icon, which turns a little when the menu opens.
 
-### Unreleased
+### 1.1.0 (2026-11-03 to 2026-11-04)
 
 155. Visit counts with GoatCounter (free, open source, no cookies, so no consent banner), in `src/lib/analytics.ts`, sent to romulusmirauta.goatcounter.com: a view of each page (/ and /taxes) and three events (copy-link, install-app, add-currency/<code>), never the address's settings or amounts, and nothing in development or on localhost. Offline visits aren't counted. The README's Privacy section says so. Tested.
 156. The × that hides the one-line "Or work backwards" hint (shown when the brace doesn't fit beside the grid) follows the text instead of sitting at the card's far right edge, so it reads as part of the hint.
@@ -427,6 +428,9 @@ Every change since development of the app started, in the order it was made, gro
 181. VAT sources: `.vat-source` is a block of its own width under the note (one link per line), with a no-break space after "§". At 360 px the first link took 3 lines with "§" left at the end of the note's line; now 2.
 182. Calendar "Later" list: the rows were striped with `:nth-child(odd)`, so the second deadline in a month had no background. Every row now has `--surface-2`, 6px apart.
 183. Visual tests with Playwright 1.64.1 (`@playwright/test`, the installed Chrome via `channel: 'chrome'`): `playwright.config.ts`, `tests/visual/app.ts` (`openApp`: fixed date 2026-11-04 with `page.clock`, `?lang=`, fonts loaded, all animations and transitions off) and `tests/visual/pages.pw.ts` (whole-page screenshots of both tabs in both languages). Six projects: phones at 360/390/412 (touch, 2x), 700, 1280 and 1440; dark scheme, service worker blocked. The web server runs `vite build --mode visual`, which aliases `src/data/rates.json` and `market-rates.json` to `tests/visual/fixtures` and builds to `dist-visual/`, then `vite preview` on port 4174. Zero tolerance (`maxDiffPixels: 0`, `threshold: 0`): the default colour threshold missed a card losing its background. Stable over 5 runs in a row (24/24 each). Negative controls, each caught: the calendar's striping back (12 tax-page tests), the VAT links inline again (12), the grid 1px to the right (12 converter tests), the phone arrow 1px to the right (the 6 phone converter tests). Not part of `npm test` or the deploy; results, report, build and the reference screenshots (12 MB, Windows rendering) are gitignored.
+
+### 1.2.0 (2026-11-04 to 2026-11-05)
+
 184. `tests/visual/layout.pw.ts`, 66 checks across the six widths and both languages (6 phone-only ones skip on wider screens): the start mark midway between the word and the first cell (1 px tolerance) and on the word's line; on phones an arrow with nothing pushing it aside, in a row at most 4 px taller than the next (3.2 today); each VAT source on its own line with a no-break space after the "§"; every "Later" deadline has a background, under every filter; toast text sizes, toast clear of Tools, exit animation. The arrow is a pseudo-element with no box to measure, so its exact pixel position is left to the screenshots. Negative controls, each caught by the check meant for it: arrow off centre (2 ways), desktop tag uneven and off the line, taller phone row, VAT links inline, plain space after "§", calendar striping, larger toast text, toast over Tools, no exit animation.
 185. Linters. `typescript-eslint` needs TypeScript below 6.1 and the project is on 7.0.2, so the code uses Oxlint 1.91 (`.oxlintrc.json`: correctness rules with the typescript, react, unicorn and oxc plugins, plus `rules-of-hooks`, which is not on by default), which needs no TypeScript and has the React hooks rules. It found 6 things, none a bug, each kept with a comment saying why: two reads of today's date during render, two refs it took for render reads (only event handlers read them), a state reset in `Fold`'s layout effect, and `AmountInput`'s effect that must not follow its own text. Stylelint 18 (`stylelint-config-recommended`, without `no-descending-specificity`, whose 105 reports were almost all selectors that never match the same element): 16 duplicate selectors merged into their first occurrence, the deprecated `clip` replaced by `clip-path` in the visually hidden rule; every moved property was checked against the rules between the two positions, and the screenshots stayed identical. `npm run lint` runs in the deploy before the tests, except on the scheduled rates run: the code hasn't changed there, so a linter problem must not hold up new rates; `npm run release:check` runs lint, unit tests, build and visual tests.
 186. Sick-leave insurance from the primary texts: OUG 158/2005 consolidated at 1 July 2026, art. 3 alin. (3) (1%), art. 5 alin. (1^1) (monthly or average income from the CASS declaration, at least one minimum wage, at most three) and alin. (2) (the minimum wage of the month paid for); Norms art. 4 alin. (3) from Order 1320/227/2023 (not chosen freely); Order 521/500/2026 (the contract's income is not regularised). `sickLeaveYearly` takes the declared income (revenue minus expenses, or the norm) and clamps each half of the year to its own minimum wage; the range shown is 40.50–129.75 RON a month. Worked cases in `regimes.test.ts`, 1 unit test added.
@@ -444,7 +448,11 @@ Every change since development of the app started, in the order it was made, gro
 198. Light-theme contrast, prototype 18 (the user's pick, A): tokens `--start-tag-bg`, `--delta-vs-opacity` and `--best-ref-opacity` change the light theme only; the dark theme keeps its values. axe no longer reports these three.
 199. README: the view counter is bigger, prototype 17 (the user's pick, D): the four badges share one paragraph and are sized with `width` (GitHub's `height:auto` cancels `height`), so their text is 16 px, with about the same space above the "Open the app" line, between it and the badges, and under the badges. The "Open the app" line above them is a level 3 heading (20 px), the nearest size GitHub allows, so the two read alike.
 200. Dark-theme pills, prototype 19 (the user's pick, C): `--neg-bg` and `--eq-bg` go from 15% to 8% and the small text is no longer faded. New `tests/visual/contrast.pw.ts` measures text contrast with axe (new dev dependency `axe-core`) in both themes, with the rare states forced: a rate up, down and flat, and a card worse than the reference. It runs with `test:visual`, on every project; before the fix it failed on the three problems.
+
+### Unreleased
+
 201. `dev` branch and `.github/workflows/checks.yml`: on a pull request to `main`, lint, unit tests and build, with read-only permissions and the committed rates. `main` stays open to direct pushes, for hotfixes and the rates bot.
+202. Dev dependencies, minor and patch versions: `@playwright/test` 1.65.0, `@vitejs/plugin-react` 6.2.1, `oxlint` 1.92.0, `vite` 8.3.6, `vitest` 5.1.0; `npm run release:check` passes as before (331 unit tests, 147 visual tests). `test:browsers` needs `npx playwright install webkit firefox` once more for the new Playwright. `npm audit` still reports 4 low advisories, all `deepmerge` (prototype poisoning in `mergeObject()`) under `vite-plugin-pwa` → `workbox-build` → `@rollup/plugin-node-resolve`, which runs only at build time on our own config; no `deepmerge` release fixes it, and `npm audit fix --force` would downgrade `vite-plugin-pwa` to 0.2.1, so they stay. The development history gets the 1.1.0 and 1.2.0 headings it was missing: steps 155–200 sat under "Unreleased".
 
 [Unreleased]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/RomulusMirauta/FreelancingToolkit/compare/v1.1.0...v1.2.0
