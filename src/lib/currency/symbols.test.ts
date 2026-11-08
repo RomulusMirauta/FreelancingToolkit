@@ -49,12 +49,13 @@ describe('no symbol is paired with the wrong currency', () => {
     }
   });
 
-  it('every symbol belongs to a currency the app lists, and is short enough for a chip', () => {
-    for (const [code, symbol] of Object.entries(SYMBOLS)) {
-      expect(CODES.has(code), code).toBe(true);
-      expect(symbol.trim()).toBe(symbol);
-      expect(symbol.length).toBeGreaterThan(0);
-      expect(symbol.length).toBeLessThanOrEqual(5);
+  // The deploy downloads the currency lists again before testing: a currency the feeds have since dropped stays in the
+  // table, unused, until npm run symbols rewrites it, so only the ones the app lists are checked.
+  it('the symbol of every currency the app lists is short enough for a chip', () => {
+    for (const [code, symbol] of Object.entries(SYMBOLS).filter(([c]) => CODES.has(c))) {
+      expect(symbol.trim(), code).toBe(symbol);
+      expect(symbol.length, code).toBeGreaterThan(0);
+      expect(symbol.length, code).toBeLessThanOrEqual(5);
     }
   });
 });

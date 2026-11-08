@@ -1,5 +1,6 @@
 import market from '../../data/market-rates.json';
 import symbolTable from '../../data/currency-symbols.json';
+import { isMarketRate } from './rates';
 
 export interface CurrencyInfo {
   code: string;
@@ -57,13 +58,16 @@ export const HIDDEN_CODES = ['XAU', 'XDR'];
 const BNR_CODES = new Set(BNR_CURRENCIES.map((c) => c.code));
 const MARKET_NAMES: Record<string, { en: string; ro: string }> = market.names;
 
-/** BNR's currencies first, then every other currency in the world, priced with market rates. */
+/**
+ * BNR's currencies first, then every other currency in the world, priced with market rates. The market mark follows
+ * the rates, as `isMarketRate` does, so a currency BNR starts or stops publishing is marked right without a change here.
+ */
 export const CURRENCIES: CurrencyInfo[] = [
   ...BNR_CURRENCIES,
   ...Object.entries(MARKET_NAMES)
     .filter(([code]) => !BNR_CODES.has(code) && !HIDDEN_CODES.includes(code))
-    .map(([code, n]) => ({ code, name: n.en, ro: n.ro, market: true })),
-];
+    .map(([code, n]) => ({ code, name: n.en, ro: n.ro })),
+].map((c) => (isMarketRate(c.code) ? { ...c, market: true } : c));
 
 const SYMBOLS: Record<string, string> = symbolTable;
 

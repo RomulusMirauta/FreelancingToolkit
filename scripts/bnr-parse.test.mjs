@@ -38,4 +38,13 @@ describe('parseBnrXml', () => {
   it('rejects a page that is not the feed', () => {
     expect(() => parseBnrXml('<html><body>BNR</body></html>')).toThrow();
   });
+  it('reads a multiplier in either quotes, and rejects one it cannot read instead of taking it as 1', () => {
+    for (const attr of [`multiplier='100'`, 'multiplier = "100"']) {
+      expect(parseBnrXml(daily.replace('multiplier="100"', attr))[0].rates.HUF, attr).toBe(0.014602);
+    }
+    for (const attr of ['Multiplier="100"', 'multiplier="1e2"', 'multiplier="100.0"', 'multiplier="0"', 'multiplier=""', 'multiplier=100']) {
+      const xml = daily.replace('multiplier="100"', attr);
+      expect(() => parseBnrXml(xml), attr).toThrow(`HUF: multiplier not read in <Rate currency="HUF" ${attr}>`);
+    }
+  });
 });

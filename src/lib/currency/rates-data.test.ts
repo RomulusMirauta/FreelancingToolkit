@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import bnr from '../../data/rates.json';
 import market from '../../data/market-rates.json';
+import { historyMoves, sourcesApart } from '../../../scripts/rates-snapshot.mjs';
 
-// The workflow refreshes these files before testing and building: a broken download fails here, before deploy,
-// and the site stays on the last good version.
+// The workflow refreshes these files before testing and building; when anything fails, nothing is deployed and the
+// site stays on the last good version. The fetch scripts keep the saved file when new rates fail the checks in
+// scripts/rates-snapshot.mjs. Those that need no earlier file run here too, on what is committed (so a file edited or
+// merged by hand is checked as well), with the checks for a download broken in other ways.
 describe.each([
   ['BNR', bnr as { date: string; rates: Record<string, number> }],
   ['market', market as { date: string; rates: Record<string, number> }],
@@ -39,6 +42,16 @@ describe('BNR history', () => {
       expect(day.rates.EUR, day.date).toBeGreaterThan(3);
       for (const rate of Object.values(day.rates)) expect(rate > 0).toBe(true);
     }
+  });
+  it('no rate moves more than 5 times either way from one banking day to the next', () => {
+    expect(historyMoves(history)).toEqual([]);
+  });
+});
+
+describe('BNR and market rates', () => {
+  // A multiplier lost puts a BNR rate 100 times off the market one; the two differ by under 2% on a normal day.
+  it('are within 3 times of each other for every currency both price', () => {
+    expect(sourcesApart(bnr.rates, market.rates)).toEqual([]);
   });
 });
 

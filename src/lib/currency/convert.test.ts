@@ -54,11 +54,12 @@ describe('market rates for the currencies BNR does not publish', () => {
     expect(CURRENCIES.filter((c) => !(all[c.code]! > 0)).map((c) => c.code)).toEqual([]);
     expect(new Set(CURRENCIES.map((c) => c.code)).size).toBe(CURRENCIES.length);
   });
-  it('only currencies missing from BNR are marked as market rates', () => {
+  it('only currencies missing from BNR are marked as market rates, and all of them are', () => {
     expect(isMarketRate('EUR')).toBe(false);
     expect(isMarketRate('RON')).toBe(false);
     expect(isMarketRate('ARS')).toBe(true);
     expect(CURRENCIES.filter((c) => c.market).every((c) => isMarketRate(c.code))).toBe(true);
+    expect(CURRENCIES.filter((c) => !c.market && isMarketRate(c.code)).map((c) => c.code)).toEqual([]);
   });
   it('the market snapshot agrees with BNR on EUR within 1%', () => {
     expect(Math.abs(MARKET_RATES.rates.EUR! / BNR_RATES.rates.EUR! - 1)).toBeLessThan(0.01);

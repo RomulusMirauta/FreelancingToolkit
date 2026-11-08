@@ -5,6 +5,7 @@
  * @param {string} xml
  * @returns {{ date: string, publishingDate: string | null, rates: Record<string, number> }[]}
  *   one entry per <Cube>, newest first; rates are RON per 1 unit (multiplier applied)
+ * @throws when there is no <Cube>, or a multiplier it can't read
  */
 export function parseBnrXml(xml) {
   const publishing = /<(?:\w+:)?PublishingDate>\s*([\d-]+)\s*</.exec(xml);
@@ -16,7 +17,10 @@ export function parseBnrXml(xml) {
     for (const [, attrs, value] of body.matchAll(rateRe)) {
       const currency = /currency="([A-Z]{3})"/.exec(attrs)?.[1];
       if (!currency) continue;
-      const multiplier = Number(/multiplier="(\d+)"/.exec(attrs)?.[1] ?? 1);
+      // A rate without a multiplier is per unit. One written in a way this doesn't read must not count as 1, which
+      // would make the rate 100 times too high.
+      const multiplier = /multiplier/i.test(attrs) ? Number(/\bmultiplier\s*=\s*(["'])([1-9]\d*)\1/.exec(attrs)?.[2]) : 1;
+      if (!multiplier) throw new Error(`${currency}: multiplier not read in <Rate ${attrs.trim()}>`);
       rates[currency] = round(Number(value) / multiplier, 8);
     }
     cubes.push({ date, publishingDate: publishing?.[1] ?? null, rates });

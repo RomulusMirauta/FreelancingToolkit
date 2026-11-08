@@ -47,7 +47,7 @@ Rates are downloaded when the app is built, not by your browser, so the app alwa
 
 ## Development
 
-Requires Node 24+ (the deploy workflow uses Node 26).
+Requires Node 24.2+ (the deploy workflow uses Node 26).
 
 ```sh
 npm install
@@ -76,8 +76,9 @@ The visual tests (Playwright, with the installed Chrome) build the app with fixe
 | `src/lib/i18n/` | Every user-visible text in Romanian and English. A key missing from either language is a type error. |
 | `src/lib/currency/`, `src/lib/time/` | Currency conversion, currency names and symbols, working-time periods. |
 | `src/data/` | Rate snapshots and the currency-symbol table, committed so every build is reproducible. |
-| `scripts/fetch-bnr-rates.mjs` | Downloads the BNR feed. The feed has no CORS header, so rates are bundled at build time. If the download fails, the committed snapshot is kept. |
-| `scripts/fetch-market-rates.mjs` | Downloads market rates and currency names (EN/RO) for the currencies BNR does not publish. BNR always wins where it has a rate. Same fallback as above. |
+| `scripts/fetch-bnr-rates.mjs` | Downloads the BNR feed. The feed has no CORS header, so rates are bundled at build time. Only a later fixing replaces the committed snapshot, and only if it passes the checks below; otherwise, or if the download fails, the snapshot is kept and the deploy run says why. |
+| `scripts/fetch-market-rates.mjs` | Downloads market rates and currency names (EN/RO) for the currencies BNR does not publish. BNR always wins where it has a rate. Same rules as above. |
+| `scripts/rates-snapshot.mjs` | What the two share. New rates must stay within 3 times of the other source's, and within 5 times of the saved ones and of the previous banking day's, so a lost multiplier or a glitch at the provider never reaches the app (a real jump past that, such as a redenomination, needs the saved file deleted first). A saved file that can't be read, after a merge conflict say, is replaced; each file is written in one step. The data tests run the same checks on the committed files. |
 | `scripts/gen-currency-symbols.mjs` | Writes the fixed currency-symbol table, so every browser shows the same symbols; rerun it when the currency list grows. |
 | `.github/workflows/checks.yml` | Runs on every pull request to `main`: lint → test → build. |
 | `.github/workflows/deploy.yml` | Runs on every push to `main` and on banking days after BNR publishes: refresh rates → test → build → commit the new rates → GitHub Pages. If tests or build fail, nothing is committed or deployed and the site keeps its last good version. |
