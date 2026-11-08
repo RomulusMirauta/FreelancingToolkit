@@ -141,6 +141,12 @@ export function describe(note: Note, t: Strings): Shown {
   }
 }
 
+/** What screen readers hear: the toast's text and, when it has a button, where that button is (the live region can't
+    hold the button, and the toast is the last thing on the page). Without it, nothing said "Reset tab" could be undone. */
+export function spokenText(shown: Shown, t: Strings): string {
+  return [shown.title, shown.hint, shown.action && t.app.toasts.buttonAtEnd(shown.action.label)].filter(Boolean).join(' ');
+}
+
 /** On start: a new app version since the last visit, or newer rates after coming back online. */
 function startNotes(): Note[] {
   const notes: Note[] = [];
@@ -197,6 +203,9 @@ export function Toast() {
   const outTimer = useRef<number | undefined>(undefined);
   /** The time the toast still has before it hides itself. */
   const left = useRef(0);
+  const box = useRef<HTMLDivElement>(null);
+  /** Where the focus was before it came into the toast, to give it back there. */
+  const returnTo = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const add = (n: Note) => setQueue((q) => addNote(q, n));
@@ -226,7 +235,15 @@ export function Toast() {
   const current = queue[0];
   const shown = current && describe(current, t);
   // It goes out downwards, the way it came in reversed (.toast.leaving, as long as OUT_MS), then the next one comes.
-  const close = () => {
+  // Closed from the keyboard, it first gives the focus back to where it came from, or else to "Tools", the control
+  // just before it: the focus went with the toast and fell to the page. Not after a click or a tap: a field taking
+  // the focus back would bring a phone's keyboard up again.
+  const close = (byKeyboard = false) => {
+    if (byKeyboard && box.current?.contains(document.activeElement)) {
+      if (returnTo.current?.isConnected) returnTo.current.focus();
+      // Nowhere to go back to (it came from the top of the page), or that place can't take the focus now.
+      if (box.current.contains(document.activeElement)) document.querySelector<HTMLElement>('.reset-wrap > .menu-trigger')?.focus();
+    }
     window.clearTimeout(timer.current);
     setLeaving(true);
     window.clearTimeout(outTimer.current);
@@ -268,7 +285,7 @@ export function Toast() {
   // Screen readers read a change in a live region they already know, not one that arrives with its text: the
   // region is always there, emptied for each toast and filled a moment later, so the same message again is
   // read again too.
-  const words = shown ? `${shown.title} ${shown.hint}` : '';
+  const words = shown ? spokenText(shown, t) : '';
   useEffect(() => {
     setSpoken('');
     if (!words) return;
@@ -283,9 +300,13 @@ export function Toast() {
         <div
           className={`toast ${shown.tone}${leaving ? ' leaving' : ''}`}
           key={gone}
+          ref={box}
           onPointerEnter={() => setPointerOn(true)}
           onPointerLeave={() => setPointerOn(false)}
-          onFocus={() => setFocusIn(true)}
+          onFocus={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) returnTo.current = e.relatedTarget instanceof HTMLElement ? e.relatedTarget : null;
+            setFocusIn(true);
+          }}
           onBlur={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget)) setFocusIn(false);
           }}
@@ -294,10 +315,11 @@ export function Toast() {
             <strong>{shown.title}</strong>
             <span className="muted small">{shown.hint}</span>
           </div>
+          {/* A click with no pointer (detail 0) came from the keyboard: Enter or Space. */}
           {shown.action && (
-            <button type="button" className="toast-action" onClick={() => { close(); shown.action!.run(); }}>{shown.action.label}</button>
+            <button type="button" className="toast-action" onClick={(e) => { close(e.detail === 0); shown.action!.run(); }}>{shown.action.label}</button>
           )}
-          <button type="button" className="toast-close" aria-label={t.app.close} title={t.app.close} onClick={close}>×</button>
+          <button type="button" className="toast-close" aria-label={t.app.close} title={t.app.close} onClick={(e) => close(e.detail === 0)}>×</button>
         </div>
       )}
     </>

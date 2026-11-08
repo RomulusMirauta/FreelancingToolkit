@@ -87,7 +87,8 @@ function Slider<T extends string>({ value, options, onChange, label, stop, class
 
 const THEME_ICONS: Record<Theme, string> = { system: '◐', light: '☀', dark: '☾' };
 
-/** The theme switch, in the "Settings & options" menu: ◐ Automatic, ☀ Light, ☾ Dark, each icon with its name. */
+/** The theme switch, in the "Settings & options" menu: ◐ Auto, ☀ Light, ☾ Dark, each icon with its name. Each stop's
+    name starts with the word it shows ("Auto (follows the system)"), so voice control finds it by that word. */
 export function ThemeSlider({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
   const t = useT().app;
   return (

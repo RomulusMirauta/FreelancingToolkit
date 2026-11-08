@@ -1,7 +1,7 @@
 import { describe as group, expect, it, vi } from 'vitest';
 import type { ClipboardEvent } from 'react';
 import { en, ro } from '../i18n/strings';
-import { addNote, describe, insertedText, refuseNonNumberPaste, refuseWord, type Note, type ToastId } from './toast';
+import { addNote, describe, insertedText, refuseNonNumberPaste, refuseWord, spokenText, type Note, type ToastId } from './toast';
 
 const ALL: ToastId[] = [
   'tooBig', 'restored', 'badLink', 'copyBlocked', 'offline', 'online', 'ratesUpdated', 'updated', 'installed', 'pageReset', 'notNumber',
@@ -40,6 +40,24 @@ group('toast messages', () => {
   it('a pasted word is quoted back', () => {
     expect(describe({ id: 'notNumber', arg: 'treizeci' }, ro).title).toBe('„treizeci” nu e un număr.');
     expect(describe({ id: 'notNumber', arg: 'thirty' }, en).title).toBe('“thirty” isn’t a number.');
+  });
+
+  it('screen readers hear the text, and for a toast with a button, the button and where it is', () => {
+    // They heard only the title and the hint: after "Reset tab", nothing said it could be undone.
+    expect(spokenText(describe({ id: 'pageReset', arg: 'converter' }, en), en)).toBe(
+      'The converter is back to its defaults. Currencies, custom rates, working time and fees. The “Undo” button is at the end of the page.');
+    expect(spokenText(describe({ id: 'pageReset', arg: 'taxes' }, ro), ro)).toBe(
+      'Pagina Taxe a revenit la valorile implicite. Venitul, opțiunile cardurilor, referința, venitul secundar și netul dorit. Butonul „Anulează” e la sfârșitul paginii.');
+    for (const t of [ro, en]) {
+      for (const note of [...ALL.map((id): Note => ({ id, arg: id === 'notNumber' ? 'treizeci' : undefined })), { id: 'pageReset', arg: 'taxes' } as Note]) {
+        const shown = describe(note, t);
+        const spoken = spokenText(shown, t);
+        if (!shown.action) expect(spoken, note.id).toBe(`${shown.title} ${shown.hint}`);
+        else expect(spoken, note.id).toBe(`${shown.title} ${shown.hint} ${t.app.toasts.buttonAtEnd(shown.action.label)}`);
+      }
+      expect(spokenText(describe({ id: 'pageReset', arg: 'converter' }, t), t)).toContain(t.app.toasts.undo);
+      expect(spokenText(describe({ id: 'updated', arg: '1.2.0' }, t), t)).toContain(t.app.toasts.whatsNew);
+    }
   });
 });
 

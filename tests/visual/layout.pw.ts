@@ -289,6 +289,17 @@ test('a toast with Undo stays while the keyboard or the pointer is on it, then g
   await expect(toast).toHaveCount(0);
 });
 
+test('screen readers hear that a toast has a button, and where it is: the end of the page', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('ft-toast-after-reload', JSON.stringify([{ id: 'pageReset', arg: 'converter' }])));
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // The live region had only the title and the hint: nothing said "Reset tab" could be undone.
+  await expect(page.locator('.sr-only[role="status"]')).toHaveText(
+    'The converter is back to its defaults. Currencies, custom rates, working time and fees. The “Undo” button is at the end of the page.');
+  const controls = page.locator('a[href]:visible, button:visible, input:visible, summary:visible');
+  await expect(controls.nth(-2)).toHaveText('Undo');
+  await expect(controls.nth(-1)).toHaveAccessibleName('Close');
+});
+
 test('Tab goes through the table even when pressed faster than a frame', async ({ page }, info) => {
   test.skip(isPhone(info), 'keyboards only');
   await openApp(page, { lang: 'ro', tab: 'converter' });
@@ -719,6 +730,9 @@ test('"Reset app" says the language and theme go back to Romanian and automatic,
   expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
 });
 
+/** A text's words, matched with a name word by word as voice control and axe do; text in brackets doesn't count. */
+const words = (text: string) => ` ${text.toLowerCase().replace(/\([^)]*\)/g, ' ').split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
+
 for (const lang of LANGS) {
   test(`Tools: the button says when something can be reset, and each item's name holds the word it shows (${lang})`, async ({ page }) => {
     // On the defaults, Romanian included (English is a setting "Reset app" clears), there is nothing to reset.
@@ -733,12 +747,24 @@ for (const lang of LANGS) {
     await tools.click();
     await expect(page.locator('.reset-row')).toBeVisible();
     // Phones show one word (Hide, Tab, All): "All" was named only "Reset app", so voice control couldn't find it.
-    // Matched word by word, as voice control and axe do; text in brackets doesn't count.
-    const words = (text: string) => ` ${text.toLowerCase().replace(/\([^)]*\)/g, ' ').split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
     const items = await page.locator('.reset-row > button').evaluateAll((buttons) =>
       buttons.map((b) => ({ shown: (b as HTMLElement).innerText.replace('↺', ''), name: b.getAttribute('aria-label') ?? '' })));
     expect(items).toHaveLength(3);
     for (const { shown, name } of items) {
+      expect(words(shown).trim()).not.toBe('');
+      expect(words(name)).toContain(words(shown));
+    }
+  });
+
+  test(`Settings & options: each theme and language stop's name holds the word it shows (${lang})`, async ({ page }) => {
+    await openApp(page, { lang, tab: 'converter' });
+    await page.locator('.top-actions .menu-trigger').click();
+    await expect(page.locator('.top-actions .menu-pop')).toBeVisible();
+    // In English "Auto" was named "Automatic (follows the system)": another word, so "click Auto" found nothing.
+    const stops = await page.locator('.top-actions .slider [role="radio"]').evaluateAll((radios) =>
+      radios.map((r) => ({ shown: (r as HTMLElement).innerText, name: r.getAttribute('aria-label') ?? '' })));
+    expect(stops).toHaveLength(5);
+    for (const { shown, name } of stops) {
       expect(words(shown).trim()).not.toBe('');
       expect(words(name)).toContain(words(shown));
     }
@@ -752,6 +778,20 @@ test('tax page: the currency button\'s name holds the symbol it shows', async ({
   await expect(currency).toHaveAccessibleName('Currency: RON lei');
   await page.goto('./?lang=ro&income=5000&income_currency=EUR&income_per=month#taxes');
   await expect(currency).toHaveAccessibleName('Monedă: EUR €');
+  // The code and its pill read as one word, "RONlei", which no name holds word by word: axe reported the income's
+  // and the net's currency buttons for RON and every symbol made of letters (HUF Ft), not for € or $.
+  const income = (code: string) => `income=5000&income_currency=${code}&income_per=month`;
+  for (const query of [`lang=en&${income('RON')}`, `lang=ro&${income('HUF')}`, `lang=en&${income('HUF')}&net=1000&net_currency=EUR&net_per=month`]) {
+    await page.goto(`./?${query}#taxes`);
+    // The currency and the period, of the income and of the net.
+    const buttons = page.locator('.income .currency-btn');
+    await expect(buttons).toHaveCount(4);
+    for (const { shown, name } of await buttons.evaluateAll((all) =>
+      all.map((b) => ({ shown: (b as HTMLElement).innerText, name: b.getAttribute('aria-label') ?? '' })))) {
+      expect(words(shown).trim()).not.toBe('');
+      expect(words(name), query).toContain(words(shown));
+    }
+  }
 });
 
 test('currency search with no match: the box points to no list, and "no match" comes in a region that was there', async ({ page }) => {
@@ -822,7 +862,7 @@ test('keyboard: Esc in "Settings & options" gives the focus back to its button, 
   await gear.focus();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Tab');
-  await expect(panel.getByRole('radio', { name: 'Automatic (follows the system)' })).toBeFocused();
+  await expect(panel.getByRole('radio', { name: 'Auto (follows the system)' })).toBeFocused();
   // The menu went with the focus on its theme switch, and the focus fell to the page.
   await page.keyboard.press('Escape');
   await expect(panel).toBeHidden();
@@ -950,6 +990,44 @@ test('keyboard: a fee platform and the tax page\'s currency give the focus back 
   await page.keyboard.press('Escape');
   await expect(page.locator('.add-pop')).toHaveCount(0);
   await expect(currency).toBeFocused();
+});
+
+test('keyboard: closing a toast gives the focus back to where it was, or to "Tools"; a tap or a click leaves it', async ({ page }, info) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  const income = page.locator('.income-main input');
+  const toast = page.locator('.toast');
+  const close = toast.getByRole('button', { name: 'Close' });
+  const refuse = async () => {
+    await income.selectText();
+    await page.keyboard.insertText('thirty');
+    await expect(toast).toContainText('“thirty” isn’t a number.');
+  };
+  // From the field to the toast, as a screen reader can go: Enter on × dropped the focus to the page.
+  await refuse();
+  await close.focus();
+  await page.keyboard.press('Enter');
+  await expect(toast).toHaveCount(0);
+  await expect(income).toBeFocused();
+  // Tab from "Tools", the control before it, and back there.
+  await refuse();
+  await toolsButton(page).focus();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toast).toHaveCount(0);
+  await expect(toolsButton(page)).toBeFocused();
+  // From nowhere, as from the top of the page with Shift+Tab: to "Tools" too.
+  await refuse();
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  await close.focus();
+  await page.keyboard.press('Space');
+  await expect(toast).toHaveCount(0);
+  await expect(toolsButton(page)).toBeFocused();
+  // A field taking the focus back after a tap would bring a phone's keyboard up again.
+  await refuse();
+  await (info.project.use.hasTouch ? close.tap() : close.click());
+  await expect(toast).toHaveCount(0);
+  await expect(income).not.toBeFocused();
 });
 
 test('fees: the monthly figures are not named "per hour"; only the hourly path is', async ({ page }) => {
