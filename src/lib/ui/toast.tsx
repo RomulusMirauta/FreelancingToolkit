@@ -191,6 +191,15 @@ export function startNotes(): Note[] {
 }
 
 /**
+ * The toasts a start shows: first what the user did before the reload (the Undo after "Reset tab", "Back to my
+ * settings"), then the update and the rates. "Reset tab" while an update waits reloads onto the new version, and
+ * "What's new" opens a tab: the Undo's time would run out behind it. Takes the waiting toasts once (takeLater).
+ */
+export function startQueue(): Note[] {
+  return [...takeLater(), ...startNotes()];
+}
+
+/**
  * Back online: look for a newer version (new BNR rates come with it). The app updates by itself, and reloads onto it
  * once the page is hidden or not in use (updateReload.ts).
  */
@@ -244,7 +253,7 @@ export function Toast() {
     window.addEventListener(EVENT, onEvent);
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
-    const pending = [...startNotes(), ...takeLater()];
+    const pending = startQueue();
     if (pending.length) setQueue(pending);
     return () => {
       window.removeEventListener(EVENT, onEvent);

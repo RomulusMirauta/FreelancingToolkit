@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// A tiny page: the tag that has the focus, what is on screen (each thing as the one selector it matches), whether
-// the page is hidden, and the document's listeners.
+// A tiny page: the tag that has the focus (':focus-visible' for a button the keyboard is on), what is on screen (each
+// thing as the one selector it matches), whether text is selected, whether the page is hidden, and the document's
+// listeners. Only selectors written here are tested; layout.pw.ts checks the real page.
 let focused: string;
 let onScreen: string[];
+let selected: boolean;
 let hidden: boolean;
 let listeners: Map<string, Set<() => void>>;
 const fire = (type: string) => listeners.get(type)?.forEach((fn) => fn());
@@ -12,10 +14,14 @@ beforeEach(() => {
   vi.useFakeTimers();
   focused = 'body';
   onScreen = [];
+  selected = false;
   hidden = false;
   listeners = new Map();
+  const body = { matches: (list: string) => selectors(list).includes('body') };
   vi.stubGlobal('document', {
-    get activeElement() { return { matches: (list: string) => selectors(list).includes(focused) }; },
+    body,
+    get activeElement() { return focused === 'body' ? body : { matches: (list: string) => selectors(list).includes(focused) }; },
+    getSelection: () => ({ isCollapsed: !selected }),
     get visibilityState() { return hidden ? 'hidden' : 'visible'; },
     querySelector: (list: string) => (onScreen.some((s) => selectors(list).includes(s)) ? {} : null),
     addEventListener: (type: string, fn: () => void) => listeners.set(type, (listeners.get(type) ?? new Set()).add(fn)),
@@ -50,7 +56,44 @@ describe('the reload onto a new version', () => {
     expect(reload).not.toHaveBeenCalled();
     focused = 'body';
     fire('focusout');
-    vi.advanceTimersByTime(0);
+    vi.advanceTimersByTime(300);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('a field left gives what leaving it started time to be saved first, also over the look every second', async () => {
+    // Esc in a converter cell puts the amount back and leaves the cell; the tax income follows a few renders later.
+    // A reload at once saved the income of the figure Esc had undone.
+    focused = 'input';
+    const { newVersion, reload } = await load();
+    newVersion();
+    vi.advanceTimersByTime(900);
+    focused = 'body';
+    fire('focusout');
+    vi.advanceTimersByTime(150);
+    expect(reload).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(150);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits while the keyboard is on a button (a reload would put it back at the top of the page), not after a click', async () => {
+    focused = ':focus-visible';
+    const { newVersion, reload } = await load();
+    newVersion();
+    vi.advanceTimersByTime(30_000);
+    expect(reload).not.toHaveBeenCalled();
+    focused = 'button';
+    vi.advanceTimersByTime(1000);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits while text is selected, to be copied, and comes within a second after', async () => {
+    selected = true;
+    const { newVersion, reload } = await load();
+    newVersion();
+    vi.advanceTimersByTime(30_000);
+    expect(reload).not.toHaveBeenCalled();
+    selected = false;
+    vi.advanceTimersByTime(1000);
     expect(reload).toHaveBeenCalledTimes(1);
   });
 

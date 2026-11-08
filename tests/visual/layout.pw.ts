@@ -701,6 +701,78 @@ test('a reload right after a change keeps it', async ({ page }) => {
   expect(await saved(page, 'ft.taxIncome')).toContain('"amount":12345,');
 });
 
+/**
+ * A new version's worker taking the page over, which reloads it once the page is free (updateReload.ts). The visual
+ * tests block service workers, so the worker that keeps the page is made up before the app starts.
+ */
+const keptByWorker = (page: Page) =>
+  page.addInitScript(() => Object.defineProperty(navigator.serviceWorker, 'controller', { get: () => ({}) }));
+async function newVersion(page: Page) {
+  await page.evaluate(() => {
+    (window as { beforeUpdate?: boolean }).beforeUpdate = true;
+    setTimeout(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
+  });
+}
+/** The page is the one from before the update: after `wait` ms, it hasn't reloaded. */
+async function stillWaiting(page: Page, wait = 1500) {
+  await page.waitForTimeout(wait);
+  expect(await page.evaluate(() => 'beforeUpdate' in window)).toBe(true);
+}
+
+test('update: the reload comes at once on a page at rest, open fold cards and all, and waits while details are open', async ({ page }) => {
+  await keptByWorker(page);
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  // The fold cards are saved: open, they hold nothing. A selector that matched them, or anything at rest, held
+  // every update until the page was hidden, and the unit tests, on a page made up of selectors, passed.
+  expect(await page.locator('details.fold[open]').count()).toBeGreaterThan(0);
+  let loaded = page.waitForEvent('load');
+  await newVersion(page);
+  await loaded;
+  const details = regimeCard(page, 'pfaReal').locator('.regime-details > summary');
+  await details.click();
+  await newVersion(page);
+  await stillWaiting(page);
+  loaded = page.waitForEvent('load');
+  await details.click();
+  await loaded;
+});
+
+test('update: the reload waits while the keyboard is on a button or text is selected, and after Esc in a cell the tax income follows', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await keptByWorker(page);
+  // What is saved when the reload starts: served from the worker's cache, the new page opens on it. Here, served
+  // over the network, the old page has time to save more before it goes.
+  await page.addInitScript(() => addEventListener('beforeunload', () => sessionStorage.setItem('incomeAtReload', String(localStorage.getItem('ft.taxIncome')))));
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // Esc puts the amount back and leaves the cell; the tax income follows a few renders later. The reload came first,
+  // and the tax page opened on 3,703.51 RON a month, the figure Esc had undone, and kept it.
+  const cell = byName(page, 'hour-EUR');
+  await focusCell(page, cell);
+  await page.keyboard.type('4');
+  await newVersion(page);
+  await stillWaiting(page, 500);
+  let loaded = page.waitForEvent('load');
+  await page.keyboard.press('Escape');
+  await loaded;
+  await expect(cell).toHaveValue('30.00');
+  expect(await page.evaluate(() => sessionStorage.getItem('incomeAtReload'))).toBe('null');
+  // A reload puts the keyboard back at the top of the page.
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement!.matches('button:focus-visible, a:focus-visible'))).toBe(true);
+  await newVersion(page);
+  await stillWaiting(page);
+  loaded = page.waitForEvent('load');
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  await loaded;
+  // Text selected to be copied.
+  await page.evaluate(() => getSelection()!.selectAllChildren(document.querySelector('h1')!));
+  await newVersion(page);
+  await stillWaiting(page);
+  loaded = page.waitForEvent('load');
+  await page.evaluate(() => getSelection()!.removeAllRanges());
+  await loaded;
+});
+
 /** Own settings saved, then someone's link opened in the same tab: its banner. */
 async function openSharedLink(page: Page) {
   await openApp(page, { lang: 'en', tab: 'converter' });

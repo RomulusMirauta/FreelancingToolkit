@@ -14,12 +14,24 @@ import { storage } from './storage';
 /**
  * What a reload would lose besides a field with the focus: a press under way (its click), a menu, list or panel
  * open, a toast with a button (Undo after "Reset tab"), details opened on the page (the fold cards are saved).
+ * layout.pw.ts checks it against the real page.
  */
 const OPEN = ':active, [aria-expanded="true"], [role="dialog"], [role="alertdialog"], .toast-action, details[open]:not(.fold)';
 
+/** Also in use: the keyboard's place (a reload starts on <body>, the top of the page) and text selected to copy. */
 function inUse(): boolean {
-  return Boolean(document.activeElement?.matches('input, select, textarea')) || document.querySelector(OPEN) !== null;
+  const focus = document.activeElement;
+  return (focus !== document.body && Boolean(focus?.matches('input, select, textarea, :focus-visible')))
+    || document.querySelector(OPEN) !== null
+    || !(document.getSelection()?.isCollapsed ?? true);
 }
+
+/**
+ * How long a focus that left a field holds the reload: what leaving it started has to be saved first. Esc in a
+ * converter cell puts its amount back and leaves the cell, and the tax income follows a few renders later; a reload
+ * at once saved the income of the figure Esc had undone.
+ */
+const SETTLE = 300;
 
 /** Set by the first call: the page reloads once, however often it is asked to. */
 let asked = false;
@@ -29,16 +41,25 @@ export function reloadWhenFree(reload: () => void): void {
   if (asked) return;
   asked = true;
   let waiting = true;
+  let settling: ReturnType<typeof setTimeout> | undefined;
   const check = () => {
-    if (!waiting || (document.visibilityState !== 'hidden' && inUse())) return;
+    if (!waiting || settling !== undefined || (document.visibilityState !== 'hidden' && inUse())) return;
     waiting = false;
     clearInterval(timer);
     document.removeEventListener('visibilitychange', check);
     document.removeEventListener('focusout', checkSoon);
     reload();
   };
-  // During focusout the focus has left one element and not yet reached the next (Tab to the next field).
-  const checkSoon = () => setTimeout(check);
+  // During focusout the focus has left one element and not yet reached the next (Tab to the next field). Until SETTLE
+  // has run, neither the look every second nor the page being hidden reloads it. A timer, not the clock: the visual
+  // tests fix the clock.
+  const checkSoon = () => {
+    clearTimeout(settling);
+    settling = setTimeout(() => {
+      settling = undefined;
+      check();
+    }, SETTLE);
+  };
   const timer = setInterval(check, 1000);
   document.addEventListener('visibilitychange', check);
   document.addEventListener('focusout', checkSoon);

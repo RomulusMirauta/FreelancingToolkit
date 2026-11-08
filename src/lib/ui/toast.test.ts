@@ -183,3 +183,19 @@ group('"updated" when the app starts', () => {
     expect(await start(new Map(), new Map())).toEqual([]);
   });
 });
+
+group('the toasts a start shows', () => {
+  it('what the user did comes before the update: the Undo after "Reset tab" is not left to run out behind "What\'s new"', async () => {
+    // "Reset tab" while an update waited: its reload opens the new version.
+    const map = (entries: [string, string][]) => {
+      const m = new Map(entries);
+      return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+    };
+    vi.stubGlobal('localStorage', map([['ft-version', '0.9.0']]));
+    vi.stubGlobal('sessionStorage', map([['ft-tab-version', '0.9.0'], ['ft-toast-after-reload', '[{"id":"pageReset","arg":"taxes"},{"id":"restored"}]']]));
+    vi.resetModules();
+    const queue = (await import('./toast')).startQueue();
+    vi.unstubAllGlobals();
+    expect(queue.map((n) => n.id)).toEqual(['pageReset', 'restored', 'updated']);
+  });
+});
