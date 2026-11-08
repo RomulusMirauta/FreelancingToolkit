@@ -53,7 +53,10 @@ const BNR_CURRENCIES: CurrencyInfo[] = [
   { code: 'ZAR', name: 'South African rand', ro: 'Rand sud-african' },
 ];
 
-export const HIDDEN_CODES = ['XAU', 'XDR'];
+// ZWL, Zimbabwe's dollar until 2024, comes priced like the ZiG (ZWG) that replaced it: about 2,500 times too high.
+// npm run rates leaves it out; this hides it in a market snapshot written before, such as the committed one, which a
+// deploy keeps when the new rates don't download or are held back.
+export const HIDDEN_CODES = ['XAU', 'XDR', 'ZWL'];
 
 const BNR_CODES = new Set(BNR_CURRENCIES.map((c) => c.code));
 const MARKET_NAMES: Record<string, { en: string; ro: string }> = market.names;

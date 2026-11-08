@@ -9,7 +9,8 @@ import './symbols.test';
 // The deploy downloads both feeds again before testing. A change in either feed's list of currencies isn't a broken
 // download, so the data tests must still pass. Here they run on the bundled snapshots as they would read after BNR
 // starts publishing KZT (which the market source prices too) and stops publishing RSD (as it did BGN in 2026), and
-// after the market source drops HRK, which has a symbol in the fixed table. (Vitest applies vi.mock before any import.)
+// after the market source drops HRK, which has a symbol in the fixed table. The market snapshot also has ZWL, as one
+// written before npm run rates left it out does. (Vitest applies vi.mock before any import.)
 type Rates = Record<string, number>;
 
 vi.mock('../../data/rates.json', async (importOriginal) => {
@@ -27,6 +28,8 @@ vi.mock('../../data/market-rates.json', async (importOriginal) => {
   const copy = structuredClone(real);
   delete copy.rates.HRK;
   delete copy.names.HRK;
+  copy.rates.ZWL = 0.179189;
+  copy.names.ZWL = { en: 'Zimbabwean Dollar (2009–2024)', ro: 'Dolar Zimbabwe (2009)' };
   return { default: copy, ...copy };
 });
 
@@ -49,5 +52,10 @@ describe('after a change in the currency lists', () => {
   it('a currency the market source drops is no longer listed; its symbol stays in the table, unused', () => {
     expect(listed('HRK')).toBeUndefined();
     expect(currencySymbol('HRK')).toBe('kn');
+  });
+
+  it('the old Zimbabwean dollar, priced like the ZiG, is not listed even when the market snapshot still has it', () => {
+    expect(MARKET_RATES.rates.ZWL).toBe(0.179189);
+    expect(listed('ZWL')).toBeUndefined();
   });
 });

@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchBnrRates } from './fetch-bnr-rates.mjs';
 import { fetchMarketRates } from './fetch-market-rates.mjs';
+import { exists } from './rates-snapshot.mjs';
 
 // The two scripts of npm run rates, on files of their own, with the downloads simulated.
 const TEN_DAYS = 'https://curs.bnr.ro/nbrfxrates10days.xml';
@@ -199,5 +200,55 @@ describe('market rates', () => {
     serve(MARKET, marketReply('2026-11-06', MARKET_LEI));
     await run();
     expect(await json(marketFile)).toMatchObject({ date: '2026-11-06', rates: { EUR: 5.34017, SAR: 1.26801 } });
+  });
+});
+
+// A real jump that keeps the currency's code, taken past the checks the way README.md and rates-snapshot.mjs say.
+describe('a real jump, such as a redenomination', () => {
+  const run = async () => {
+    await fetchBnrRates(bnrFile, marketFile);
+    await fetchMarketRates(marketFile, bnrFile);
+  };
+
+  it('in a currency only the market prices: deleting the market file takes it', async () => {
+    serve(TEN_DAYS, bnrXml([NOV_6, NOV_5]));
+    serve(MARKET, marketReply('2026-11-09', { ...MARKET_LEI, SAR: 1268.01 }));
+    await rm(marketFile);
+    await run();
+    expect((await json(marketFile)).rates.SAR).toBe(1268.01);
+  });
+
+  describe('in one BNR publishes too', () => {
+    // TRY at 1,000 times its rate from 9 November, in both feeds.
+    const tryAt = ({ date, rates }, TRY) => ({ date, rates: { ...rates, TRY } });
+    const NOV_10 = day('2026-11-10', 5.3421, 0.014655);
+    beforeEach(async () => {
+      await save(bnrFile, { ...SAVED_BNR, rates: { ...NOV_6.rates, TRY: 0.0952 }, history: [tryAt(NOV_6, 0.0952), tryAt(NOV_5, 0.0951)] });
+      await save(marketFile, { ...SAVED_MARKET, rates: { ...SAVED_MARKET.rates, TRY: 0.095 } });
+      serve(MARKET, marketReply('2026-11-09', { ...MARKET_LEI, TRY: 95.04 }));
+    });
+
+    it('both files are held back while it is in BNR\'s 10-day file; deleting rates.json alone leaves it missing', async () => {
+      serve(TEN_DAYS, bnrXml([tryAt(NOV_9, 95.2), tryAt(NOV_6, 0.0952), tryAt(NOV_5, 0.0951)]));
+      const market = await text(marketFile);
+      await rm(bnrFile);
+      await run();
+      expect(await exists(bnrFile)).toBe(false);
+      expect(await text(marketFile)).toBe(market);
+      expect(lines).toEqual([
+        '::error title=BNR rates not updated::the new rates look wrong (TRY: BNR 95.2, market 0.095; TRY: 95.2 on 2026-11-09, '
+          + '0.0952 on 2026-11-06); no file was written.',
+        '::error title=Market rates not updated::the new rates look wrong (TRY: 95.04, 0.095 on 2026-11-06); the saved file is unchanged.',
+      ]);
+    });
+
+    it('once it has left BNR\'s 10-day file, deleting both files takes it in both', async () => {
+      serve(TEN_DAYS, bnrXml([tryAt(NOV_10, 95.3), tryAt(NOV_9, 95.2)]));
+      await rm(bnrFile);
+      await rm(marketFile);
+      await run();
+      expect((await json(bnrFile)).rates.TRY).toBe(95.3);
+      expect((await json(marketFile)).rates.TRY).toBe(95.04);
+    });
   });
 });

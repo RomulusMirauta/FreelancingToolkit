@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_WORK, PERIODS, holidayYear, hoursIn, isValidWork, readWork, rescale, workDaysIn, type Period } from './periods';
 
+// The device's time zone is Node's TZ, which takes effect at once; src is typed for the browser, without `process`.
+const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
+
 describe('periods', () => {
   it('scales the default 30 €/h across every period', () => {
     const expected: Record<Period, number> = {
@@ -30,7 +33,10 @@ describe('periods', () => {
   });
 
   it('counts the public holidays of the year it is in Romania, read again at each call', () => {
-    // The year was read once, when the app loaded: a page left open over New Year kept 2026's 11 holidays.
+    // The year was read once, when the app loaded: a page left open over New Year kept 2026's 11 holidays. In
+    // California it is still 31 December at both moments, so the device's year can't pass for Romania's.
+    const tz = env.TZ;
+    env.TZ = 'America/Los_Angeles';
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date('2026-12-31T20:00:00Z')); // 22:00 on 31 December in Romania
@@ -42,6 +48,8 @@ describe('periods', () => {
       expect(hoursIn('year', { ...DEFAULT_WORK, holidays: true })).toBe(8 * 251);
     } finally {
       vi.useRealTimers();
+      if (tz === undefined) delete env.TZ;
+      else env.TZ = tz;
     }
   });
 

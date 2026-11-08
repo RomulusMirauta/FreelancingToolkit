@@ -33,6 +33,8 @@ describe('today in Romania', () => {
   });
 
   it('moves on at midnight in Romania, summer and winter time included', () => {
+    // From California, whose own midnight comes 9 or 10 hours later.
+    env.TZ = 'America/Los_Angeles';
     expect(msToRomanianMidnight(Date.parse('2026-11-25T20:00:00Z'))).toBe(2 * HOUR); // 22:00 in winter
     expect(msToRomanianMidnight(Date.parse('2026-11-25T21:59:59.250Z'))).toBe(750);
     expect(msToRomanianMidnight(Date.parse('2026-11-25T22:00:00Z'))).toBe(24 * HOUR); // midnight itself

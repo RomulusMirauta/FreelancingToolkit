@@ -3,11 +3,15 @@
 //
 // A multiplier lost (BNR quotes HUF, IDR, ISK, JPY and KRW per 100) or a glitch at the provider puts a rate 100 or 1,000
 // times off. Real moves stay far inside the factors below: the largest from one BNR fixing to the next since 2008 is
-// EGP's, x1.63 on 6 March 2024, and on a normal day the two sources differ by under 2%. A real jump past them (a
-// redenomination) is held back too: delete the saved file and run npm run rates again to take it.
-import { readFile, rename, rm, writeFile } from 'node:fs/promises';
+// EGP's, x1.63 on 6 March 2024, and on a normal day the two sources differ by under 2%. A real jump past them that keeps
+// its code (a redenomination) is held back too. In a currency only the market prices, delete
+// src/data/market-rates.json and run npm run rates to take it. In one BNR publishes, each update is checked against the
+// other source's saved file, and BNR's 10-day file against itself, so both stay held back until the jump has left that
+// file, from BNR's tenth fixing at the new rate: then delete both files and run npm run rates.
+import { realpathSync } from 'node:fs';
+import { access, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 /** BNR's rate and the market rate for the same currency stay within this factor of each other, either way. */
 export const SOURCES_FACTOR = 3;
@@ -72,12 +76,30 @@ export async function writeSnapshot(file, snapshot) {
   }
 }
 
+/** Whether there is a file at `file`, a snapshot or not. */
+export const exists = (file) => access(file).then(() => true, () => false);
+
 /**
  * Says why the saved file stays, as an error on the GitHub Actions run. The script still exits 0, so a deploy of new
- * code goes on with the saved rates.
+ * code goes on with the saved rates. `kept` is false when there was no file to keep (deleted to take a real jump).
  */
-export function notUpdated(what, err) {
+export function notUpdated(what, err, kept = true) {
   // A workflow command ends at a line break, and reads % as the start of an escape.
-  const message = `${err.message}; the saved file is unchanged.`.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  const message = `${err.message}; ${kept ? 'the saved file is unchanged' : 'no file was written'}.`
+    .replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
   console.log(`::error title=${what} not updated::${message}`);
+}
+
+/**
+ * Whether `meta` is the import.meta of the file Node was started with, so a script runs only then, not when the tests
+ * import it. import.meta.main is new in Node 22.18 and 24.2; an older one leaves it undefined, and the path tells, as
+ * Node starts the real path of its first argument.
+ */
+export function isMain(meta) {
+  if (meta.main !== undefined) return meta.main;
+  try {
+    return meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
 }

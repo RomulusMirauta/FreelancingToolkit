@@ -118,6 +118,21 @@ describe('PFA net income exactly on a CAS band', () => {
     const o = { ...DEFAULT_TAX_OPTIONS, pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1450.2 } };
     expect(computeRegime('pfaReal', 66_002.4, o).lines.find((l) => l.key === 'cas')!.annual).toBe(12_150);
   });
+
+  it('on the card: 10,922.71 a month less 2,822.71 of expenses, on 24 minimum wages', () => {
+    // 97,199.99999999999 unrounded: the sweep above never lands a hair under 24 minimum wages, so it can't tell.
+    expect(lineOf(computeRegime('pfaReal', 131_072.52, withOptions({ pfaReal: { expensesMonthly: 2822.71 } })), 'cas')).toBe(24_300);
+  });
+});
+
+describe('copyright net income exactly on a band', () => {
+  it('pays CAS and CASS on the same band, also from a link with an amount a hair under it', () => {
+    // ?side=6749.9994 (the address takes any decimals): a net income of 48,599.99568, which CAS took to the ban, on 12
+    // minimum wages, and CASS didn't, on 6.
+    const r = computeSideJob('copyright', { salaryMonthly: 0, sideMonthly: 6749.9994 });
+    expect(['cas', 'cass'].map((key) => r.lines.find((l) => l.key === key)!.annual)).toEqual([12_150, 4_860]);
+    expect(copyrightYear(161_999.9928)).toMatchObject({ cas: 24_300, cass: 9_720 });
+  });
 });
 
 describe('tax board regimes', () => {

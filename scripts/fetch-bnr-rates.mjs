@@ -6,7 +6,7 @@
 // saved ones and the market rates. Otherwise, as on any failure, the saved file stays, the run shows why (::error::)
 // and the script exits 0.
 import { parseBnrXml } from './bnr-parse.mjs';
-import { historyMoves, holdBack, movedFrom, notPositive, notUpdated, readSnapshot, sourcesApart, writeSnapshot } from './rates-snapshot.mjs';
+import { exists, historyMoves, holdBack, isMain, movedFrom, notPositive, notUpdated, readSnapshot, sourcesApart, writeSnapshot } from './rates-snapshot.mjs';
 
 const DAILY = 'https://curs.bnr.ro/nbrfxrates.xml';
 const TEN_DAYS = 'https://curs.bnr.ro/nbrfxrates10days.xml';
@@ -51,8 +51,8 @@ export async function fetchBnrRates(out = OUT, market = MARKET) {
     await writeSnapshot(out, { date: latest.date, source, rates: latest.rates, history });
     console.log(`Rates updated to ${latest.date}: EUR ${latest.rates.EUR}, ${Object.keys(latest.rates).length} currencies, ${history.length} days of history.`);
   } catch (err) {
-    notUpdated('BNR rates', err);
+    notUpdated('BNR rates', err, await exists(out));
   }
 }
 
-if (import.meta.main) await fetchBnrRates();
+if (isMain(import.meta)) await fetchBnrRates();

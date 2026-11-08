@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write # to push the new rates; only the commit step gets the token
+      contents: write # to push the new rates; only the commit step has the token in its environment
       pages: read # configure-pages reads the site's settings
     steps:
       # Without the token in .git/config, the packages npm installs and runs can't push.
@@ -51,7 +51,8 @@ jobs:
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git commit -m "Update exchange rates" -- src/data/rates.json src/data/market-rates.json
             remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-            git pull --rebase --autostash "$remote" "$GITHUB_REF"
+            # A pull that rebases names its reflog entries after its own command line, token included, unless this is set.
+            GIT_REFLOG_ACTION='pull --rebase' git pull --rebase --autostash "$remote" "$GITHUB_REF"
             git push "$remote" "HEAD:$GITHUB_REF"
           fi
       - uses: actions/configure-pages@v5

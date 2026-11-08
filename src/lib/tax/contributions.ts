@@ -23,8 +23,10 @@ export function cassPfa(net: number, waived = false): { total: number; onIncome:
 
 /** CASS on dividends, IP and other income: band base of 6/12/24 minimum wages. */
 export function cassTiers(amount: number): number {
-  for (const n of [P.CASSPrag3, P.CASSPrag2, P.CASSPrag1]) {
-    if (amount >= mw(n)) return mw(n) * P.CotaCASS;
+  // To the ban, as casBand: copyright income gives both the same net, which must fall in the same band.
+  const n = Math.round(amount * 100) / 100;
+  for (const band of [P.CASSPrag3, P.CASSPrag2, P.CASSPrag1]) {
+    if (n >= mw(band)) return mw(band) * P.CotaCASS;
   }
   return 0;
 }

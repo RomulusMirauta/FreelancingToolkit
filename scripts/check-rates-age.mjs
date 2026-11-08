@@ -1,7 +1,7 @@
 // Fails the deploy run when the rates just deployed are old, so GitHub emails the owner. npm run rates keeps the saved
 // rates when a download fails or looks wrong, and exits 0 so new code still deploys: a source that moved or stopped for
 // good would leave every run green. The deploy workflow runs this after the deploy, which it never holds up.
-import { readSnapshot } from './rates-snapshot.mjs';
+import { isMain, readSnapshot } from './rates-snapshot.mjs';
 
 const BNR = new URL('../src/data/rates.json', import.meta.url);
 const MARKET = new URL('../src/data/market-rates.json', import.meta.url);
@@ -43,4 +43,4 @@ export async function checkRatesAge(now = new Date(), bnr = BNR, market = MARKET
   return recent;
 }
 
-if (import.meta.main && !(await checkRatesAge())) process.exitCode = 1;
+if (isMain(import.meta) && !(await checkRatesAge())) process.exitCode = 1;

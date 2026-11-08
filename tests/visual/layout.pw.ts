@@ -1020,6 +1020,21 @@ test('a page left open over New Year counts the new year\'s public holidays', as
   await expect(summary).toContainText('251 working days/year');
 });
 
+/** The line with the date of the BNR rates, under the converter: it warns once they are more than a few days old. */
+const ratesLine = (page: Page) => page.locator('.converter .rates > p').first();
+
+test('a page left open warns of old rates from midnight in Romania', async ({ page }) => {
+  // The test rates are of 3 November: 4 days old on the 7th, 5 on the 8th, when the warning comes on.
+  await page.clock.install({ time: new Date('2026-11-07T23:00:00+02:00') });
+  await page.goto('./?lang=en');
+  await expect(ratesLine(page)).toHaveClass('muted');
+  await expect(ratesLine(page)).not.toHaveAttribute('role');
+  await page.clock.fastForward('02:00:00');
+  await expect(ratesLine(page)).toHaveClass('warn');
+  await expect(ratesLine(page)).toHaveAttribute('role', 'status');
+  await expect(ratesLine(page)).toContainText('these rates are more than a few days old');
+});
+
 test.describe('in another time zone', () => {
   test.use({ timezoneId: 'America/Los_Angeles' });
 
@@ -1029,6 +1044,16 @@ test.describe('in another time zone', () => {
     await page.clock.setFixedTime(new Date('2026-11-26T00:30:00Z'));
     await page.goto('./?lang=en#taxes');
     await expect(page.locator('.calendar .monthly strong')).toHaveText('Every month on the 25th (next: Mon, 21 December 2026, in 25 days)');
+  });
+
+  test('the converter counts the rates\' age from the date in Romania', async ({ page }) => {
+    // 16:30 on 7 November in California is 02:30 on the 8th in Romania: the test rates, of 3 November, are 5 days old
+    // there, and 4 by the device's date.
+    await page.clock.setFixedTime(new Date('2026-11-08T00:30:00Z'));
+    await page.goto('./?lang=en');
+    await expect(ratesLine(page)).toHaveClass('warn');
+    await expect(ratesLine(page)).toHaveAttribute('role', 'status');
+    await expect(ratesLine(page)).toContainText('these rates are more than a few days old');
   });
 });
 

@@ -109,6 +109,8 @@ def cass_pfa(net: float, waived: bool = False) -> tuple[float, float]:
 
 def cass_tiers(amount: float) -> float:
     """CASS on dividends, IP and other income: band base of 6/12/24 minimum wages."""
+    # To the ban, as cas_band: copyright income gives both the same net, which must fall in the same band.
+    amount = round(amount, 2)
     for n in (P["CASSPrag3"], P["CASSPrag2"], P["CASSPrag1"]):
         if amount >= mw(n):
             return mw(n) * P["CotaCASS"]

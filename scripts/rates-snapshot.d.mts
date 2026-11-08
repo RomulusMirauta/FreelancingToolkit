@@ -16,4 +16,6 @@ export declare function historyMoves(history?: { date: string; rates: Rates }[])
 export declare function holdBack(problems: string[]): void;
 export declare function readSnapshot(file: URL): Promise<Snapshot | null>;
 export declare function writeSnapshot(file: URL, snapshot: Snapshot): Promise<void>;
-export declare function notUpdated(what: string, err: Error): void;
+export declare function exists(file: URL): Promise<boolean>;
+export declare function notUpdated(what: string, err: Error, kept?: boolean): void;
+export declare function isMain(meta: { main?: boolean; url: string }): boolean;

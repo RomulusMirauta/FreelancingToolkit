@@ -4,7 +4,7 @@
 // Only a later day's rates replace the saved file, and only if they pass the checks in rates-snapshot.mjs, against the
 // saved ones and BNR's. Otherwise, as on any failure, the saved file stays, the run shows why (::error::) and the
 // script exits 0.
-import { holdBack, movedFrom, notPositive, notUpdated, readSnapshot, sourcesApart, writeSnapshot } from './rates-snapshot.mjs';
+import { exists, holdBack, isMain, movedFrom, notPositive, notUpdated, readSnapshot, sourcesApart, writeSnapshot } from './rates-snapshot.mjs';
 
 const SOURCE = 'https://open.er-api.com/v6/latest/RON';
 const PROVIDER = 'https://www.exchangerate-api.com';
@@ -47,8 +47,8 @@ export async function fetchMarketRates(out = OUT, bnr = BNR) {
     await writeSnapshot(out, { date, source: SOURCE, provider: PROVIDER, rates, names });
     console.log(`Market rates updated to ${date}: ${Object.keys(rates).length} currencies.`);
   } catch (err) {
-    notUpdated('Market rates', err);
+    notUpdated('Market rates', err, await exists(out));
   }
 }
 
-if (import.meta.main) await fetchMarketRates();
+if (isMain(import.meta)) await fetchMarketRates();
