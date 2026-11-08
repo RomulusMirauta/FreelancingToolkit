@@ -101,21 +101,24 @@ const canonical = (m: Record<string, string>) =>
     }
   }));
 
-/** Puts the own settings back in place of the link's, also in the address. False when the browser refused one. */
-function putBack(own: Record<string, string>): boolean {
-  // The link's settings are in the address too: drop them, or the address would apply them over the own ones.
-  writeQuery((params) => [...PAGE_QUERY.converter, ...PAGE_QUERY.taxes].forEach((k) => params.delete(k)));
+/** Puts these page settings in place of the ones there, in storage. False when the browser refused one. */
+function putKeys(settings: Record<string, string>): boolean {
   for (const key of SHARED_KEYS) storage.removeItem(key);
-  return Object.entries(own).map(([key, raw]) => storage.setItem(key, raw)).every((ok) => ok);
+  return Object.entries(settings).map(([key, raw]) => storage.setItem(key, raw)).every((ok) => ok);
 }
+
+/** The link's settings are in the address too: dropped, or the address would apply them over the own ones put back. */
+const dropLinkQuery = () => writeQuery((params) => [...PAGE_QUERY.converter, ...PAGE_QUERY.taxes].forEach((k) => params.delete(k)));
 
 /**
  * A link that waited in a tab closed before a choice replaced the own settings for that visit only: they come
  * back on this one, as "Back to my settings" would have put them, and its toast says so.
  */
 function restoreLeft(left: Pending): void {
+  const saved = putKeys(left.own);
+  dropLinkQuery();
   // Refused by the browser, they would be gone after this visit: then they stay set aside for the next one.
-  if (putBack(left.own)) storage.removeItem(PENDING);
+  if (saved) storage.removeItem(PENDING);
   notifyLater('restored');
 }
 
@@ -201,8 +204,15 @@ export function sharedLinkState(): { opened: boolean; hadOwn: boolean; same: boo
 
 /** Puts back the viewer's own settings and reloads. */
 export function restoreOwnSettings(): void {
-  // Refused by the browser, they would be gone after the reload: then they stay set aside.
-  if (putBack(backup ?? {})) settleSharedLink();
+  const link = readKeys();
+  // Refused by the browser (storage full), they would be gone after the reload, which would show the defaults: the
+  // page stays on the link's, in storage and in the address, with the banner, and the own ones stay set aside.
+  if (!putKeys(backup ?? {})) {
+    putKeys(link);
+    return;
+  }
+  dropLinkQuery();
+  settleSharedLink();
   // The reload alone looks like nothing happened: after it, a toast says the own settings are back.
   notifyRestoredAfterReload();
   flushQuery();

@@ -36,13 +36,28 @@ export function notify(id: ToastId, arg?: string): void {
   window.dispatchEvent(new CustomEvent<Note>(EVENT, { detail: { id, arg } }));
 }
 
+/** Toasts for this page's start that session storage refused (site data blocked): a reload loses them, the first render doesn't. */
+const laterHere: Note[] = [];
+
 /** Shown when the page next starts: after the reload that follows, or right away if nothing reloads. */
 export function notifyLater(id: ToastId, arg?: string): void {
   try {
     sessionStorage.setItem(LATER, JSON.stringify([...readLater(), { id, arg }]));
   } catch {
-    // no session storage: the toast is skipped
+    // no session storage: kept for this page, so one found before the first render (a broken link) still shows
+    laterHere.push({ id, arg });
   }
+}
+
+/** The toasts waiting for the page's start, taken once: from before a reload, and from this page before its first render. */
+export function takeLater(): Note[] {
+  const notes = [...readLater(), ...laterHere.splice(0)];
+  try {
+    sessionStorage.removeItem(LATER);
+  } catch {
+    // no session storage
+  }
+  return notes;
 }
 
 function readLater(): Note[] {
@@ -229,12 +244,7 @@ export function Toast() {
     window.addEventListener(EVENT, onEvent);
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
-    const pending = [...startNotes(), ...readLater()];
-    try {
-      sessionStorage.removeItem(LATER);
-    } catch {
-      // no session storage
-    }
+    const pending = [...startNotes(), ...takeLater()];
     if (pending.length) setQueue(pending);
     return () => {
       window.removeEventListener(EVENT, onEvent);

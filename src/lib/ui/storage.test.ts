@@ -5,6 +5,7 @@ import { LANG_QUERY, WORK_QUERY } from '../../features/app/appQueries';
 import { DEFAULT_SOURCE } from '../../features/converter/Converter';
 import { COLUMNS_QUERY } from '../../features/converter/converterQueries';
 import { FEES_QUERY } from '../../features/converter/Fees';
+import { INCOME_QUERY } from '../../features/taxes/Taxes';
 import type { UrlQuery } from './urlQuery';
 
 // A tiny browser: an address that history.replaceState changes, a count of reloads, and storage that refuses
@@ -175,6 +176,48 @@ describe('with site data blocked', () => {
     expect((await load()).sharedLinkState().opened).toBe(false);
     expect(await shownQuery(COLUMNS_QUERY)).toEqual(['EUR', 'USD']);
   });
+
+  it('a reload keeps the tax income the address has: a link\'s default one stays the default', async () => {
+    // The link's income is the default (it would have income= otherwise). Each reload found no saved amount, took
+    // the address's for a new one, and the income followed it: 33,137.87 lei a month, written into the address.
+    await load('?share=1&lang=en&amount=40&currency=USD&per=hour');
+    await draw();
+    for (let i = 0; i < 2; i++) {
+      await load();
+      expect(await shownQuery(INCOME_QUERY)).toEqual(INCOME_QUERY.defaults);
+      await draw();
+      expect(url.searchParams.has('income')).toBe(false);
+      expect(url.searchParams.get('amount')).toBe('40');
+    }
+  });
+
+  for (const hours of ['', '&hours=6']) {
+    it(`"Reset tab" on Taxes puts the income back to its default after the reload${hours && ', with a working time'}`, async () => {
+      await load(`?lang=en${hours}&amount=45&currency=EUR&per=hour&income=41658.24&income_currency=RON&income_per=month`);
+      expect((await shownQuery(INCOME_QUERY)).amount).toBe(41658.24);
+      // What resetPage('taxes') does: the income leaves the address and storage (the amount isn't the income's).
+      const { writeQuery, flushQuery } = await import('./query');
+      writeQuery((params) => INCOME_QUERY.names.forEach((k) => params.delete(k)));
+      flushQuery();
+      (await import('./storage')).storage.removeItem(INCOME_QUERY.key);
+      await load();
+      expect(await shownQuery(INCOME_QUERY)).toEqual(INCOME_QUERY.defaults);
+      await draw();
+      expect(url.searchParams.has('income')).toBe(false);
+    });
+  }
+
+  it('a link with settings that aren\'t valid says so on the page it opens', async () => {
+    // Found before the first render, the toast went to session storage, which threw: it was skipped.
+    await load('?lang=en&amount=abc&currency=EUR&per=hour');
+    const { droppedParams } = await import('./urlQuery');
+    const toast = await import('./toast');
+    expect(droppedParams().length).toBeGreaterThan(0);
+    toast.notifyLater('badLink');
+    expect(toast.takeLater()).toEqual([{ id: 'badLink' }]);
+    // Taken once: the second run of the mount effect (StrictMode) doesn't show it again.
+    expect(toast.takeLater()).toEqual([]);
+  });
 });
 
 describe('with only new values refused (storage full)', () => {
@@ -201,14 +244,33 @@ describe('with only new values refused (storage full)', () => {
     const share = await load(LINK);
     expect(share.sharedLinkState()).toEqual({ opened: true, hadOwn: true, same: false });
     expect(await shownQuery(COLUMNS_QUERY)).toEqual(['EUR', 'USD']);
-    // Kept for this page only, they would be gone after the reload that follows: the banner comes back instead.
+    // Kept for this page only, they would be gone after a reload, which showed the defaults under a toast saying
+    // they were back: the page stays on the link's, which the address keeps, and the banner stays.
     share.restoreOwnSettings();
-    expect(reloads).toBe(1);
+    expect(reloads).toBe(0);
+    expect(session.get('ft-toast-after-reload') ?? '').not.toContain('restored');
+    expect(share.sharedLinkState()).toEqual({ opened: true, hadOwn: true, same: false });
+    expect(await shownQuery(COLUMNS_QUERY)).toEqual(['EUR', 'USD']);
+    (await import('./query')).flushQuery();
+    expect(url.searchParams.get('currencies')).toBe('EUR,USD');
     expect((await load()).sharedLinkState()).toEqual({ opened: true, hadOwn: true, same: false });
+    expect(await shownQuery(COLUMNS_QUERY)).toEqual(['EUR', 'USD']);
     // With room again, they are back for good.
     vi.stubGlobal('localStorage', over(local));
     (await load()).restoreOwnSettings();
     expect(ownSettings()).toEqual(OWN);
     expect((await load()).sharedLinkState().opened).toBe(false);
+  });
+
+  it('"Keep the link\'s" after a refused "Back to my settings" keeps the link\'s settings', async () => {
+    for (const [k, v] of Object.entries(OWN)) local.set(k, v);
+    vi.stubGlobal('localStorage', over(local, { setItem: full }));
+    vi.stubGlobal('sessionStorage', over(session));
+    const share = await load(LINK);
+    share.restoreOwnSettings();
+    share.settleSharedLink();
+    expect(await shownQuery(COLUMNS_QUERY)).toEqual(['EUR', 'USD']);
+    expect((await load()).sharedLinkState().opened).toBe(false);
+    expect(await shownQuery(COLUMNS_QUERY)).toEqual(['EUR', 'USD']);
   });
 });

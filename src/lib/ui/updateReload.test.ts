@@ -227,7 +227,8 @@ describe('the update in more than one window', () => {
       const A = win('?amount=55&currency=EUR&per=hour&hours=6&fold=fees');
       const a = await open(A);
       const before = A.url.search;
-      expect(before).toMatch(/^\?amount=55&currency=EUR&per=hour&hours=6&fold=fees&income=/);
+      // Nothing kept between loads: the income is the address's, the default one without income= (sourceQuery.ts).
+      expect(before).toBe('?amount=55&currency=EUR&per=hour&hours=6&fold=fees');
       a.update();
       expect(reloads).toBe(1);
       expect(A.url.search).toBe(before);

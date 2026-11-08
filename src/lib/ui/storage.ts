@@ -4,6 +4,8 @@
  * render, and every setting is read back from it, so they still show for the visit when nothing can be saved.
  */
 const memory = new Map<string, string>();
+/** Whether the browser takes a new value at all, found out once a page (see persists). */
+let persisting: boolean | undefined;
 
 export const storage = {
   getItem(key: string): string | null {
@@ -46,6 +48,23 @@ export const storage = {
       // blocked: only this page's
     }
     return [...new Set([...saved, ...memory.keys()])];
+  },
+
+  /**
+   * Whether a value saved now is still there on the next page load: false with site data blocked, or storage full.
+   * Then the address is all a reload has. Tried with a key that isn't an `ft.` one, so it never counts as a setting.
+   */
+  persists(): boolean {
+    if (persisting === undefined) {
+      try {
+        localStorage.setItem('ft-probe', '1');
+        localStorage.removeItem('ft-probe');
+        persisting = true;
+      } catch {
+        persisting = false;
+      }
+    }
+    return persisting;
   },
 
   /** Whether the browser has every value: none is kept for this page only. */

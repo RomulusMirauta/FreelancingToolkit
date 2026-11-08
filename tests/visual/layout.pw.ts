@@ -810,6 +810,32 @@ test('with site data blocked, a link sets the app for the visit, as its banner s
   await expect(banner).toHaveCount(0);
   await expect(byName(page, 'hour-EUR')).toHaveValue('50.00');
   await expect(byName(page, 'hour-PLN')).toHaveCount(1);
+  // Nor a different tax income: the link's is the default (it has no income=). The reload found no amount saved,
+  // took the address's for a new one, and the income followed it, into the address too.
+  await expect(page).not.toHaveURL(/income=/);
+  const fresh = await page.context().newPage();
+  await openApp(fresh, { lang: 'en', tab: 'taxes' });
+  const defaultIncome = await fresh.locator('.income-main input').inputValue();
+  await fresh.close();
+  await page.locator('.views button:not([aria-current])').click();
+  await expect(page.locator('.income-main input')).toHaveValue(defaultIncome);
+  await page.reload();
+  await drawn(page);
+  await expect(page.locator('.income-main input')).toHaveValue(defaultIncome);
+  await expect(page).not.toHaveURL(/income=/);
+});
+
+test('with site data blocked, a link with settings that aren\'t valid says so', async ({ page }) => {
+  // The toast is queued before the first render, in session storage, which threw: it was skipped.
+  await page.addInitScript(() => {
+    for (const name of ['localStorage', 'sessionStorage']) {
+      Object.defineProperty(window, name, { get() { throw new DOMException('The operation is insecure.', 'SecurityError'); }, configurable: true });
+    }
+  });
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('./?lang=en&amount=&hours=6');
+  await expect(page.locator('.toast')).toContainText('Some settings in the link weren’t valid.');
+  await expect(page).toHaveURL(/\?lang=en&hours=6$/);
 });
 
 test('an address with a double slash opens the app at its own address', async ({ page }) => {

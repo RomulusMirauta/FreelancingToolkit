@@ -108,9 +108,11 @@ export function followedEurYear(income: { amount: number; per: Period; currency:
 /**
  * The converter's amount per month in lei that the tax income goes with, before the address's working time and
  * custom rates are read: null when the saved income doesn't follow the converter (with none saved, the default
- * income does). For refollowIncome.
+ * income does), and when nothing is kept between page loads: then the address is all there is, and an income it
+ * doesn't have is the default (the app writes any other), not one to work out again. For refollowIncome.
  */
 export function followedMonth(defaultSource: Source): number | null {
+  if (!storage.persists()) return null;
   if (readJson('ft.taxIncome') !== null && !incomeFollowsConverter(defaultSource)) return null;
   return followedIncome(savedSource(defaultSource)).amount;
 }
@@ -167,7 +169,8 @@ export function writeSourceQuery(source: Source, isDefault: boolean): void {
  * income follows it (as it would after typing it in the converter), so an address opened on #taxes is right too.
  * Not in a shared link: it has the sender's income whenever that isn't the default, so without one the income
  * stays on the default, as the sender's was. Without an amount, a saved one is written into the address. A broken
- * amount is dropped from the address.
+ * amount is dropped from the address. With nothing kept between page loads (site data blocked), every load would
+ * find a different amount: the income stays as the address has it, the default without one.
  */
 export function applySourceQuery(defaultSource: Source): void {
   const params = readQuery();
@@ -176,7 +179,7 @@ export function applySourceQuery(defaultSource: Source): void {
     // Only a different amount touches the saved state, so a reload keeps an income set on the tax page.
     if (!same(readJson('ft.source') as Partial<Source> | null, fromUrl)) {
       storage.setItem('ft.source', JSON.stringify({ period: fromUrl.period, currency: fromUrl.currency, amount: fromUrl.amount }));
-      if (!linkOpenedNow()) storage.setItem('ft.taxIncome', JSON.stringify(followedIncome(fromUrl)));
+      if (!linkOpenedNow() && storage.persists()) storage.setItem('ft.taxIncome', JSON.stringify(followedIncome(fromUrl)));
     }
     return;
   }
