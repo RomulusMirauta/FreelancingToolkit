@@ -528,6 +528,32 @@ test('shared link: "Keep the link’s" and "Reset app" end it, and a reload brin
   await expect(banner).toHaveCount(0);
 });
 
+test('with site data blocked, a link sets the app for the visit, as its banner says, and the address keeps it', async ({ page }) => {
+  // "Block all cookies", "Don't allow sites to save data": reaching either storage throws. The app showed its
+  // defaults and emptied the address, under a banner saying it showed the sender's settings.
+  await page.addInitScript(() => {
+    for (const name of ['localStorage', 'sessionStorage']) {
+      Object.defineProperty(window, name, { get() { throw new DOMException('The operation is insecure.', 'SecurityError'); }, configurable: true });
+    }
+  });
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('./?share=1&lang=en&currencies=EUR,USD,PLN&platform=malt&amount=50&currency=EUR&per=hour');
+  const banner = page.locator('.shared-banner');
+  await expect(banner).toContainText('you see the app as the person who sent it set it up');
+  await expect(byName(page, 'hour-EUR')).toHaveValue('50.00');
+  await expect(byName(page, 'hour-PLN')).toHaveCount(1);
+  await expect(byName(page, 'hour-RON')).toHaveCount(0);
+  await expect(page).toHaveURL(/currencies=EUR,USD,PLN(&|$)/);
+  await expect(page).toHaveURL(/platform=malt(&|$)/);
+  await expect(page).toHaveURL(/amount=50(&|$)/);
+  // Nothing could be saved: a reload has the address alone, and no banner.
+  await page.reload();
+  await drawn(page);
+  await expect(banner).toHaveCount(0);
+  await expect(byName(page, 'hour-EUR')).toHaveValue('50.00');
+  await expect(byName(page, 'hour-PLN')).toHaveCount(1);
+});
+
 test('"Reset app" says the language and theme go back to Romanian and automatic, and they do', async ({ page }) => {
   await openApp(page, { lang: 'en', tab: 'converter' });
   await page.goto('./?lang=en&theme=dark');

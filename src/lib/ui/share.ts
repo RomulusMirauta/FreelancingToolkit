@@ -1,5 +1,6 @@
 import { flushQuery, readQuery, readable, writeQuery } from './query';
 import { APP_QUERY, PAGE_KEYS, PAGE_QUERY, type Page } from './settingsKeys';
+import { storage } from './storage';
 import { notifyRestoredAfterReload } from './toast';
 
 /**
@@ -59,7 +60,7 @@ function savePending(): void {
 const readKeys = (): Record<string, string> => {
   const out: Record<string, string> = {};
   for (const key of SHARED_KEYS) {
-    const raw = localStorage.getItem(key);
+    const raw = storage.getItem(key);
     if (raw !== null) out[key] = raw;
   }
   return out;
@@ -90,25 +91,20 @@ export function applySharedLink(): void {
   const params = readQuery();
   if (!params.has(MARK)) return;
   openedNow = true;
-  try {
-    // A second link before choosing: the own settings are still the ones the first link set aside.
-    backup ??= readKeys();
-    savePending();
-    for (const key of SHARED_KEYS) localStorage.removeItem(key);
-    for (const key of SHARED_KEYS) {
-      const raw = params.get(legacyParam(key));
-      if (raw === null) continue;
-      params.delete(legacyParam(key));
-      try {
-        JSON.parse(raw);
-        localStorage.setItem(key, raw);
-      } catch {
-        // not JSON: that setting stays on its default
-      }
+  // A second link before choosing: the own settings are still the ones the first link set aside.
+  backup ??= readKeys();
+  savePending();
+  for (const key of SHARED_KEYS) storage.removeItem(key);
+  for (const key of SHARED_KEYS) {
+    const raw = params.get(legacyParam(key));
+    if (raw === null) continue;
+    params.delete(legacyParam(key));
+    try {
+      JSON.parse(raw);
+      storage.setItem(key, raw);
+    } catch {
+      // not JSON: that setting stays on its default
     }
-  } catch {
-    // storage unavailable: the address alone shows the link's settings
-    backup ??= {};
   }
   writeQuery((p) => {
     p.delete(MARK);
@@ -122,11 +118,7 @@ export function applySharedLink(): void {
  */
 export function finishSharedLink(): void {
   if (backup === null || !openedNow) return;
-  try {
-    sameAsOwn = canonical(readKeys()) === canonical(backup);
-  } catch {
-    sameAsOwn = false;
-  }
+  sameAsOwn = canonical(readKeys()) === canonical(backup);
   savePending();
 }
 
@@ -150,13 +142,10 @@ export function sharedLinkState(): { opened: boolean; hadOwn: boolean; same: boo
 export function restoreOwnSettings(): void {
   // The link's settings are in the address too: drop them, or the reload would apply them over the own ones.
   writeQuery((params) => [...PAGE_QUERY.converter, ...PAGE_QUERY.taxes].forEach((k) => params.delete(k)));
-  try {
-    for (const key of SHARED_KEYS) localStorage.removeItem(key);
-    for (const [key, raw] of Object.entries(backup ?? {})) localStorage.setItem(key, raw);
-    settleSharedLink();
-  } catch {
-    // storage unavailable: the own settings stay set aside
-  }
+  for (const key of SHARED_KEYS) storage.removeItem(key);
+  const saved = Object.entries(backup ?? {}).map(([key, raw]) => storage.setItem(key, raw));
+  // Refused by the browser, they would be gone after the reload: then they stay set aside.
+  if (saved.every((ok) => ok)) settleSharedLink();
   // The reload alone looks like nothing happened: after it, a toast says the own settings are back.
   notifyRestoredAfterReload();
   flushQuery();

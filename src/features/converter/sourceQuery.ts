@@ -5,6 +5,7 @@ import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period } from '../../lib
 import { MAX_AMOUNT, roundMoney } from '../../lib/ui/numbers';
 import { readQuery, writeQuery } from '../../lib/ui/query';
 import { linkOpenedNow } from '../../lib/ui/share';
+import { storage } from '../../lib/ui/storage';
 import { noteDropped, numberParam } from '../../lib/ui/urlQuery';
 
 /**
@@ -36,7 +37,7 @@ const same = (a: Partial<Source> | null, b: Source) =>
 
 const readJson = (key: string): unknown => {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storage.getItem(key);
     return raw === null ? null : JSON.parse(raw);
   } catch {
     return null;
@@ -101,11 +102,7 @@ export function refollowIncome(defaultSource: Source, before: number | null): vo
   if (before === null || linkOpenedNow()) return;
   const income = followedIncome(savedSource(defaultSource));
   if (income.amount === before) return;
-  try {
-    localStorage.setItem('ft.taxIncome', JSON.stringify(income));
-  } catch {
-    // storage unavailable: the tax page opens on its default income
-  }
+  storage.setItem('ft.taxIncome', JSON.stringify(income));
 }
 
 /**
@@ -124,12 +121,8 @@ export function sourceFollowsIncome(): boolean {
  */
 export function saveSource(source: Source, defaultSource: Source): void {
   const isDefault = same(source, defaultSource);
-  try {
-    if (isDefault) localStorage.removeItem('ft.source');
-    else localStorage.setItem('ft.source', JSON.stringify({ period: source.period, currency: source.currency, amount: source.amount }));
-  } catch {
-    // storage unavailable: the converter keeps its own amount
-  }
+  if (isDefault) storage.removeItem('ft.source');
+  else storage.setItem('ft.source', JSON.stringify({ period: source.period, currency: source.currency, amount: source.amount }));
   writeSourceQuery(source, isDefault);
 }
 
@@ -156,17 +149,12 @@ export function writeSourceQuery(source: Source, isDefault: boolean): void {
 export function applySourceQuery(defaultSource: Source): void {
   const params = readQuery();
   const fromUrl = fromQuery(params);
-  try {
-    if (fromUrl) {
-      // Only a different amount touches the saved state, so a reload keeps an income set on the tax page.
-      if (!same(readJson('ft.source') as Partial<Source> | null, fromUrl)) {
-        localStorage.setItem('ft.source', JSON.stringify({ period: fromUrl.period, currency: fromUrl.currency, amount: fromUrl.amount }));
-        if (!linkOpenedNow()) localStorage.setItem('ft.taxIncome', JSON.stringify(followedIncome(fromUrl)));
-      }
-      return;
+  if (fromUrl) {
+    // Only a different amount touches the saved state, so a reload keeps an income set on the tax page.
+    if (!same(readJson('ft.source') as Partial<Source> | null, fromUrl)) {
+      storage.setItem('ft.source', JSON.stringify({ period: fromUrl.period, currency: fromUrl.currency, amount: fromUrl.amount }));
+      if (!linkOpenedNow()) storage.setItem('ft.taxIncome', JSON.stringify(followedIncome(fromUrl)));
     }
-  } catch {
-    // storage unavailable: the address still shows the amount, the app opens on its defaults
     return;
   }
   if (SOURCE_PARAMS.some((k) => params.has(k))) {

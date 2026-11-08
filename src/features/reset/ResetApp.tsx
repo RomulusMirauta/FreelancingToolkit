@@ -12,6 +12,7 @@ import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
 import { notifyLater } from '../../lib/ui/toast';
 import { saveBeforeReset } from '../../lib/ui/undoReset';
 import { settleSharedLink } from '../../lib/ui/share';
+import { storage } from '../../lib/ui/storage';
 
 export { APP_KEYS, PAGE_FOLDS, PAGE_KEYS, type Page } from '../../lib/ui/settingsKeys';
 
@@ -141,13 +142,9 @@ function resetPage(page: Page) {
     if (withIncome) INCOME_QUERY.names.forEach((k) => params.delete(k));
     if (withSource) SOURCE_PARAMS.forEach((k) => params.delete(k));
   });
-  try {
-    if (withIncome) localStorage.removeItem(INCOME_QUERY.key);
-    if (withSource) localStorage.removeItem('ft.source');
-    for (const key of PAGE_KEYS[page]) localStorage.removeItem(key);
-  } catch {
-    // storage unavailable: nothing was saved
-  }
+  if (withIncome) storage.removeItem(INCOME_QUERY.key);
+  if (withSource) storage.removeItem('ft.source');
+  for (const key of PAGE_KEYS[page]) storage.removeItem(key);
   // The reload opens the address: it must have lost the page's parameters, or they would come back.
   flushQuery();
   location.reload();
@@ -155,12 +152,8 @@ function resetPage(page: Page) {
 
 /** Clears every saved setting and reloads on the converter. */
 function resetApp() {
-  try {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key);
-    }
-  } catch {
-    // storage unavailable: nothing was saved, so the reload alone restores the defaults
+  for (const key of storage.keys()) {
+    if (key.startsWith(STORAGE_PREFIX)) storage.removeItem(key);
   }
   // No query string: a shared link's settings must not come back after a reset. Nor its banner, whose "Back to
   // my settings" would undo the reset.

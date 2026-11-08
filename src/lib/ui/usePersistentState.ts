@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
+import { storage } from './storage';
 
 /** All app keys share this prefix, so "is anything saved?" means "is the app modified?". */
 export const STORAGE_PREFIX = 'ft.';
 const CHANGE_EVENT = 'ft-storage';
 
 /**
- * useState backed by localStorage. A value equal to its default is removed rather than stored.
- * Storage may be unavailable (private mode), so every access is guarded. `upgrade` turns a value saved by an
- * older version into the current shape (null if it can't).
+ * useState backed by the app's storage (storage.ts: localStorage, or this page's memory where the browser refuses
+ * it). A value equal to its default is removed rather than stored. `upgrade` turns a value saved by an older
+ * version into the current shape (null if it can't).
  */
 export function usePersistentState<T>(
   key: string,
@@ -17,7 +18,7 @@ export function usePersistentState<T>(
 ): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = storage.getItem(key);
       if (raw !== null) {
         const parsed: unknown = JSON.parse(raw);
         if (isValid(parsed)) return parsed;
@@ -33,12 +34,8 @@ export function usePersistentState<T>(
   const json = JSON.stringify(value);
   const initialJson = JSON.stringify(initial);
   useEffect(() => {
-    try {
-      if (json === initialJson) localStorage.removeItem(key);
-      else localStorage.setItem(key, json);
-    } catch {
-      // not persisted; the app still works for this visit
-    }
+    if (json === initialJson) storage.removeItem(key);
+    else storage.setItem(key, json);
     window.dispatchEvent(new Event(CHANGE_EVENT));
   }, [key, json, initialJson]);
 
@@ -46,11 +43,7 @@ export function usePersistentState<T>(
 }
 
 function hasSavedState(keys?: readonly string[]): boolean {
-  try {
-    return Object.keys(localStorage).some((k) => (keys ? keys.includes(k) : k.startsWith(STORAGE_PREFIX)));
-  } catch {
-    return false;
-  }
+  return storage.keys().some((k) => (keys ? keys.includes(k) : k.startsWith(STORAGE_PREFIX)));
 }
 
 /** True while any setting differs from its default; with `keys`, only those settings count. */

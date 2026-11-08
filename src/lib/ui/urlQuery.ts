@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { isSaneAmount } from './numbers';
 import { readQuery, writeQuery } from './query';
+import { storage } from './storage';
 
 /**
  * A saved setting that also lives in the address (?lang=en, ?income=12000&income_currency=EUR&income_per=month,
@@ -8,7 +9,7 @@ import { readQuery, writeQuery } from './query';
  * is written; the default has none. Names and values are in English, so an address works in both languages.
  */
 export interface UrlQuery<T> {
-  /** The localStorage key the value is saved under. */
+  /** The key the value is saved under (storage.ts). */
   key: string;
   /** The address parameters, in the order `toParams` returns their values. */
   names: readonly string[];
@@ -62,10 +63,10 @@ export function applyUrlQuery<T>(q: UrlQuery<T>): void {
   const present = q.names.some((n) => params.has(n));
   let saved: unknown = null;
   try {
-    const raw = localStorage.getItem(q.key);
+    const raw = storage.getItem(q.key);
     saved = raw === null ? null : JSON.parse(raw);
   } catch {
-    // storage unavailable or broken: treated as nothing saved
+    // broken: treated as nothing saved
   }
   const base = q.toParams(q.defaults);
   const complete = q.sparse || q.names.every((n) => params.has(n));
@@ -78,12 +79,8 @@ export function applyUrlQuery<T>(q: UrlQuery<T>): void {
       writeUrlQuery(q, fromUrl);
     }
     if (!(q.isValid(saved) && same(q, saved, fromUrl))) {
-      try {
-        if (q.isDefault ? q.isDefault(fromUrl) : same(q, fromUrl, q.defaults)) localStorage.removeItem(q.key);
-        else localStorage.setItem(q.key, JSON.stringify(fromUrl));
-      } catch {
-        // storage unavailable: the address still shows the value
-      }
+      if (q.isDefault ? q.isDefault(fromUrl) : same(q, fromUrl, q.defaults)) storage.removeItem(q.key);
+      else storage.setItem(q.key, JSON.stringify(fromUrl));
     }
     return;
   }

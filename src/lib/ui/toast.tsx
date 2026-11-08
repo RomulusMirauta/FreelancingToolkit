@@ -3,6 +3,7 @@ import { useT } from '../i18n';
 import type { Strings } from '../i18n/strings';
 import { BNR_RATES } from '../currency/rates';
 import { formatMoney, MAX_AMOUNT } from './numbers';
+import { storage } from './storage';
 import { undoPageReset } from './undoReset';
 
 const EVENT = 'ft:toast';
@@ -143,13 +144,10 @@ export function describe(note: Note, t: Strings): Shown {
 /** On start: a new app version since the last visit, or newer rates after coming back online. */
 function startNotes(): Note[] {
   const notes: Note[] = [];
-  try {
-    const seen = localStorage.getItem(SEEN_VERSION);
-    if (seen !== null && seen !== __APP_VERSION__) notes.push({ id: 'updated', arg: __APP_VERSION__ });
-    localStorage.setItem(SEEN_VERSION, __APP_VERSION__);
-  } catch {
-    // no storage: no "updated" toast
-  }
+  // Nothing saved (a first visit, or storage blocked): no "updated" toast.
+  const seen = storage.getItem(SEEN_VERSION);
+  if (seen !== null && seen !== __APP_VERSION__) notes.push({ id: 'updated', arg: __APP_VERSION__ });
+  storage.setItem(SEEN_VERSION, __APP_VERSION__);
   try {
     const before = sessionStorage.getItem(RATES_BEFORE);
     if (before !== null && BNR_RATES.date > before) notes.push({ id: 'ratesUpdated' });
