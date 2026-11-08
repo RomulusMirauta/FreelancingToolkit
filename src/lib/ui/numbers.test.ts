@@ -33,6 +33,11 @@ describe('formatting follows the language', () => {
     expect(formatMoney(1234.5)).toBe('1.234,50');
     expect(formatEditable(160.278)).toBe('160,28');
   });
+  it('under half a ban an amount is 0,00, never -0,00, as Intl writes a loss that small and −0', () => {
+    setNumberLocale('ro');
+    expect([-0.004, -1e-12, -0].map(formatMoney)).toEqual(['0,00', '0,00', '0,00']);
+    expect([-0.005, 0.004].map(formatMoney)).toEqual(['-0,01', '0,00']);
+  });
   it('English', () => {
     setNumberLocale('en');
     expect(formatMoney(1234.5)).toBe('1,234.50');
@@ -130,6 +135,14 @@ describe('typing into an amount', () => {
     expect(type('0', 1, '2000', 'ro')).toEqual({ text: '2.000', caret: 5 });
     expect(type('0', 0, '1500', 'en')).toEqual({ text: '1,500', caret: 5 });
     expect(type('0', 1, '0', 'ro').text).toBe('0');
+  });
+
+  it('a 0 an edit left, or undo put back, stays: only the 0 the field showed when it got focus is replaced', () => {
+    // 50 an hour, its 5 deleted and 6 typed, gave 6; 90 with its 9 deleted and 3 typed, 3.
+    expect(typedAmount('0', '60', 1, '6', 'ro', false)).toEqual({ text: '60', caret: 1 });
+    expect(typedAmount('0', '30', 1, '3', 'en', false)).toEqual({ text: '30', caret: 1 });
+    // Ctrl+Z after deleting the 5 puts back 50, with no key: it gave 5.
+    expect(typedAmount('0', '50', 1, null, 'ro', false)).toEqual({ text: '50', caret: 1 });
   });
 
   it('a decimal mark after the 0 keeps it', () => {

@@ -43,6 +43,8 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
         const change = rateChange(code);
         const dir = change ? rateDirection(change) : null;
         const sign = dir === 'up' ? '+' : dir === 'down' ? '−' : '';
+        // The amount in lei keeps its own sign: a move of 0.0001 lei on 5.34 reads 0%, unchanged, yet went one way.
+        const leiSign = !change ? '' : change.change > 0 ? '+' : change.change < 0 ? '−' : '';
         const vs = change ? tc.rateVs(dayDate(change.previousDate)) : '';
         /** A custom rate equal to BNR's (as shown, or exactly) is no custom rate. */
         const isBnr = (v: number) => v === published || v === parseAmount(formatRate(published));
@@ -51,7 +53,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
             <div className="rate-tile-top">
               <strong><CurrencyCode code={code} /></strong>
               {change && dir && (
-                <span className={`rate-chg ${dir}`} title={`${sign}${formatRate(Math.abs(change.change))} RON ${vs}`}>
+                <span className={`rate-chg ${dir}`} title={`${leiSign}${formatRate(Math.abs(change.change))} RON ${vs}`}>
                   <span aria-hidden="true">{dir === 'up' ? '▲' : dir === 'down' ? '▼' : '■'}</span>
                   <span className="sr-only">{tc.rateDir[dir]}</span>
                   {sign}{formatNumber(Math.abs(change.share) * 100, 2)}%
@@ -67,7 +69,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
               <span className="muted small rate-tile-change">
                 {change ? (
                   <>
-                    <span>{sign}{formatRate(Math.abs(change.change))} RON</span>
+                    <span>{leiSign}{formatRate(Math.abs(change.change))} RON</span>
                     <span>{vs}</span>
                   </>
                 ) : `1 ${code} = ${formatRate(published)} RON`}
@@ -109,8 +111,16 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
                 onFocus={(e) => {
                   const input = e.currentTarget;
                   if (input.value !== '') return;
-                  input.value = formatRate(published);
-                  input.setSelectionRange(input.value.length, input.value.length);
+                  const filled = formatRate(published);
+                  input.value = filled;
+                  input.setSelectionRange(filled.length, filled.length);
+                  // A tap puts the caret where the finger was after this, usually before the rate in this
+                  // right-aligned field: back to the end once it has, unless something was typed or selected since.
+                  requestAnimationFrame(() => {
+                    if (document.activeElement === input && input.value === filled && input.selectionStart === input.selectionEnd) {
+                      input.setSelectionRange(filled.length, filled.length);
+                    }
+                  });
                 }}
                 onBlur={(e) => {
                   // Back on BNR's rate (untouched, or edited back to it): the field shows it in grey again.

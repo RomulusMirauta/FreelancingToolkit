@@ -145,9 +145,10 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   };
 
   const onType = (period: Period, currency: string, typed: string, atOnce: boolean) => {
-    if (editing && refuseWord(editing.text, typed)) return;
     // Pasted with its currency sign or code ($1,234.56, 1.234,56 lei): read, and kept, without them.
     const bare = bareAmount(typed);
+    // Text put in at once that leaves an amount is no word: "30 EUR" over the cell's 30 differs from it only by " EUR".
+    if (editing && !(atOnce && parseAmount(bare) !== null) && refuseWord(editing.text, typed)) return;
     const text = atOnce && parseAmount(typed) === null && parseAmount(bare) !== null ? bare : typed;
     const amount = parseAmount(text);
     // Above the limit the keystroke is refused (the cell keeps its text), with a word in the corner.

@@ -380,6 +380,32 @@ test('custom rate: three decimals keep their decimal mark after a reload and a l
   await expect.poll(() => saved(page, 'ft.customRates')).toBe('{"USD":4.817}');
 });
 
+test('custom rate: a tap on the empty field puts in BNR\'s rate with the caret after it; a click, where the click was', async ({ page, hasTouch }) => {
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  await page.goto('./?lang=ro&currencies=EUR,RON,USD');
+  const rate = byName(page, 'rate-USD');
+  const bnr = (await rate.getAttribute('placeholder'))!;
+  const box = (await rate.boundingBox())!;
+  // Left of the digits, as most of this right-aligned field is.
+  const position = { x: box.width * 0.1, y: box.height / 2 };
+  const field = () => rate.evaluate((el: HTMLInputElement) => [el.value, el.selectionStart]);
+  if (hasTouch) {
+    // The tap put the caret where the finger was, before the rate: ⌫ did nothing and 8 gave 84,7795.
+    await rate.tap({ position });
+    await expect.poll(field).toEqual([bnr, bnr.length]);
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('8');
+    const changed = `${bnr.slice(0, -1)}8`;
+    await expect(rate).toHaveValue(changed);
+    await expect.poll(() => saved(page, 'ft.customRates')).toBe(`{"USD":${changed.replace(',', '.')}}`);
+  } else {
+    // The mouse puts the caret where the click was (step 130), also once the next frames are drawn.
+    await rate.click({ position });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    expect(await field()).toEqual([bnr, 0]);
+  }
+});
+
 test('rate cards: a currency quoted per 100 shows its move, and a market rate is the one said to be in use', async ({ page }) => {
   await openApp(page, { lang: 'en', tab: 'converter' });
   await page.goto('./?lang=en&currencies=EUR,RON,HUF,ARS');
@@ -560,14 +586,71 @@ test('amounts: text put in at once is read whole, without its currency sign, in 
   await income.selectText();
   await page.keyboard.insertText('1 234,56 €');
   await expect(income).toHaveValue('1,234.56');
-  // A converter cell showed it as invalid and kept its figure.
+  // A converter cell: its own figure with " EUR" put in at once was refused as a word ("“EUR” isn’t a number").
   await page.goto('./?lang=en');
   const cell = byName(page, 'hour-EUR');
+  await focusCell(page, cell);
+  const own = await cell.inputValue();
+  await page.keyboard.insertText(`${own} EUR`);
+  await expect(cell).toHaveValue(own);
+  await cell.blur();
+  await expect(page.locator('.toast')).toHaveCount(0);
+  // Another figure with its sign: the cell showed it as invalid and kept its figure.
   await focusCell(page, cell);
   await page.keyboard.insertText('1.234,56 €');
   await cell.blur();
   await expect(cell).toHaveValue('1,234.56');
   await expect.poll(() => saved(page, 'ft.source')).toContain('"amount":1234.56');
+});
+
+test('amounts: a 0 left by deleting a digit, or put back by undo, stays: 50 an hour changed to 60 is 60', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  await page.goto('./?lang=ro&income=50&income_currency=EUR&income_per=hour#taxes');
+  const income = page.locator('.income-main input');
+  const caretAt = (at: number) => income.evaluate((el: HTMLInputElement, i) => el.setSelectionRange(i, i), at);
+  await expect(income).toHaveValue('50');
+  // The 5 deleted and 6 typed in its place: the 0 left went too, which gave 6 EUR an hour.
+  await income.focus();
+  await caretAt(1);
+  await page.keyboard.press('Backspace');
+  await expect(income).toHaveValue('0');
+  await page.keyboard.type('6');
+  await expect(income).toHaveValue('60');
+  await expect(page).toHaveURL(/income=60(&|#|$)/);
+  // Undo after the deletion puts back 50 (it gave 5), also as the first change once the field has the focus again.
+  await income.selectText();
+  await page.keyboard.type('50');
+  await caretAt(1);
+  await page.keyboard.press('Backspace');
+  await income.blur();
+  await income.focus();
+  await page.keyboard.press('Control+z');
+  await expect(income).toHaveValue('50');
+  await expect.poll(() => saved(page, 'ft.taxIncome')).toContain('"amount":50,');
+  // A 0 the field shows when it gets focus is still replaced, wherever the caret is.
+  await caretAt(1);
+  await page.keyboard.press('Backspace');
+  await income.blur();
+  await income.focus();
+  await caretAt(0);
+  await page.keyboard.type('7');
+  await expect(income).toHaveValue('7');
+});
+
+test('amounts: the figure a field shows, pasted over it with its unit, is read and not refused as a word', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  const income = page.locator('.income-main input');
+  const shown = await income.inputValue();
+  // The texts differ only by " lei": "„lei” nu e un număr."
+  await income.selectText();
+  await page.keyboard.insertText(`${shown} lei`);
+  await expect(income).toHaveValue(shown);
+  await expect(page.locator('.toast')).toHaveCount(0);
+  // A word put in after the amount is still refused.
+  await page.keyboard.press('End');
+  await page.keyboard.insertText(' lei');
+  await expect(page.locator('.toast')).toContainText('„lei” nu e un număr.');
+  await expect(income).toHaveValue(shown);
 });
 
 test('holding an arrow key in a field keeps the page, under Safari\'s limit, and the address catches up, also when the page is left', async ({ page }, info) => {

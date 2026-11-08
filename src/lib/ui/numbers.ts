@@ -30,8 +30,9 @@ export function setNumberLocale(next: NumberLang): void {
   fmtRate = makeRate(locale);
 }
 
+/** Under half a ban it is 0,00: Intl writes a loss that small, and −0, as -0,00. */
 export function formatMoney(x: number): string {
-  return fmt2.format(x);
+  return fmt2.format(Math.abs(x) < 0.005 ? 0 : x);
 }
 
 /** A count such as days or a percentage: up to `decimals` decimals, none when it is whole (228, 5,5). */
@@ -175,12 +176,46 @@ export const isAtOnce = (e: { inputType?: string; data?: string | null }): boole
 /**
  * A keystroke in an amount: the thousands marks redone around it (groupTyped). A digit typed into a field that shows
  * 0, before or after the 0, replaces it, and the other language's decimal key ("." in Romanian) types a decimal mark.
+ * `replaceZero`: false when the 0 isn't the one the field showed when it got focus, but one an edit left or undo put
+ * back, which stays (50, its 5 deleted and 6 typed, is 60).
  */
-export function typedAmount(before: string, after: string, caret: number, key: string | null, as: NumberLang = lang): { text: string; caret: number } {
+export function typedAmount(
+  before: string,
+  after: string,
+  caret: number,
+  key: string | null,
+  as: NumberLang = lang,
+  replaceZero = true,
+): { text: string; caret: number } {
   const { group, decimal } = numberMarks(as);
-  if (before === '0' && /^(0\d|\d0)$/.test(after)) return { text: after[0] === '0' ? after[1]! : after[0]!, caret: 1 };
+  if (replaceZero && before === '0' && /^(0\d|\d0)$/.test(after)) return { text: after[0] === '0' ? after[1]! : after[0]!, caret: 1 };
   if (key === group && caret > 0) after = after.slice(0, caret - 1) + decimal + after.slice(caret);
   return groupTyped(after, caret, as);
+}
+
+/**
+ * Where a change went (`start` to `end` in `before`) and what it put there: over `replaced`, the selection noted just
+ * before the change, when the change matches it; otherwise where the two texts differ (their common start and end
+ * left out), which misplaces text that starts or ends like what it replaced ("30 EUR" over 30 reads as " EUR" put
+ * after it).
+ */
+export function insertedAt(
+  before: string,
+  after: string,
+  replaced: readonly [number, number] | null,
+): { start: number; end: number; added: string } {
+  let [start, end] = replaced ?? [0, -1];
+  const fits = start <= end && end <= before.length && after.length >= start + before.length - end &&
+    after.startsWith(before.slice(0, start)) && after.endsWith(before.slice(end));
+  if (!fits) {
+    // The common start and end of the two texts, as insertedText finds them.
+    start = 0;
+    while (start < before.length && start < after.length && before[start] === after[start]) start++;
+    let same = 0;
+    while (same < before.length - start && same < after.length - start && before.at(-1 - same) === after.at(-1 - same)) same++;
+    end = before.length - same;
+  }
+  return { start, end, added: after.slice(start, after.length - (before.length - end)) };
 }
 
 /**
@@ -198,18 +233,7 @@ export function pastedAmount(
   replaced: readonly [number, number] | null,
   as: NumberLang = lang,
 ): { text: string; caret: number } | { notAmount: string } {
-  let [start, end] = replaced ?? [0, -1];
-  const fits = start <= end && end <= before.length && after.length >= start + before.length - end &&
-    after.startsWith(before.slice(0, start)) && after.endsWith(before.slice(end));
-  if (!fits) {
-    // The common start and end of the two texts, as insertedText finds them.
-    start = 0;
-    while (start < before.length && start < after.length && before[start] === after[start]) start++;
-    let same = 0;
-    while (same < before.length - start && same < after.length - start && before.at(-1 - same) === after.at(-1 - same)) same++;
-    end = before.length - same;
-  }
-  const added = after.slice(start, after.length - (before.length - end));
+  const { start, end, added } = insertedAt(before, after, replaced);
   // Nothing to read (a mark, a space): as if typed.
   if (!/\d/.test(added)) return groupTyped(after, caret, as);
   const digits = plainDigits(bareAmount(added), as);

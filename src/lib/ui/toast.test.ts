@@ -1,6 +1,7 @@
 import { describe as group, expect, it, vi } from 'vitest';
 import type { ClipboardEvent } from 'react';
 import { en, ro } from '../i18n/strings';
+import { insertedAt } from './numbers';
 import { addNote, describe, insertedText, refuseNonNumberPaste, refuseWord, spokenText, type Note, type ToastId } from './toast';
 
 const ALL: ToastId[] = [
@@ -109,11 +110,11 @@ group('pasting into an amount', () => {
 });
 
 group("a word put into an amount at once (the keyboard's clipboard strip types it, without a paste event)", () => {
-  const run = (before: string, after: string) => {
+  const run = (before: string, after: string, inserted?: string) => {
     const events: Note[] = [];
     vi.stubGlobal('window', { dispatchEvent: (ev: CustomEvent<Note>) => events.push(ev.detail) });
     vi.stubGlobal('CustomEvent', class { constructor(public type: string, public init: { detail: Note }) {} get detail() { return this.init.detail; } });
-    const refused = refuseWord(before, after);
+    const refused = refuseWord(before, after, inserted);
     vi.unstubAllGlobals();
     return { refused, events };
   };
@@ -131,6 +132,17 @@ group("a word put into an amount at once (the keyboard's clipboard strip types i
   });
   it('typing one letter, deleting, or anything with a digit goes through', () => {
     for (const [a, b] of [['30', '30x'], ['30', '3'], ['', '45'], ['30', '30 €5']]) expect(run(a!, b!).refused, `${a} → ${b}`).toBe(false);
+  });
+  it('the amount shown, pasted over itself with its unit, is no word: what went in is read by the selection it replaced', () => {
+    // The texts differ only by " lei" and " EUR", which were refused.
+    const over = (before: string, after: string, selected: [number, number]) => run(before, after, insertedAt(before, after, selected).added);
+    expect(over('27.772,16', '27.772,16 lei', [0, 9])).toEqual({ refused: false, events: [] });
+    expect(over('30', '30 EUR', [0, 2]).refused).toBe(false);
+    // A word over the selected amount, or put in after it, still is one.
+    expect(over('30', 'thirty', [0, 2])).toEqual({ refused: true, events: [{ id: 'notNumber', arg: 'thirty' }] });
+    expect(over('1.250', '1.250 lei', [5, 5]).refused).toBe(true);
+    // No selection noted: the texts decide, as before.
+    expect(run('1.250', '1.250 lei', insertedAt('1.250', '1.250 lei', null).added).refused).toBe(true);
   });
 });
 

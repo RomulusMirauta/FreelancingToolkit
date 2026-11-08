@@ -9,6 +9,7 @@ import {
   type LineKey, type RegimeResult, type TaxOptions,
 } from './regimes';
 import { mandateMonth, srlYear } from './srl';
+import { formatMoney } from '../ui/numbers';
 
 /** The default card options, with some of them changed. */
 function withOptions(patch: { [K in keyof TaxOptions]?: Partial<TaxOptions[K]> }): TaxOptions {
@@ -132,6 +133,37 @@ describe('copyright net income exactly on a band', () => {
     const r = computeSideJob('copyright', { salaryMonthly: 0, sideMonthly: 6749.9994 });
     expect(['cas', 'cass'].map((key) => r.lines.find((l) => l.key === key)!.annual)).toEqual([12_150, 4_860]);
     expect(copyrightYear(161_999.9928)).toMatchObject({ cas: 24_300, cass: 9_720 });
+  });
+});
+
+describe('expenses equal to the income', () => {
+  const equal = (monthly: number) => withOptions({ pfaReal: { expensesMonthly: monthly }, srlProfitNoSalary: { expensesMonthly: monthly } });
+
+  it('leave a take-home of exactly 0 on the PFA and the SRL without salary, whatever the bani', () => {
+    const off: string[] = [];
+    for (let bani = 100_000; bani <= 110_000; bani++) {
+      // A year of it, to the ban, as the tax page passes the revenue.
+      const revenue = (12 * bani) / 100;
+      for (const regime of ['pfaReal', 'srlProfitNoSalary'] as const) {
+        const { takeHome } = computeRegime(regime, revenue, equal(bani / 100));
+        if (!Object.is(takeHome, 0)) off.push(`${regime} ${bani / 100}: ${takeHome}`);
+      }
+    }
+    expect(off.slice(0, 10)).toEqual([]);
+  });
+
+  it('5,000.10 a month: the card shows 0,00, not -0,00 (12 × 5,000.10 is 60,001.200000000004)', () => {
+    for (const regime of ['pfaReal', 'srlProfitNoSalary'] as const) {
+      const r = computeRegime(regime, 60_001.2, equal(5000.1));
+      expect([formatMoney(r.takeHome / 12), formatMoney(r.takeHome)], regime).toEqual(['0,00', '0,00']);
+    }
+  });
+
+  it('a loss under half a ban a month reads 0,00 too, as in the details: the micro tax on 0.10 lei a month', () => {
+    // Unpaid owner, another employee: 1% of 1.20 lei a year is lost, 0.001 lei a month.
+    const r = computeRegime('srlMicro', 1.2, withOptions({ srlMicro: { expensesMonthly: 0.1, ownerEmployed: false, otherEmployee: true } }));
+    expect(r.takeHome).toBeCloseTo(-0.012, 9);
+    expect([formatMoney(r.takeHome / 12), formatMoney(r.takeHome)]).toEqual(['0,00', '-0,01']);
   });
 });
 

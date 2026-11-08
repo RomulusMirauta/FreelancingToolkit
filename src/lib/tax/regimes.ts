@@ -133,6 +133,12 @@ export function ownerSalaryTaxesMonthly(): number {
 const share = (paid: number, of: number) => (of > 0 ? paid / of : 0);
 
 /**
+ * A card's monthly expenses over the year, to the ban as `annualLei` rounds the revenue: equal amounts then leave
+ * exactly 0, where 12 × 5,000.10 (60,001.200000000004) left a take-home of −0.00.
+ */
+const yearlyExpenses = (monthly: number) => Math.round(12 * monthly * 100) / 100;
+
+/**
  * The share of the gross amount taken home, for the bar on each card. Not 1 − `taxShare`: expenses are spent, not
  * kept. Between 0 and 1: a loss, or no income at all, keeps nothing.
  */
@@ -177,7 +183,7 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
     case 'pfaReal':
     case 'pfaNorm': {
       const norm = regime === 'pfaNorm';
-      const expenses = norm ? 0 : 12 * o.pfaReal.expensesMonthly;
+      const expenses = norm ? 0 : yearlyExpenses(o.pfaReal.expensesMonthly);
       const opt = norm ? o.pfaNorm : o.pfaReal;
       const r = pfaYear(annual, { expenses, norm: norm ? o.pfaNorm.normYearly : undefined, hasSalary: opt.hasSalary, pensioner: opt.pensioner });
       // Not deductible, so it comes straight off the take-home.
@@ -203,7 +209,7 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
     case 'srlProfitSalary':
     case 'srlProfitNoSalary': {
       const micro = regime === 'srlMicro';
-      const expenses = 12 * o[regime].expensesMonthly;
+      const expenses = yearlyExpenses(o[regime].expensesMonthly);
       const r = srlYear(annual, micro
         ? { expenses, ownerEmployed: o.srlMicro.ownerEmployed, ownerPay: o.srlMicro.ownerPay, otherEmployee: o.srlMicro.otherEmployee, singleMicro: o.srlMicro.singleMicro }
         : { expenses, ownerEmployed: regime === 'srlProfitSalary', ownerPay: o.srlProfitSalary.ownerPay, choseProfitTax: true });

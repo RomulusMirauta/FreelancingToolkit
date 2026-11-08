@@ -94,10 +94,11 @@ export function insertedText(before: string, after: string): string {
 /**
  * A word (two or more characters, no digit) put into an amount in one go. Phone keyboards paste from their
  * clipboard strip by typing the text, with no paste event, so the change itself is checked. Typing letters one by
- * one is not caught: the field shows them as invalid instead. True when refused (the toast is shown).
+ * one is not caught: the field shows them as invalid instead. True when refused (the toast is shown). `inserted`:
+ * what went in, when the field knows it better than the texts do (from the selection it replaced).
  */
-export function refuseWord(before: string, after: string): boolean {
-  const added = insertedText(before, after).trim();
+export function refuseWord(before: string, after: string, inserted = insertedText(before, after)): boolean {
+  const added = inserted.trim();
   if (added.length < 2 || /\d/.test(added)) return false;
   notify('notNumber', cut(added));
   return true;

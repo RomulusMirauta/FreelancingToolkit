@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLang } from '../i18n';
-import { MAX_WHOLE_DIGITS, formatEditableGrouped, isAtOnce, numberMarks, parseAmount, pastedAmount, typedAmount } from './numbers';
+import { MAX_WHOLE_DIGITS, formatEditableGrouped, insertedAt, isAtOnce, numberMarks, parseAmount, pastedAmount, typedAmount } from './numbers';
 import { notifyNotNumber, notifyTooBig, refuseNonNumberPaste, refuseWord } from './toast';
 
 /**
@@ -16,6 +16,8 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
   /** The selection a change replaces, noted on beforeinput: comparing the texts misplaces a paste that starts like the
       amount it replaces (1.5 over 1.000 read as 15). */
   const replaced = useRef<[number, number] | null>(null);
+  /** Nothing changed since the field got focus: a 0 it shows is then its own, which a digit typed replaces. */
+  const unedited = useRef(false);
 
   // Follow changes from outside (reset, the converter's link, a language switch).
   useEffect(() => {
@@ -51,6 +53,7 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
       style={{ '--chars': Math.max(text.length, 1) } as CSSProperties}
       aria-invalid={(text !== '' && parseAmount(text) === null) || undefined}
       onPaste={refuseNonNumberPaste}
+      onFocus={() => { unedited.current = true; }}
       onKeyDown={(e) => {
         const el = e.currentTarget;
         const at = el.selectionStart ?? 0;
@@ -62,14 +65,18 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
       onChange={(e) => {
         const over = replaced.current;
         replaced.current = null;
-        if (refuseWord(text, e.target.value)) return;
-        const native = e.nativeEvent as InputEvent;
         const raw = e.target.value;
+        // What went in, by the selection it replaced: the amount shown, pasted over itself with its unit
+        // ("27.772,16 lei"), is no word, though the texts differ only by " lei".
+        if (refuseWord(text, raw, insertedAt(text, raw, over).added)) return;
+        const native = e.nativeEvent as InputEvent;
         const at = e.target.selectionStart ?? raw.length;
+        // Undo and redo put back a text as it was: 50 over a 0, with no digit typed, stays 50.
+        const undo = native.inputType === 'historyUndo' || native.inputType === 'historyRedo';
         // Pasted, dropped or put in by a phone keyboard's clipboard strip: read whole, in either convention.
         const next = isAtOnce(native)
           ? pastedAmount(text, raw, at, over)
-          : typedAmount(text, raw, at, native.inputType === 'insertText' ? native.data : null);
+          : typedAmount(text, raw, at, native.inputType === 'insertText' ? native.data : null, undefined, unedited.current && !undo);
         if ('notAmount' in next) {
           notifyNotNumber(next.notAmount);
           return;
@@ -81,6 +88,7 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
           notifyTooBig();
           return;
         }
+        unedited.current = false;
         caret.current = Math.min(next.caret, next.text.length);
         setText(next.text);
         // An emptied field counts as 0, and stays empty while typing.
