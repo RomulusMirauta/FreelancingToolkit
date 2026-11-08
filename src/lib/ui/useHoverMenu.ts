@@ -39,13 +39,20 @@ export function useHoverMenu(closeDelay = 250) {
     const onFocusOut = (e: FocusEvent) => {
       if (e.relatedTarget instanceof Node && !root?.contains(e.relatedTarget)) setOpen(false);
     };
+    // Tabbing past its last item, or before its button, leaves the document (no relatedTarget either): it closes
+    // when the focus comes back to the page anywhere else, rather than staying open for the rest of the round.
+    const onFocusIn = (e: FocusEvent) => {
+      if (!root?.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     root?.addEventListener('focusout', onFocusOut);
+    document.addEventListener('focusin', onFocusIn);
     return () => {
       document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey);
       root?.removeEventListener('focusout', onFocusOut);
+      document.removeEventListener('focusin', onFocusIn);
     };
   }, [open]);
 

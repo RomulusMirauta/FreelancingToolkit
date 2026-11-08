@@ -103,6 +103,11 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
         aria-label={triggerLabel}
         aria-expanded={open}
         aria-haspopup="listbox"
+        // A press while the list is open keeps the focus in it: moving to the button closed the list on the blur,
+        // and the click then opened it again.
+        onMouseDown={(e) => {
+          if (open) e.preventDefault();
+        }}
         onClick={() => (open ? close() : setOpen(true))}
       >
         {trigger}

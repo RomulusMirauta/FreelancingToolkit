@@ -35,7 +35,8 @@ export function Settings({ work, setWork }: Props) {
   const t = useT().settings;
   const lang = useLang();
   // The inputs are uncontrolled so partial typing ("0.") is not overwritten; bumping this remounts them on a preset.
-  // A new language remounts them too, so their text takes its decimal mark (7,5 → 7.5).
+  // A new language remounts them too, so their text takes its decimal mark (7,5 → 7.5). Only them: remounting the
+  // grid took the holidays box with it, and its focus fell to the page.
   const [resets, setResets] = useState(0);
   const year = holidayYear();
   const holidayDays = holidaysOnWorkdays(year, work.daysPerWeek);
@@ -67,11 +68,12 @@ export function Settings({ work, setWork }: Props) {
           );
         })}
       </div>
-      <div className="settings-grid" key={`${resets}-${lang}`}>
+      <div className="settings-grid">
         {FIELDS.map((f) => (
           <label key={f.key}>
             <span>{t[f.key]}</span>
             <input
+              key={`${resets}-${lang}`}
               // Text with a decimal keypad, not type=number: no spinners, no scroll-wheel changes, a comma works.
               inputMode={f.step < 1 ? 'decimal' : 'numeric'}
               autoComplete="off"

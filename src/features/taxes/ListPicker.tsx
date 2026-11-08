@@ -83,7 +83,7 @@ export function ListPicker<T extends string | number>({ value, options, onChange
     } else if (e.key === 'Enter' || (e.key === ' ' && !search)) {
       e.preventDefault();
       if (shown[active]) pick(shown[active].value);
-    } else if (e.key === 'Escape' || e.key === 'Tab') {
+    } else if (e.key === 'Escape') {
       close();
     }
   };
@@ -97,6 +97,10 @@ export function ListPicker<T extends string | number>({ value, options, onChange
         aria-label={`${label}: ${current}`}
         aria-expanded={open}
         aria-haspopup="listbox"
+        // A press while the panel is open keeps the focus in it, or the blur would close it before the click.
+        onMouseDown={(e) => {
+          if (open) e.preventDefault();
+        }}
         onClick={() => (open ? close() : show())}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -114,6 +118,11 @@ export function ListPicker<T extends string | number>({ value, options, onChange
           // A margin, not a transform: the pop-in animation's transform replaced the shift while it ran, and the page
           // stayed as wide as the unshifted panel.
           style={shift ? { marginLeft: -shift } : undefined}
+          // Tab and Shift+Tab close it once the focus has gone on, as in CurrencyPicker. Not on the key itself:
+          // Firefox loses the focus when the search box goes before it has moved it.
+          onBlur={(e) => {
+            if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+          }}
         >
           {search && (
             <input

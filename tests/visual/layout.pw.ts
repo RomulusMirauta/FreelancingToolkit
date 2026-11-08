@@ -1008,6 +1008,28 @@ test('keyboard: Tab goes from "Tools" into its items, and Esc there or in "Reset
     await expect(confirm).toHaveCount(0);
     await expect(tools).toBeFocused();
   }
+  // Tabbed past its last item, the focus left the page with nothing to close the menu, which stayed open over the
+  // page when the focus came back.
+  await page.keyboard.press('Enter');
+  for (let i = 0; i < 6 && (await items.evaluate((p) => p.contains(document.activeElement))) === false; i++) await page.keyboard.press('Tab');
+  for (let i = 0; i < 6 && (await items.evaluate((p) => p.contains(document.activeElement))); i++) await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(items).toBeHidden();
+  await expect(tools).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('keyboard: "Settings & options" closes when Shift+Tab leaves the page from its button and the focus comes back', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const gear = settingsButton(page);
+  const panel = page.locator('.top-actions .menu-pop');
+  await gear.focus();
+  await page.keyboard.press('Enter');
+  await expect(panel).toBeVisible();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(panel).toBeHidden();
+  await expect(gear).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('keyboard: the install steps take the focus, and they and the copy-link panel give it back to "Settings & options"', async ({ page }, info) => {
@@ -1097,6 +1119,60 @@ test('keyboard: a fee platform and the tax page\'s currency give the focus back 
   await page.keyboard.press('Escape');
   await expect(page.locator('.add-pop')).toHaveCount(0);
   await expect(currency).toBeFocused();
+});
+
+test('a second click or tap on a list\'s button closes the list', async ({ page }, info) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const press = (button: Locator) => (info.project.use.hasTouch ? button.tap() : button.click());
+  const buttons = [page.locator('.add-btn'), page.locator('.fee-step').first().getByRole('button')];
+  for (const tab of ['converter', 'taxes'] as const) {
+    if (tab === 'taxes') {
+      await page.goto('./?lang=en#taxes');
+      buttons.splice(0, 2, page.locator('.income-row-main .add-currency').first().getByRole('button'));
+    }
+    for (const button of buttons) {
+      await press(button);
+      await expect(page.locator('.add-pop')).toHaveCount(1);
+      await expect(button).toHaveAttribute('aria-expanded', 'true');
+      // The press moved the focus out of the list's search box, which closed it, and the click opened it again.
+      await press(button);
+      await expect(page.locator('.add-pop')).toHaveCount(0);
+      await expect(button).toHaveAttribute('aria-expanded', 'false');
+    }
+  }
+});
+
+test('keyboard: Tab from a fee platform\'s search goes on to the fee, and Shift+Tab back to the button, closing the list', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const platform = page.locator('.fee-step').first().getByRole('button');
+  const list = page.locator('.add-pop');
+  // The list closed on the key, before the focus had moved: Firefox put it on the page.
+  await platform.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(list.locator('input[type="search"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(list).toHaveCount(0);
+  await expect(page.locator('input[aria-label="Platform fee, %"]')).toBeFocused();
+  await platform.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Shift+Tab');
+  await expect(list).toHaveCount(0);
+  await expect(platform).toBeFocused();
+});
+
+test('keyboard: ticking "Take off the public holidays" keeps the focus on the box, and the days off follow', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await page.clock.setFixedTime(new Date('2026-11-08T12:00:00+02:00'));
+  // 255 days off fit 2026's 260 working days, not the 249 left once its public holidays are taken off.
+  await page.goto('./?lang=en&days_off=255');
+  const box = page.locator('input[name="holidays"]');
+  await box.focus();
+  await page.keyboard.press('Space');
+  await expect(box).toBeChecked();
+  // The settings were drawn anew, the box with them, and the focus fell to the page.
+  await expect(box).toBeFocused();
+  await expect(byName(page, 'daysOff')).toHaveValue('248');
 });
 
 test('keyboard: closing a toast gives the focus back to where it was, or to "Tools"; a tap or a click leaves it', async ({ page }, info) => {
