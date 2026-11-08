@@ -4,7 +4,7 @@ import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
 import { holidaysOnWorkdays } from '../../lib/time/holidays';
 import { DEFAULT_WORK, holidayYear, hoursIn, isValidWork, maxDaysOff, workDaysIn, type WorkSettings } from '../../lib/time/periods';
-import { formatEditable, formatNumber, parseAmount } from '../../lib/ui/numbers';
+import { formatEditable, formatNumber, parseAmount, showApplied } from '../../lib/ui/numbers';
 
 interface Props {
   work: WorkSettings;
@@ -84,6 +84,7 @@ export function Settings({ work, setWork }: Props) {
                 e.currentTarget.setAttribute('aria-invalid', String(!ok));
                 if (ok) setWork(next);
               }}
+              onBlur={(e) => showApplied(e.currentTarget, work[f.key])}
               onKeyDown={(e) => {
                 // Up and down step the value, as a number field would.
                 if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;

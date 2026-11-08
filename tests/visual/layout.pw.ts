@@ -393,6 +393,49 @@ test('working time, fees and VAT: the fields take the new decimal mark after a l
   await expect(byName(page, 'vat-romania')).toHaveValue('12,5');
 });
 
+for (const lang of LANGS) {
+  test(`working time, fees and VAT: a field left out of range shows the value in use (${lang})`, async ({ page }) => {
+    await openApp(page, { lang, tab: 'converter' });
+    // Typed key by key, as people type: "2" applies, then "25" is refused and the app goes on with 2 hours a day.
+    const hours = byName(page, 'hoursPerDay');
+    const work = page.locator('details.settings:not(.fees) > summary');
+    await hours.selectText();
+    await page.keyboard.type('25');
+    await expect(hours).toHaveAttribute('aria-invalid', 'true');
+    await expect(work).toContainText('2 h/');
+    // Left, it went on showing 25 while the app used 2.
+    await page.keyboard.press('Tab');
+    await expect(hours).toHaveValue('2');
+    await expect(hours).toHaveAttribute('aria-invalid', 'false');
+    await expect(work).toContainText('2 h/');
+
+    const fee = byName(page, 'fee-1');
+    await fee.selectText();
+    await page.keyboard.type('150');
+    await expect(fee).toHaveAttribute('aria-invalid', 'true');
+    await fee.blur();
+    await expect(fee).toHaveValue('15');
+    await expect(fee).toHaveAttribute('aria-invalid', 'false');
+    await expect(page.locator('details.fees > summary')).toContainText(' 15%');
+
+    await page.goto(`./?lang=${lang}#taxes`);
+    const vat = byName(page, 'vat-romania');
+    await vat.selectText();
+    await page.keyboard.type('101');
+    await expect(vat).toHaveAttribute('aria-invalid', 'true');
+    await vat.blur();
+    await expect(vat).toHaveValue('10');
+    await expect(vat).toHaveAttribute('aria-invalid', 'false');
+    await expect(page).toHaveURL(/vat_romania=10(&|#|$)/);
+    // A word put in at once goes back to the 10 shown, not to the 101 refused.
+    await vat.focus();
+    await page.keyboard.press('End');
+    await page.keyboard.insertText('abc');
+    await expect(vat).toHaveValue('10');
+    await expect(vat).toHaveAttribute('aria-invalid', 'false');
+  });
+}
+
 test('converter: typing back the figure a cell shows keeps the amount typed elsewhere', async ({ page }) => {
   await openApp(page, { lang: 'ro', tab: 'converter' });
   const goal = byName(page, 'month-RON');

@@ -57,6 +57,18 @@ export function formatEditable(x: number): string {
 }
 
 /**
+ * Leaving a field marked invalid (out of range, or not a number) puts back the value in use, the last valid one, so
+ * the field never shows a figure the app isn't using ("25" hours a day while 2 apply). It is also the text
+ * refuseWordIn goes back to.
+ */
+export function showApplied(input: HTMLInputElement, applied: number): void {
+  if (input.getAttribute('aria-invalid') !== 'true') return;
+  input.value = formatEditable(applied);
+  input.dataset.accepted = input.value;
+  input.setAttribute('aria-invalid', 'false');
+}
+
+/**
  * A rate for editing: every digit kept, no grouping, with the language's decimal mark (4,815 in Romanian).
  * Not String(x): its "4.815" reads as 4815 in Romanian, and below 0.000001 it writes an exponent.
  */

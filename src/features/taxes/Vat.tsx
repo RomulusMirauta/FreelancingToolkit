@@ -1,7 +1,7 @@
 import { useLang, useT } from '../../lib/i18n';
 import { P, paramInfo } from '../../lib/tax/params';
 import { Fold } from '../../lib/ui/Fold';
-import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
+import { formatEditable, formatMoney, formatNumber, parseAmount, showApplied } from '../../lib/ui/numbers';
 import { refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
@@ -71,6 +71,7 @@ export function Vat({ annual }: { annual: number }) {
                 e.currentTarget.setAttribute('aria-invalid', String(!ok));
                 if (ok) setRomaniaPct(v);
               }}
+              onBlur={(e) => showApplied(e.currentTarget, romaniaPct)}
             />
             <span aria-hidden="true">%</span>
           </span>

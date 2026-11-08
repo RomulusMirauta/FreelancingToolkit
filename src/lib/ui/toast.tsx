@@ -158,7 +158,10 @@ function startNotes(): Note[] {
   return notes;
 }
 
-/** Back online: look for a newer version (new BNR rates come with it). The app updates and reloads by itself. */
+/**
+ * Back online: look for a newer version (new BNR rates come with it). The app updates by itself, and reloads onto it
+ * once the page is hidden or not in use (updateReload.ts).
+ */
 function checkForUpdate(): void {
   try {
     sessionStorage.setItem(RATES_BEFORE, BNR_RATES.date);

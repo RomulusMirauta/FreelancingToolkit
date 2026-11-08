@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLang, useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
-import { formatEditable, formatMoney, formatNumber, parseAmount, roundMoney } from '../../lib/ui/numbers';
+import { formatEditable, formatMoney, formatNumber, parseAmount, roundMoney, showApplied } from '../../lib/ui/numbers';
 import { refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
@@ -229,6 +229,7 @@ function FeeStep<Id extends string>({ step, label, options, names, hints, select
               e.currentTarget.setAttribute('aria-invalid', String(!ok));
               if (ok) onPct(v);
             }}
+            onBlur={(e) => showApplied(e.currentTarget, pct)}
             onKeyDown={(e) => {
               if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
               e.preventDefault();
