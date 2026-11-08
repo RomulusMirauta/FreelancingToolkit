@@ -106,6 +106,8 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
 
   /** The source when a cell got focus, so Esc can undo what was typed there. */
   const startRef = useRef<SourceCell | null>(null);
+  /** The figure the focused cell offered for editing: typed back, nothing has changed. */
+  const offeredRef = useRef<number | null>(null);
   /** Spreadsheet keys: arrows move between cells (left/right only at the edge of the text), Enter goes down,
    *  Shift+Enter up, Esc puts back the value from before. Typing applies at once, as before. */
   const onCellKey = (e: KeyboardEvent<HTMLInputElement>, row: number, col: number) => {
@@ -140,7 +142,11 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
       return;
     }
     setEditing({ period, currency, text });
-    if (amount !== null) setSource({ period, currency, amount });
+    if (amount === null) return;
+    // The cell's own figure typed back (a digit deleted and typed again): the amount typed elsewhere stays the
+    // source, instead of this cell's figure rounded to 2 decimals (10,000 RON a month became 9,997.98).
+    if (amount === offeredRef.current && startRef.current) setSource(startRef.current);
+    else setSource({ period, currency, amount });
   };
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -235,8 +241,10 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                         title={isSourceCell ? tc.cellTitleSource : tc.cellTitleEdit}
                         value={isEditing ? editing.text : formatMoney(valueAt(period, code))}
                         onFocus={(e) => {
+                          const text = formatEditable(valueAt(period, code));
                           startRef.current = source;
-                          setEditing({ period, currency: code, text: formatEditable(valueAt(period, code)) });
+                          offeredRef.current = parseAmount(text);
+                          setEditing({ period, currency: code, text });
                           // Only if focus stayed: select() would pull it back from wherever a fast Tab has moved it.
                           requestAnimationFrame(() => { if (document.activeElement === e.target) e.target.select(); });
                         }}

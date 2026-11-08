@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useT } from '../../lib/i18n';
+import { useLang, useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
 import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
@@ -91,8 +91,10 @@ export function useFees() {
  */
 export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
   const t = useT().fees;
+  const lang = useLang();
   const [fees, setFees] = useFees();
-  // Bumped when a choice sets a %, so the uncontrolled % fields show the new value.
+  // Bumped when a choice sets a %, so the uncontrolled % fields show the new value; a new language remounts them
+  // too, for its decimal mark.
   const [picks, setPicks] = useState(0);
   const kept = keptShare(fees);
   const platformCut = hour * (fees.platformPct / 100);
@@ -118,7 +120,7 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
         <div className={kept < 1 ? 'stat-cut' : undefined}><dt>{t.sumFees}</dt><dd>{kept < 1 ? '−' : ''}{formatMoney(monthRon * (1 - kept))} <span className="unit">{t.ronMonth}</span></dd></div>
       </dl>
 
-      <div className="fee-steps" key={picks}>
+      <div className="fee-steps" key={`${picks}-${lang}`}>
         <FeeStep
           step={1}
           label={t.platform}

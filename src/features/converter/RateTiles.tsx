@@ -1,8 +1,8 @@
 import { crossRate } from '../../lib/currency/convert';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { baseRate, isMarketRate, rateChange, rateSeries } from '../../lib/currency/rates';
-import { useT } from '../../lib/i18n';
-import { formatNumber, formatRate, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
+import { useLang, useT } from '../../lib/i18n';
+import { formatEditableRate, formatNumber, formatRate, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
 import { notifyTooBig, refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 
 interface Props {
@@ -27,6 +27,7 @@ const FLAT = 0.00005;
 export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Props) {
   const t = useT();
   const tc = t.converter;
+  const lang = useLang();
   const shortDate = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
     return new Date(y, m - 1, d).toLocaleDateString(t.locale, { day: 'numeric', month: 'short' });
@@ -89,12 +90,14 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
                   : <span className="rate-in-use">{tc.customUsingBnr}</span>}
               </span>
               <input
+                // Uncontrolled: a new language mounts it again, so the saved rate takes that language's decimal mark.
+                key={lang}
                 className="custom-rate-input"
                 name={`rate-${code}`}
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder={formatRate(published)}
-                defaultValue={custom !== undefined ? String(custom) : ''}
+                defaultValue={custom !== undefined ? formatEditableRate(custom) : ''}
                 aria-label={tc.customLabel(code)}
                 onPaste={refuseNonNumberPaste}
                 // An empty field shows BNR's rate in grey; clicking it puts that rate in as text, so a digit or two

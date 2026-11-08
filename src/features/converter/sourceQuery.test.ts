@@ -51,4 +51,11 @@ describe('the converter\'s amount in the address', () => {
     expect(JSON.parse(store.get('ft.source')!)).toEqual({ period: 'hour', currency: 'EUR', amount: 40 });
     expect(store.get('ft.taxIncome')).not.toBe(INCOME);
   });
+
+  it('the tax income that follows it is rounded the way the converter shows it', () => {
+    // The converter shows 1.024,22 lei a month; Math.round(x * 100) / 100 made the income 1,024.21.
+    url = new URL('https://x.test/app/?amount=1024.215&currency=RON&per=month');
+    applySourceQuery(DEFAULT_SOURCE);
+    expect(JSON.parse(store.get('ft.taxIncome')!)).toEqual({ amount: 1024.22, per: 'month', currency: 'RON' });
+  });
 });

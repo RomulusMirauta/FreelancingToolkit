@@ -2,6 +2,7 @@ import { CURRENCIES } from '../../lib/currency/currencies';
 import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
 import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period } from '../../lib/time/periods';
+import { roundMoney } from '../../lib/ui/numbers';
 import { readQuery, writeQuery } from '../../lib/ui/query';
 import { noteDropped, numberParam } from '../../lib/ui/urlQuery';
 
@@ -47,7 +48,7 @@ function followedIncome(source: Source): { amount: number; per: 'month'; currenc
   const overrides = readJson('ft.customRates');
   const rates = effectiveRates(BNR_RATES, typeof overrides === 'object' && overrides ? (overrides as Record<string, number>) : {});
   const month = convert(rescale(source.amount, source.period, 'month', work), source.currency, 'RON', rates);
-  return { amount: Math.round(month * 100) / 100, per: 'month', currency: 'RON' };
+  return { amount: roundMoney(month), per: 'month', currency: 'RON' };
 }
 
 /**

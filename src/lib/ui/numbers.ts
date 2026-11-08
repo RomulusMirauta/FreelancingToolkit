@@ -43,10 +43,30 @@ export function formatRate(x: number): string {
   return fmtRate.format(x);
 }
 
+/**
+ * A number with no grouping and the language's decimal mark. Intl rounds the number's shortest decimal form, as
+ * formatMoney does; Math.round(x * 100) rounds the binary value, which turns 1.005 into 1 while 1,01 is shown.
+ */
+function plain(x: number, as: NumberLang, digits: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(as === 'ro' ? 'ro-RO' : 'en-GB', { useGrouping: false, ...digits }).format(x);
+}
+
 /** A plain number for editing (no grouping, at most 2 decimals), with the language's decimal mark. */
 export function formatEditable(x: number): string {
-  const s = String(Math.round(x * 100) / 100);
-  return lang === 'ro' ? s.replace('.', ',') : s;
+  return plain(x, lang, { maximumFractionDigits: 2 });
+}
+
+/**
+ * A rate for editing: every digit kept, no grouping, with the language's decimal mark (4,815 in Romanian).
+ * Not String(x): its "4.815" reads as 4815 in Romanian, and below 0.000001 it writes an exponent.
+ */
+export function formatEditableRate(x: number, as: NumberLang = lang): string {
+  return plain(x, as, { maximumSignificantDigits: 21 });
+}
+
+/** An amount rounded to 2 decimals the way formatMoney shows it, so the figure kept is the figure on screen. */
+export function roundMoney(x: number): number {
+  return Number(plain(x, 'en', { maximumFractionDigits: 2 }));
 }
 
 /**
@@ -82,8 +102,7 @@ export function numberMarks(as: NumberLang = lang): { group: string; decimal: st
 
 /** An amount for editing, thousands grouped: 27.781,52 (RO) or 27,781.52 (EN). */
 export function formatEditableGrouped(x: number, as: NumberLang = lang): string {
-  const s = String(Math.round(x * 100) / 100);
-  return groupTyped(as === 'ro' ? s.replace('.', ',') : s, undefined, as).text;
+  return groupTyped(plain(x, as, { maximumFractionDigits: 2 }), undefined, as).text;
 }
 
 /**

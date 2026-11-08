@@ -9,6 +9,7 @@ import { Settings } from './features/settings/Settings';
 import { DEFAULT_INCOME, INCOME_QUERY, Taxes, isTaxIncome, type TaxIncome } from './features/taxes/Taxes';
 import { DEFAULT_LANG, LangProvider, isLang, useT, type Lang } from './lib/i18n';
 import { DEFAULT_WORK, readWork } from './lib/time/periods';
+import { roundMoney } from './lib/ui/numbers';
 import { flushQuery } from './lib/ui/query';
 import { applyTheme, isTheme, type Theme } from './lib/ui/theme';
 import { usePersistentState } from './lib/ui/usePersistentState';
@@ -49,7 +50,7 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
 
   // Stable, so the converter's effect runs only when its amount changes.
   const followConverter = useCallback(
-    (monthRon: number) => setIncome({ amount: Math.round(monthRon * 100) / 100, per: 'month', currency: 'RON' }),
+    (monthRon: number) => setIncome({ amount: roundMoney(monthRon), per: 'month', currency: 'RON' }),
     [setIncome],
   );
 
@@ -111,7 +112,7 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
               work={work}
               onTaxes={(yearRon) => {
                 // Rounded to the ban like the income that follows the converter, so the two agree.
-                setIncome({ amount: Math.round((yearRon / 12) * 100) / 100, per: 'month', currency: 'RON' });
+                setIncome({ amount: roundMoney(yearRon / 12), per: 'month', currency: 'RON' });
                 go('taxes');
               }}
               onIncome={followConverter}

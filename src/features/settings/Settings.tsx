@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useT } from '../../lib/i18n';
+import { useLang, useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
 import { holidaysOnWorkdays } from '../../lib/time/holidays';
@@ -32,7 +32,9 @@ const PRESETS = [
 
 export function Settings({ work, setWork }: Props) {
   const t = useT().settings;
+  const lang = useLang();
   // The inputs are uncontrolled so partial typing ("0.") is not overwritten; bumping this remounts them on a preset.
+  // A new language remounts them too, so their text takes its decimal mark (7,5 → 7.5).
   const [resets, setResets] = useState(0);
   const holidayDays = holidaysOnWorkdays(HOLIDAY_YEAR, work.daysPerWeek);
   return (
@@ -63,7 +65,7 @@ export function Settings({ work, setWork }: Props) {
           );
         })}
       </div>
-      <div className="settings-grid" key={resets}>
+      <div className="settings-grid" key={`${resets}-${lang}`}>
         {FIELDS.map((f) => (
           <label key={f.key}>
             <span>{t[f.key]}</span>

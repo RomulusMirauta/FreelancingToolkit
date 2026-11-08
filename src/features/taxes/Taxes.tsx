@@ -13,7 +13,7 @@ import {
 } from '../../lib/tax/regimes';
 import { solveForTakeHome } from '../../lib/tax/solve';
 import { AmountInput } from '../../lib/ui/AmountInput';
-import { formatMoney, formatRate, isSaneAmount } from '../../lib/ui/numbers';
+import { formatMoney, formatRate, isSaneAmount, roundMoney } from '../../lib/ui/numbers';
 import { useLang } from '../../lib/i18n';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { useIsPhone } from '../../lib/ui/useIsPhone';
@@ -38,7 +38,7 @@ const KNOWN = new Set(CURRENCIES.map((c) => c.code));
 
 /** The converter's default rate (30 EUR/hour at 8 h × 5 days × 52 weeks) in lei per month: 27,781.52. */
 export const DEFAULT_INCOME: TaxIncome = {
-  amount: Math.round(convert(rescale(DEFAULT_SOURCE.amount, DEFAULT_SOURCE.period, 'month', DEFAULT_WORK), DEFAULT_SOURCE.currency, 'RON', RATES) * 100) / 100,
+  amount: roundMoney(convert(rescale(DEFAULT_SOURCE.amount, DEFAULT_SOURCE.period, 'month', DEFAULT_WORK), DEFAULT_SOURCE.currency, 'RON', RATES)),
   per: 'month',
   currency: 'RON',
 };

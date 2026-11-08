@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { openApp } from './app';
 
 // Exact checks for layout decisions: where a screenshot says "something changed", these say what.
@@ -182,6 +182,98 @@ test('Tab goes through the table even when pressed faster than a frame', async (
   // Selecting the text a frame later used to pull focus back and hold it in the table.
   for (let i = 0; i < 60; i++) await page.keyboard.press('Tab');
   expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-cell'))).toBe(false);
+});
+
+const byName = (page: Page, name: string) => page.locator(`input[name="${name}"]`);
+const saved = (page: Page, key: string) => page.evaluate((k) => localStorage.getItem(k), key);
+
+/**
+ * Focuses a grid cell, which puts in its edit text and selects it a frame later. Not fill(): it selects before
+ * focusing, so its text would land after the edit text.
+ */
+async function focusCell(page: Page, cell: Locator) {
+  await cell.focus();
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+}
+
+/** The language switch in "Settings & options": the page stays, so fields already on it must follow. */
+async function chooseLanguage(page: Page, name: 'English' | 'Română') {
+  await page.locator('.top-actions .menu-trigger').click();
+  await page.getByRole('radio', { name }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', name === 'English' ? 'en' : 'ro');
+}
+
+/** The edit the custom rate invites: the last digit changed. */
+async function changeLastDigit(page: Page, input: Locator, digit: string) {
+  await input.focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type(digit);
+}
+
+test('custom rate: three decimals keep their decimal mark after a reload and a language switch', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  await page.goto('./?lang=ro&currencies=EUR,RON,USD');
+  const rate = byName(page, 'rate-USD');
+  // Focused, the empty field takes BNR's rate as text; typed over, that becomes the custom rate.
+  await rate.focus();
+  await rate.selectText();
+  await page.keyboard.type('4,815');
+  await expect.poll(() => saved(page, 'ft.customRates')).toBe('{"USD":4.815}');
+  // The address follows a moment later; reloaded before that, it would bring back a rate typed halfway.
+  await expect(page).toHaveURL(/rates=USD(:|%3A)4\.815(&|$)/);
+  await page.reload();
+  // "4.815" would read as 4815 in Romanian.
+  await expect(rate).toHaveValue('4,815');
+  await changeLastDigit(page, rate, '6');
+  await expect.poll(() => saved(page, 'ft.customRates')).toBe('{"USD":4.816}');
+  await chooseLanguage(page, 'English');
+  await expect(rate).toHaveValue('4.816');
+  await changeLastDigit(page, rate, '7');
+  await expect.poll(() => saved(page, 'ft.customRates')).toBe('{"USD":4.817}');
+});
+
+test('working time, fees and VAT: the fields take the new decimal mark after a language switch', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  await page.goto('./?lang=ro&hours=7.5&days=4.5&transfer=wise&transfer_pct=0.5');
+  const fields = { hoursPerDay: '7,5', daysPerWeek: '4,5', 'fee-2': '0,5' };
+  for (const [name, ro] of Object.entries(fields)) await expect(byName(page, name)).toHaveValue(ro);
+  await chooseLanguage(page, 'English');
+  for (const [name, ro] of Object.entries(fields)) await expect(byName(page, name)).toHaveValue(ro.replace(',', '.'));
+
+  await page.goto('./?lang=en&vat_romania=12.5#taxes');
+  await expect(byName(page, 'vat-romania')).toHaveValue('12.5');
+  await chooseLanguage(page, 'Română');
+  await expect(byName(page, 'vat-romania')).toHaveValue('12,5');
+});
+
+test('converter: typing back the figure a cell shows keeps the amount typed elsewhere', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  const goal = byName(page, 'month-RON');
+  const cell = byName(page, 'hour-EUR');
+  await focusCell(page, goal);
+  await page.keyboard.type('10000');
+  await goal.blur();
+  await expect(goal).toHaveValue('10.000,00');
+  const shown = await cell.inputValue();
+  // A digit deleted and typed again.
+  await focusCell(page, cell);
+  const offered = await cell.inputValue();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type(offered.slice(-1));
+  await cell.blur();
+  await expect(goal).toHaveValue('10.000,00');
+  // The figure shown, typed over the selected text.
+  await focusCell(page, cell);
+  await page.keyboard.type(shown);
+  await cell.blur();
+  await expect(goal).toHaveValue('10.000,00');
+  // Another figure starts from this cell.
+  await focusCell(page, cell);
+  await page.keyboard.type('11');
+  await cell.blur();
+  await expect(goal).not.toHaveValue('10.000,00');
 });
 
 test('holding an arrow key in a field keeps the page, and the address catches up', async ({ page }, info) => {

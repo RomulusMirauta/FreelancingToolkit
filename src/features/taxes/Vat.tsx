@@ -1,4 +1,4 @@
-import { useT } from '../../lib/i18n';
+import { useLang, useT } from '../../lib/i18n';
 import { P, paramInfo } from '../../lib/tax/params';
 import { Fold } from '../../lib/ui/Fold';
 import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
@@ -21,6 +21,7 @@ export const VAT_QUERY: UrlQuery<number> = {
 /** VAT in short: the exemption threshold against the income that counts, and what changes by where the client is. */
 export function Vat({ annual }: { annual: number }) {
   const t = useT().vat;
+  const lang = useLang();
   const [romaniaPct, setRomaniaPct] = usePersistentState('ft.vatRomania', VAT_QUERY.defaults, isShare);
   useUrlQuery(VAT_QUERY, romaniaPct);
   // Only supplies located in Romania count (Cod fiscal art. 310 alin. (2)); the app can't tell, so it asks.
@@ -42,6 +43,8 @@ export function Vat({ annual }: { annual: number }) {
           <span>{t.romaniaLabel}</span>
           <span className="fee-pct">
             <input
+              // Uncontrolled: a new language mounts it again, with that language's decimal mark.
+              key={lang}
               inputMode="decimal"
               autoComplete="off"
               name="vat-romania"
