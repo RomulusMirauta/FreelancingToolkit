@@ -1664,7 +1664,8 @@ async function tabTo(page: Page, target: Locator) {
 
 /**
  * An element's focus ring: its lowest contrast with the colours beside it (the element's own background inside it,
- * its parent's outside), and whether a box that clips its content cuts it off.
+ * its parent's outside), as drawn through the opacity of the element and its ancestors, and whether a box that clips
+ * its content cuts it off.
  */
 const ringOf = (target: Locator) =>
   target.evaluate((el) => {
@@ -1684,6 +1685,11 @@ const ringOf = (target: Locator) =>
     };
     const contrast = (a: number[], b: number[]) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
     const s = getComputedStyle(el);
+    // Opacity fades the ring with the element: it is drawn blended over what is beside it.
+    let opacity = 1;
+    for (let e: Element | null = el; e; e = e.parentElement) opacity *= parseFloat(getComputedStyle(e).opacity);
+    const [or = 0, og = 0, ob = 0, oa = 1] = rgba(s.outlineColor);
+    const drawn = (under: number[]) => [or, og, ob].map((v, i) => v * oa * opacity + under[i]! * (1 - oa * opacity));
     const offset = parseFloat(s.outlineOffset);
     const reach = offset + parseFloat(s.outlineWidth);
     const beside = [...(reach >= 0 ? [backdrop(el.parentElement!)] : []), ...(offset < 0 ? [backdrop(el)] : [])];
@@ -1695,7 +1701,7 @@ const ringOf = (target: Locator) =>
       const clip = e.getBoundingClientRect();
       if (box.left - reach < clip.left || box.right + reach > clip.right || box.top - reach < clip.top || box.bottom + reach > clip.bottom) clipped = true;
     }
-    return { style: s.outlineStyle, contrast: Math.min(...beside.map((c) => contrast(rgba(s.outlineColor), c))), clipped };
+    return { style: s.outlineStyle, contrast: Math.min(...beside.map((c) => contrast(drawn(c), c))), clipped };
   });
 
 for (const colorScheme of ['dark', 'light'] as const) {
@@ -1705,25 +1711,26 @@ for (const colorScheme of ['dark', 'light'] as const) {
     test('the tax page\'s switches, pickers and lists, and the settings menu, show a ring of at least 3:1', async ({ page }, info) => {
       test.skip(isPhone(info), 'keyboards only');
       await openApp(page, { lang: 'ro', tab: 'taxes' });
-      const shown = async (target: Locator) => {
+      const shown = async (target: Locator, least = 3) => {
         const ring = await ringOf(target);
         expect(ring.style).not.toBe('none');
-        expect(ring.contrast).toBeGreaterThanOrEqual(3);
+        expect(ring.contrast).toBeGreaterThanOrEqual(least);
         expect(ring.clipped).toBe(false);
       };
       // The CIM | mandate switch clipped its ring away; the best card's "Reference" drew it in the header's own
-      // colour (1:1), the other cards' in 1.6:1 on the light theme; the pickers had only a faint halo.
-      for (const target of [
-        page.locator('.segmented button').first(),
-        page.locator('.segmented button').nth(1),
-        page.locator('.regime.is-best .ref-toggle').first(),
-        page.locator('.regime:not(.is-best) .ref-toggle').first(),
-        page.locator('.income-row-main .currency-btn').first(),
-        page.locator('.income-row-main .currency-btn').last(),
-        page.locator('.regime-options .currency-btn').first(),
-      ]) {
+      // colour (1:1), the other cards' in 1.6:1 on the light theme; the pickers had only a faint halo. "Reference"
+      // keeps the 6:1 and more it was given: its opacity faded the ring with it, to 4.6:1 on the dark best card.
+      for (const [target, least] of [
+        [page.locator('.segmented button').first(), 3],
+        [page.locator('.segmented button').nth(1), 3],
+        [page.locator('.regime.is-best .ref-toggle').first(), 5],
+        [page.locator('.regime:not(.is-best) .ref-toggle').first(), 5],
+        [page.locator('.income-row-main .currency-btn').first(), 3],
+        [page.locator('.income-row-main .currency-btn').last(), 3],
+        [page.locator('.regime-options .currency-btn').first(), 3],
+      ] as const) {
         await tabTo(page, target);
-        await shown(target);
+        await shown(target, least);
       }
       // The option the arrow keys reach, and the menu's items, had only a tint (1.2:1).
       await tabTo(page, page.locator('.income-row-main .currency-btn').last());
@@ -1736,6 +1743,19 @@ for (const colorScheme of ['dark', 'light'] as const) {
       const item = page.locator('.top-actions .menu-pop > button').first();
       await tabTo(page, item);
       await shown(item);
+    });
+
+    test('a warning toast\'s × shows a ring of at least 3:1', async ({ page }, info) => {
+      test.skip(isPhone(info), 'keyboards only');
+      // On the whitish dark-theme toast the amber edge, which the ring took, was 2.98:1.
+      await page.addInitScript(() => sessionStorage.setItem('ft-toast-after-reload', JSON.stringify([{ id: 'badLink' }])));
+      await openApp(page, { lang: 'en', tab: 'converter' });
+      await expect(page.locator('.toast')).toHaveClass(/warn/);
+      const close = page.locator('.toast-close');
+      await tabTo(page, close);
+      const ring = await ringOf(close);
+      expect(ring.style).not.toBe('none');
+      expect(ring.contrast).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -1784,6 +1804,25 @@ for (const colorScheme of ['dark', 'light'] as const) {
       await page.locator('.top-actions .menu-trigger').click();
       for (const slider of ['.theme-slider', '.lang-slider']) {
         await thumbMarks(page.locator(`${slider} .slider-thumb`), page.locator(`${slider} button[aria-checked="true"]`), page.locator(`${slider} button[aria-checked="false"]`));
+      }
+    });
+
+    test('the Tools button on a narrow screen, the kept-share bars and the VAT bar keep their colour', async ({ page, browserName }) => {
+      test.skip(browserName !== 'chromium', 'contrast themes are a Windows feature, drawn here by Chromium');
+      // Drawn only in author colours, which the theme turned into the page's: the bars were empty, and up to 600 px
+      // the Tools button, only its dot there, was not there at all.
+      const background = (target: Locator) => target.first().evaluate((el) => getComputedStyle(el).backgroundColor);
+      await page.setViewportSize({ width: 320, height: 640 });
+      await openApp(page, { lang: 'en', tab: 'taxes' });
+      const canvas = await background(page.locator('body'));
+      expect(await background(page.locator('.reset-wrap > .menu-trigger .dot'))).not.toBe(canvas);
+      expect(await page.locator('.kept-meter > span').count()).toBeGreaterThan(1);
+      for (const fill of await page.locator('.kept-meter > span').all()) expect(await background(fill)).not.toBe(canvas);
+      expect(await page.locator('.kept-meter').first().evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('1px');
+      // Also close to the threshold and over it, where the bar took the warning and danger colours.
+      for (const income of ['', '394999.99', '395000.01']) {
+        if (income) await page.goto(`./?lang=en&income=${income}&income_currency=RON&income_per=year#taxes`);
+        expect(await background(page.locator('.vat-bar span'))).not.toBe(canvas);
       }
     });
   });

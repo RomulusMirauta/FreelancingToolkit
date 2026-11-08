@@ -1108,8 +1108,9 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .regime.is-best .ref-toggle:hover:not(.on) { background: color-mix(in srgb, var(--best-text) 12%, transparent); }
 .regime.is-best .ref-toggle.on { background: var(--best-text); border-color: var(--best-text); color: var(--best); }
 /* The ring is drawn on the header, so it takes the header's text colour: the accent is the best card's own. */
-.ref-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.regime.is-best .ref-toggle:focus-visible { outline-color: var(--best-text); }
+/* At full strength, as on hover: the button's opacity fades its ring with it. */
+.ref-toggle:focus-visible { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
+.regime.is-best .ref-toggle:focus-visible { opacity: 1; outline-color: var(--best-text); }
 
 .theme-switch button { padding: 4px 8px; font-size: 0.9rem; line-height: 1; }
 
@@ -1297,7 +1298,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   background: none; color: var(--toast-muted); font-size: 1.15rem; line-height: 1; cursor: pointer;
 }
 .toast-close:hover { background: color-mix(in srgb, var(--toast-text) 12%, transparent); color: var(--toast-text); }
-.toast-close:focus-visible { outline: 2px solid var(--toast-edge); outline-offset: 1px; }
+.toast-close:focus-visible { outline: 2px solid var(--toast-ring, var(--toast-edge)); outline-offset: 1px; }
 /* Comes in from below with a small bounce. */
 @keyframes toast-in {
   0% { opacity: 0; transform: translateY(24px) scale(0.96); }
@@ -1311,14 +1312,15 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   to { opacity: 0; transform: translateY(24px) scale(0.96); }
 }
 
-/* The edge says the kind: lime = done, amber = a warning, teal = for your information. */
+/* The edge says the kind: lime = done, amber = a warning, teal = for your information. On the whitish dark-theme
+   toast the amber edge is 2.98:1, so a warning's focus rings take a darker amber (4.7:1). */
 .toast.warn { --toast-edge: #fbbf24; }
 .toast.info { --toast-edge: #5cc4a6; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .toast.warn { --toast-edge: #d97706; }
+  :root:not([data-theme='light']) .toast.warn { --toast-edge: #d97706; --toast-ring: #b45309; }
   :root:not([data-theme='light']) .toast.info { --toast-edge: #1f6f5c; }
 }
-:root[data-theme='dark'] .toast.warn { --toast-edge: #d97706; }
+:root[data-theme='dark'] .toast.warn { --toast-edge: #d97706; --toast-ring: #b45309; }
 :root[data-theme='dark'] .toast.info { --toast-edge: #1f6f5c; }
 /* Undo, What's new: a small outlined button before the ×. */
 .toast-action {
@@ -1326,7 +1328,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   color: var(--toast-text); padding: 3px 12px; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
 }
 .toast-action:hover { background: color-mix(in srgb, var(--toast-edge) 18%, transparent); }
-.toast-action:focus-visible { outline: 2px solid var(--toast-edge); outline-offset: 1px; }
+.toast-action:focus-visible { outline: 2px solid var(--toast-ring, var(--toast-edge)); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) { .toast, .toast.leaving { animation: none; } }
 
 /* However long a figure gets, it wraps inside its card instead of running out of it. */
@@ -1351,4 +1353,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   .chip.on, .segmented button.on, .add-list li.active { background: Highlight; border-color: Highlight; }
   .segmented button.on, .add-list li.active { outline-color: HighlightText; }
   .chip.on *, .add-list li.active * { color: inherit !important; background: none !important; border-color: currentColor !important; }
+  /* Drawn only in author colours, the theme turned them into the page's: on a phone the Tools button is just its dot. */
+  .reset-app .dot { background: CanvasText; }
+  .kept-meter { border: 1px solid CanvasText; }
+  .kept-meter > span, .vat-bar span, .vat-meter.near .vat-bar span, .vat-meter.over .vat-bar span { background: Highlight; }
 }
