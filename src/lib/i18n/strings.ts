@@ -80,7 +80,7 @@ export const en = {
         'In the address bar, on the right, click the install icon (a small screen with a down arrow).',
         'Click "Install". If you see "Add desktop shortcut", leave it ticked.',
         'Done: the app opens in its own window and is in the Start menu and on the desktop.',
-        'No icon? Chrome: menu ⋮ (top right) → "Cast, save and share" → "Install page as app". Edge: menu … (top right) → "More tools" → "Apps" → "Install this site as an app". Firefox on Windows (version 143 or later): the "Add tab to taskbar" button at the right of the address bar. On Mac or Linux, Firefox cannot install apps: use Chrome or Edge.',
+        'No icon? Chrome: menu ⋮ (top right) → "Cast, save and share" → "Install page as app". Edge: menu … (top right) → "More tools" → "Apps" → "Install this site as an app". Firefox on Windows (version 143 or later): the "Add tab to taskbar" button at the right of the address bar. Safari on Mac (macOS Sonoma or later): File → "Add to Dock". On Mac or Linux, Firefox cannot install apps: use Chrome or Edge.',
       ],
       android: [
         'Open this page in Chrome.',
@@ -535,7 +535,7 @@ export const ro: Strings = {
         'În bara de adrese, în dreapta, apasă iconița de instalare (un ecran mic cu o săgeată în jos).',
         'Apasă „Instalează”. Dacă vezi „Adaugă o comandă rapidă pe desktop”, las-o bifată.',
         'Gata: aplicația se deschide în fereastra ei și o găsești în meniul Start și pe desktop.',
-        'Nu vezi iconița? Chrome: meniul ⋮ (dreapta sus) → „Transmite, salvează și trimite” → „Instalează pagina ca aplicație”. Edge: meniul … (dreapta sus) → „Mai multe instrumente” → „Aplicații” → „Instalați acest site ca aplicație”. Firefox pe Windows (versiunea 143 sau mai nouă): butonul „Adaugă fila în bara de activități” din dreapta barei de adrese. Pe Mac sau Linux, Firefox nu poate instala aplicații: folosește Chrome sau Edge.',
+        'Nu vezi iconița? Chrome: meniul ⋮ (dreapta sus) → „Transmite, salvează și trimite” → „Instalează pagina ca aplicație”. Edge: meniul … (dreapta sus) → „Mai multe instrumente” → „Aplicații” → „Instalați acest site ca aplicație”. Firefox pe Windows (versiunea 143 sau mai nouă): butonul „Adaugă fila în bara de activități” din dreapta barei de adrese. Safari pe Mac (macOS Sonoma sau mai nou): Fișier → „Adăugați în Dock”. Pe Mac sau Linux, Firefox nu poate instala aplicații: folosește Chrome sau Edge.',
       ],
       android: [
         'Deschide pagina în Chrome.',

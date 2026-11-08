@@ -21,7 +21,7 @@ As a PWA, the app can be installed like a regular app and keeps working without 
   1. Open the link above.
   2. In the address bar, on the right, click the install icon (a small screen with a down arrow), then **Install**.
   3. The app opens in its own window and is in the Start menu and on the desktop.
-  No icon? Chrome: menu ⋮ → *Cast, save and share* → *Install page as app*. Edge: menu … → *More tools* → *Apps* → *Install this site as an app*. Firefox on Windows (version 143 or later): the *Add tab to taskbar* button at the right of the address bar. On Mac or Linux, Firefox can't install apps: use Chrome or Edge.
+  No icon? Chrome: menu ⋮ → *Cast, save and share* → *Install page as app*. Edge: menu … → *More tools* → *Apps* → *Install this site as an app*. Firefox on Windows (version 143 or later): the *Add tab to taskbar* button at the right of the address bar. Safari on Mac (macOS Sonoma or later): *File* → *Add to Dock*. On Mac or Linux, Firefox can't install apps: use Chrome or Edge.
 - **Android (Chrome)**
   1. Open the link in Chrome and tap the three dots ⋮ at the top right.
   2. Tap *Install app* (or *Add to Home screen*), then *Install*.

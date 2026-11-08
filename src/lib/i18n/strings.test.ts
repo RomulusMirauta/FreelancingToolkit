@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { en, ro, type ConsFacts } from './strings';
+import stringsSource from './strings.ts?raw';
 
 describe('texts on the tax cards', () => {
   it('the PFA note no longer counts lawyers among the professions taxed alike: they owe no CAS', () => {
@@ -38,7 +39,8 @@ describe('texts on the tax cards', () => {
     // The card name keeps a soft hyphen, shown only where the name has to wrap.
     expect(ro.regimes.srlMicro).toBe('SRL - Micro\u00adîntreprindere');
     expect(ro.regimes.srlMicro.replace('\u00ad', '')).toBe('SRL - Microîntreprindere');
-    expect(JSON.stringify(ro)).not.toMatch(/[Mm]icro-întreprindere/);
+    // Read as source text, so the texts built by functions (from figures) are checked too.
+    expect(stringsSource).not.toMatch(/[Mm]icro-întreprindere/);
     expect(ro.notices.mandate).toContain('îndeplinește condiția de angajat pentru microîntreprindere.');
   });
 });
@@ -75,6 +77,11 @@ describe('install steps', () => {
     expect(roLast).toContain('Edge: meniul … (dreapta sus) → „Mai multe instrumente” → „Aplicații” → „Instalați acest site ca aplicație”.');
     expect(roLast).toContain('Firefox pe Windows (versiunea 143 sau mai nouă): butonul „Adaugă fila în bara de activități” din dreapta barei de adrese.');
     expect(roLast).toContain('Pe Mac sau Linux, Firefox nu poate instala aplicații: folosește Chrome sau Edge.');
+  });
+
+  it('Safari on Mac is pointed to File → Add to Dock (macOS Sonoma or later)', () => {
+    expect(en.app.steps.desktop.at(-1)).toContain('Safari on Mac (macOS Sonoma or later): File → "Add to Dock".');
+    expect(ro.app.steps.desktop.at(-1)).toContain('Safari pe Mac (macOS Sonoma sau mai nou): Fișier → „Adăugați în Dock”.');
   });
 
   it('Share is placed for iPhone and for iPad, with the ⋯ menu when it is not in sight', () => {

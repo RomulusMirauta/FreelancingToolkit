@@ -212,9 +212,11 @@ test('tax cards: the bar of what you keep follows the take-home, and the details
     .toHaveAttribute('title', 'Their pay and the taxes on it are not counted: add them to the deductible expenses');
 });
 
-test('tax page in Romanian: "Microîntreprindere" wraps at its soft hyphen where it must, so nothing is wider than the page', async ({ page }) => {
+test('tax page in Romanian: "Microîntreprindere" wraps at its soft hyphen where it must, so nothing is wider than a 320 px screen', async ({ page }) => {
+  // At 320 px, as one unbreakable word it made the page 14 px too wide (after the ranking let amounts wrap; 0.56 px at
+  // 360 px before that).
+  await page.setViewportSize({ width: 320, height: 860 });
   await openApp(page, { lang: 'ro', tab: 'taxes' });
-  // As one unbreakable word, it made the phone ranking 0.56 px too wide at 360 px.
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
 });
 
