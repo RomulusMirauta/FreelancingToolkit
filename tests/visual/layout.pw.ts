@@ -183,3 +183,51 @@ test('Tab goes through the table even when pressed faster than a frame', async (
   for (let i = 0; i < 60; i++) await page.keyboard.press('Tab');
   expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-cell'))).toBe(false);
 });
+
+/** Own settings saved, then someone's link opened in the same tab: its banner. */
+async function openSharedLink(page: Page) {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('./?lang=en&currencies=EUR,RON,PLN');
+  await page.goto('./?share=1&currencies=EUR,USD');
+  return page.locator('.shared-banner');
+}
+
+/** The page is drawn: the banner, if any, comes in the same render as the header. */
+const drawn = (page: Page) => expect(page.locator('.app-header')).toBeVisible();
+
+test('shared link: a reload keeps "Back to my settings", which brings the own settings back', async ({ page }) => {
+  const banner = await openSharedLink(page);
+  const back = banner.getByRole('button', { name: 'Back to my settings' });
+  await expect(back).toBeVisible();
+  // The app reloads by itself when an update arrives, often seconds after the link is opened.
+  await page.reload();
+  await expect(back).toBeVisible();
+  await back.click();
+  await expect(page.locator('.toast')).toContainText('Your own settings are back.');
+  await expect(page).toHaveURL(/currencies=EUR,RON,PLN/);
+  await expect(banner).toHaveCount(0);
+  await page.reload();
+  await drawn(page);
+  await expect(banner).toHaveCount(0);
+});
+
+test('shared link: "Keep the link’s" and "Reset app" end it, and a reload brings no banner back', async ({ page }) => {
+  const banner = await openSharedLink(page);
+  await banner.getByRole('button', { name: 'Keep the link’s' }).click();
+  await expect(banner).toHaveCount(0);
+  await page.reload();
+  await drawn(page);
+  await expect(banner).toHaveCount(0);
+  await expect(page).toHaveURL(/currencies=EUR,USD/);
+
+  await page.goto('./?share=1&currencies=GBP,RON');
+  await expect(banner).toBeVisible();
+  await page.locator('.reset-wrap > .menu-trigger').click();
+  await page.locator('.reset-row').getByRole('button', { name: 'Reset app' }).click();
+  await Promise.all([page.waitForURL((u) => u.search === ''), page.locator('.reset-confirm .danger').click()]);
+  await drawn(page);
+  await expect(banner).toHaveCount(0);
+  await page.reload();
+  await drawn(page);
+  await expect(banner).toHaveCount(0);
+});

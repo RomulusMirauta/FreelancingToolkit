@@ -5,7 +5,7 @@ import type { Lang } from '../../lib/i18n';
 import type { Theme } from '../../lib/ui/theme';
 import { LangSlider, ThemeSlider } from './ThemeSlider';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
-import { restoreOwnSettings, shareUrl, sharedLinkState } from '../../lib/ui/share';
+import { restoreOwnSettings, settleSharedLink, shareUrl, sharedLinkState } from '../../lib/ui/share';
 import { trackEvent } from '../../lib/analytics';
 import { notify } from '../../lib/ui/toast';
 
@@ -160,7 +160,7 @@ function InstallSteps({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Shown once, after opening a link with someone's settings. */
+/** Shown after opening a link with someone's settings, until the viewer chooses (a reload keeps it). */
 export function SharedBanner() {
   const t = useT().app;
   const [{ opened, hadOwn, same }] = useState(sharedLinkState);
@@ -178,7 +178,7 @@ export function SharedBanner() {
           </button>
         )}
         {/* With own settings replaced, closing means keeping the link's: the button says so. */}
-        <button type="button" className="banner-btn" onClick={() => setHidden(true)}>{hadOwn ? t.keepLink : t.close}</button>
+        <button type="button" className="banner-btn" onClick={() => { settleSharedLink(); setHidden(true); }}>{hadOwn ? t.keepLink : t.close}</button>
       </span>
     </div>
   );

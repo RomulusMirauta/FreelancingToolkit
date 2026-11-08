@@ -10,6 +10,7 @@ import { useHoverMenu } from '../../lib/ui/useHoverMenu';
 import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
 import { notifyLater } from '../../lib/ui/toast';
 import { saveBeforeReset } from '../../lib/ui/undoReset';
+import { settleSharedLink } from '../../lib/ui/share';
 
 export { APP_KEYS, PAGE_FOLDS, PAGE_KEYS, type Page } from '../../lib/ui/settingsKeys';
 
@@ -154,7 +155,9 @@ function resetApp() {
   } catch {
     // storage unavailable: nothing was saved, so the reload alone restores the defaults
   }
-  // No query string: a shared link's settings must not come back after a reset.
+  // No query string: a shared link's settings must not come back after a reset. Nor its banner, whose "Back to
+  // my settings" would undo the reset.
+  settleSharedLink();
   location.replace(location.pathname);
 }
 
