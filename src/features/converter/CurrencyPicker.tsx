@@ -110,8 +110,9 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
             name="currency-search"
             autoFocus
             role="combobox"
-            aria-expanded="true"
-            aria-controls={listId}
+            // With no match there is no list to point to.
+            aria-expanded={matches.length > 0}
+            aria-controls={matches.length > 0 ? listId : undefined}
             aria-activedescendant={matches[active] ? `${listId}-${matches[active].code}` : undefined}
             aria-label={t.search}
             placeholder={t.placeholder}
@@ -135,7 +136,7 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
               }
             }}
           />
-          {matches.length > 0 ? (
+          {matches.length > 0 && (
             <ul className="add-list" role="listbox" id={listId} ref={listRef} aria-label={t.list}>
               {matches.map((c, i) => (
                 <li
@@ -159,9 +160,9 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="add-empty">{t.noMatch(query)}</p>
           )}
+          {/* There, empty, from the moment the panel opens, so screen readers read "no match" when it comes. */}
+          <p className="add-empty" role="status">{matches.length > 0 ? null : t.noMatch(query)}</p>
         </div>
       )}
     </div>

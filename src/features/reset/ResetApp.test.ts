@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { en, ro } from '../../lib/i18n/strings';
+import { STORAGE_PREFIX } from '../../lib/ui/usePersistentState';
 import { APP_KEYS, PAGE_FOLDS, PAGE_KEYS } from './ResetApp';
 
 // The app's source files, as text.
@@ -36,5 +38,13 @@ describe('reset buttons', () => {
 
   it('no setting belongs to two places', () => {
     expect(new Set(owned).size).toBe(owned.length);
+  });
+
+  it('"Reset app" clears the language and theme too, and its confirmation says so', () => {
+    // resetApp() removes every saved key with the prefix; the confirmation said "Language and theme stay".
+    expect(APP_KEYS.every((k) => k.startsWith(STORAGE_PREFIX))).toBe(true);
+    expect(en.reset.confirmText).toMatch(/ The language goes back to Romanian, and the theme to automatic\.$/);
+    expect(ro.reset.confirmText).toMatch(/ Limba revine la română, iar tema trece pe automat\.$/);
+    for (const text of [en.reset.confirmText, ro.reset.confirmText]) expect(text).not.toMatch(/stay|rămân/);
   });
 });

@@ -15,6 +15,8 @@ const RATES_BEFORE = 'ft-rates-before';
 const SEEN_VERSION = 'ft-version';
 /** How long a toast takes to go out (the .toast.leaving animation). */
 const OUT_MS = 220;
+/** How long the screen readers' copy of a toast stays empty before it gets the new text. */
+const SPEAK_MS = 100;
 /** Where "What's new" leads. */
 const RELEASES = 'https://github.com/RomulusMirauta/FreelancingToolkit/releases';
 
@@ -185,8 +187,15 @@ export function Toast() {
   /** Counts the toasts that have gone, so the next one is a new element and comes in with its animation. */
   const [gone, setGone] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  /** The pointer or the keyboard focus is on the toast: its time stands still. */
+  const [pointerOn, setPointerOn] = useState(false);
+  const [focusIn, setFocusIn] = useState(false);
+  /** What screen readers hear: the toast's text, in a live region that is always there. */
+  const [spoken, setSpoken] = useState('');
   const timer = useRef<number | undefined>(undefined);
   const outTimer = useRef<number | undefined>(undefined);
+  /** The time the toast still has before it hides itself. */
+  const left = useRef(0);
 
   useEffect(() => {
     const add = (n: Note) => setQueue((q) => addNote(q, n));
@@ -224,6 +233,9 @@ export function Toast() {
       setLeaving(false);
       setQueue((q) => q.slice(1));
       setGone((n) => n + 1);
+      // The next toast is a new element, which neither the pointer nor the focus is on yet.
+      setPointerOn(false);
+      setFocusIn(false);
     }, OUT_MS);
   };
 
@@ -234,24 +246,59 @@ export function Toast() {
     if (!current) return;
     window.clearTimeout(outTimer.current);
     setLeaving(false);
-    timer.current = window.setTimeout(close, hasAction ? 10_000 : 6000);
-    return () => window.clearTimeout(timer.current);
+    left.current = hasAction ? 10_000 : 6000;
+  }, [current, hasAction]);
+  // Its time runs only while neither the pointer nor the focus is on it (to read it, or reach its button from the
+  // keyboard), and goes on from where it stopped.
+  const held = pointerOn || focusIn;
+  useEffect(() => {
+    if (!current || held || leaving) return;
+    const start = performance.now();
+    timer.current = window.setTimeout(close, left.current);
+    return () => {
+      window.clearTimeout(timer.current);
+      left.current -= performance.now() - start;
+    };
     // close only uses refs and setters
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, hasAction]);
+  }, [current, held, leaving]);
   useEffect(() => () => window.clearTimeout(outTimer.current), []);
 
-  if (!shown) return null;
+  // Screen readers read a change in a live region they already know, not one that arrives with its text: the
+  // region is always there, emptied for each toast and filled a moment later, so the same message again is
+  // read again too.
+  const words = shown ? `${shown.title} ${shown.hint}` : '';
+  useEffect(() => {
+    setSpoken('');
+    if (!words) return;
+    const fill = window.setTimeout(() => setSpoken(words), SPEAK_MS);
+    return () => window.clearTimeout(fill);
+  }, [current, words]);
+
   return (
-    <div className={`toast ${shown.tone}${leaving ? ' leaving' : ''}`} role="status" key={gone}>
-      <div>
-        <strong>{shown.title}</strong>
-        <span className="muted small">{shown.hint}</span>
-      </div>
-      {shown.action && (
-        <button type="button" className="toast-action" onClick={() => { close(); shown.action!.run(); }}>{shown.action.label}</button>
+    <>
+      <div className="sr-only" role="status" aria-live="polite">{spoken}</div>
+      {shown && (
+        <div
+          className={`toast ${shown.tone}${leaving ? ' leaving' : ''}`}
+          key={gone}
+          onPointerEnter={() => setPointerOn(true)}
+          onPointerLeave={() => setPointerOn(false)}
+          onFocus={() => setFocusIn(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setFocusIn(false);
+          }}
+        >
+          <div>
+            <strong>{shown.title}</strong>
+            <span className="muted small">{shown.hint}</span>
+          </div>
+          {shown.action && (
+            <button type="button" className="toast-action" onClick={() => { close(); shown.action!.run(); }}>{shown.action.label}</button>
+          )}
+          <button type="button" className="toast-close" aria-label={t.app.close} title={t.app.close} onClick={close}>×</button>
+        </div>
       )}
-      <button type="button" className="toast-close" aria-label={t.app.close} title={t.app.close} onClick={close}>×</button>
-    </div>
+    </>
   );
 }

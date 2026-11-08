@@ -7,6 +7,7 @@ import { SOURCE_PARAMS, incomeFollowsConverter, sourceFollowsIncome } from '../c
 import { INCOME_QUERY } from '../taxes/Taxes';
 import { clearFolds, useClosedFolds, useFoldAll } from '../../lib/ui/folds';
 import { useHoverMenu } from '../../lib/ui/useHoverMenu';
+import { useIsPhone } from '../../lib/ui/useIsPhone';
 import { STORAGE_PREFIX, useIsModified } from '../../lib/ui/usePersistentState';
 import { notifyLater } from '../../lib/ui/toast';
 import { saveBeforeReset } from '../../lib/ui/undoReset';
@@ -27,6 +28,7 @@ export function ResetApp({ page }: { page: Page }) {
   const modified = useIsModified() || closed.size > 0;
   const pageModified = useIsModified(PAGE_KEYS[page]) || PAGE_FOLDS[page].some((id) => closed.has(id));
   const { anyOpen, toggleAll } = useFoldAll();
+  const phone = useIsPhone();
   const [asking, setAsking] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const menu = useHoverMenu();
@@ -89,7 +91,9 @@ export function ResetApp({ page }: { page: Page }) {
           type="button"
           className="reset-app"
           disabled={!modified}
-          aria-label={t.label}
+          // Phones show only the short word (mobile.css): the name starts with it, so voice control finds the button
+          // by what is on screen.
+          aria-label={phone ? `${t.short}: ${t.label}` : t.label}
           title={modified ? t.titleOn : t.titleOff}
           onClick={() => {
             menu.setOpen(false);
@@ -100,11 +104,12 @@ export function ResetApp({ page }: { page: Page }) {
           <ResetLabel full={t.label} short={t.short} />
         </button>
       </div>
-      <button type="button" className="reset-app menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={t.menu}>
+      {/* The button's name says what the pulsing dot shows: a label on the dot inside it is not read. */}
+      <button type="button" className="reset-app menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={modified ? t.menuModified : t.menu}>
         <span className="icon" aria-hidden="true"><ToolsIcon /></span>
         <span className="menu-word">{t.menu}</span>
         {/* Always there to draw the eye; it pulses while something can be reset. */}
-        <span className={`dot${modified ? ' pulse' : ''}`} aria-label={modified ? t.menuDot : undefined} aria-hidden={modified ? undefined : true} />
+        <span className={`dot${modified ? ' pulse' : ''}`} aria-hidden="true" />
       </button>
     </div>
   );

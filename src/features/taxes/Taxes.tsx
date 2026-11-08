@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CURRENCIES } from '../../lib/currency/currencies';
+import { CURRENCIES, currencySymbol } from '../../lib/currency/currencies';
 import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, effectiveRates, isMarketRate } from '../../lib/currency/rates';
 import { DEFAULT_WORK, PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
@@ -310,6 +310,8 @@ function IncomeInput({ value, onChange, work, label, hint, main = false }: {
   const lang = useLang();
   const annual = annualLei(value, work);
   const info = CURRENCIES.find((c) => c.code === value.currency);
+  // The button's name holds what it shows, the symbol too ("Currency: RON lei"), for voice control.
+  const symbol = currencySymbol(value.currency);
 
   return (
     <div className={`income${main ? ' income-row-main' : ''}`}>
@@ -321,7 +323,7 @@ function IncomeInput({ value, onChange, work, label, hint, main = false }: {
         <span>{t.currency}</span>
         <CurrencyPicker
           triggerClass="currency-btn"
-          triggerLabel={`${t.currency}: ${value.currency}`}
+          triggerLabel={`${t.currency}: ${value.currency}${symbol ? ` ${symbol}` : ''}`}
           selected={value.currency}
           onPick={(code) => onChange({ ...value, currency: code })}
           trigger={<><span title={info ? (lang === 'ro' ? info.ro : info.name) : undefined}><CurrencyCode code={value.currency} /></span></>}

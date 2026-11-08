@@ -236,6 +236,50 @@ test('toast goes out with its animation, then disappears', async ({ page }) => {
   await expect(toast).toHaveCount(0);
 });
 
+test('toasts reach screen readers through a live region that is there, empty, before the first one', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  const region = page.locator('.sr-only[role="status"]');
+  await expect(region).toHaveCount(1);
+  await expect(region).toBeEmpty();
+  const before = (await region.elementHandle())!;
+  // A word put into an amount is refused, and the toast is the only answer. Each toast was a new role="status"
+  // element with its text already in it, which screen readers usually don't read.
+  const income = page.locator('.income-main input');
+  await income.selectText();
+  await page.keyboard.insertText('thirty');
+  const toast = page.locator('.toast');
+  await expect(toast).toContainText('“thirty” isn’t a number.');
+  await expect(region).toHaveText('“thirty” isn’t a number. Type digits, e.g. 30 or 1250.');
+  expect(await before.evaluate((el) => el.isConnected && el.textContent)).toBe('“thirty” isn’t a number. Type digits, e.g. 30 or 1250.');
+  expect(await toast.getAttribute('role')).toBeNull();
+  await page.locator('.toast-close').click();
+  await expect(toast).toHaveCount(0);
+  await expect(region).toBeEmpty();
+});
+
+test('a toast with Undo stays while the keyboard or the pointer is on it, then goes on with the time it had left', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-04T10:00:00+02:00') });
+  await page.addInitScript(() => sessionStorage.setItem('ft-toast-after-reload', JSON.stringify([{ id: 'pageReset', arg: 'converter' }])));
+  await page.goto('./?lang=en');
+  const toast = page.locator('.toast');
+  await expect(toast).toContainText('The converter is back to its defaults.');
+  await page.clock.runFor(2000);
+  // Its 10 s ran out with the focus on Undo, often before a keyboard got there.
+  await toast.getByRole('button', { name: 'Undo' }).focus();
+  await page.clock.runFor(20_000);
+  await expect(toast).toBeVisible();
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  await page.clock.runFor(4000);
+  await expect(toast).toBeVisible();
+  await toast.hover();
+  await page.clock.runFor(20_000);
+  await expect(toast).toBeVisible();
+  // About 4 s were left: started again from 10 s, it would still be there.
+  await page.mouse.move(0, 0);
+  await page.clock.runFor(4500);
+  await expect(toast).toHaveCount(0);
+});
+
 test('Tab goes through the table even when pressed faster than a frame', async ({ page }, info) => {
   test.skip(isPhone(info), 'keyboards only');
   await openApp(page, { lang: 'ro', tab: 'converter' });
@@ -482,6 +526,92 @@ test('shared link: "Keep the link’s" and "Reset app" end it, and a reload brin
   await page.reload();
   await drawn(page);
   await expect(banner).toHaveCount(0);
+});
+
+test('"Reset app" says the language and theme go back to Romanian and automatic, and they do', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('./?lang=en&theme=dark');
+  await page.locator('.reset-wrap > .menu-trigger').click();
+  await page.locator('.reset-row').getByRole('button', { name: 'Reset app' }).click();
+  // It said "Language and theme stay."
+  await expect(page.locator('#reset-desc')).toContainText('The language goes back to Romanian, and the theme to automatic.');
+  await Promise.all([page.waitForURL((u) => u.search === ''), page.locator('.reset-confirm .danger').click()]);
+  await drawn(page);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
+  expect(await page.locator('html').getAttribute('data-theme')).toBeNull();
+});
+
+for (const lang of LANGS) {
+  test(`Tools: the button says when something can be reset, and each item's name holds the word it shows (${lang})`, async ({ page }) => {
+    // On the defaults, Romanian included (English is a setting "Reset app" clears), there is nothing to reset.
+    await openApp(page, { lang: 'ro', tab: 'converter' });
+    const tools = page.locator('.reset-wrap > .menu-trigger');
+    await expect(tools.locator('.dot')).not.toHaveClass(/pulse/);
+    await expect(tools).toHaveAccessibleName('Unelte');
+    // Only the pulsing dot said it, with a label screen readers don't read inside a button.
+    await page.goto(`./?lang=${lang}&hours=6`);
+    await expect(tools.locator('.dot')).toHaveClass(/pulse/);
+    await expect(tools).toHaveAccessibleName(lang === 'en' ? 'Tools (something can be reset)' : 'Unelte (ai setări care pot fi resetate)');
+    await tools.click();
+    await expect(page.locator('.reset-row')).toBeVisible();
+    // Phones show one word (Hide, Tab, All): "All" was named only "Reset app", so voice control couldn't find it.
+    // Matched word by word, as voice control and axe do; text in brackets doesn't count.
+    const words = (text: string) => ` ${text.toLowerCase().replace(/\([^)]*\)/g, ' ').split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
+    const items = await page.locator('.reset-row > button').evaluateAll((buttons) =>
+      buttons.map((b) => ({ shown: (b as HTMLElement).innerText.replace('↺', ''), name: b.getAttribute('aria-label') ?? '' })));
+    expect(items).toHaveLength(3);
+    for (const { shown, name } of items) {
+      expect(words(shown).trim()).not.toBe('');
+      expect(words(name)).toContain(words(shown));
+    }
+  });
+}
+
+test('tax page: the currency button\'s name holds the symbol it shows', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  const currency = page.locator('.income-row-main .add-currency').first().getByRole('button');
+  // It shows "RON lei" and was named "Currency: RON".
+  await expect(currency).toHaveAccessibleName('Currency: RON lei');
+  await page.goto('./?lang=ro&income=5000&income_currency=EUR&income_per=month#taxes');
+  await expect(currency).toHaveAccessibleName('Monedă: EUR €');
+});
+
+test('currency search with no match: the box points to no list, and "no match" comes in a region that was there', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.locator('.add-btn').click();
+  const search = page.locator('.add-pop input');
+  const status = page.locator('.add-pop [role="status"]');
+  await expect(status).toBeEmpty();
+  // Empty, it takes no room.
+  expect(await status.evaluate((el) => el.getBoundingClientRect().height)).toBe(0);
+  await expect(search).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator(`[id="${await search.getAttribute('aria-controls')}"]`)).toHaveAttribute('role', 'listbox');
+  // It stayed "expanded", pointing to a list that was gone, and the line that replaced it wasn't read.
+  await search.fill('zzzz');
+  await expect(status).toHaveText('No currency matches “zzzz”.');
+  await expect(search).toHaveAttribute('aria-expanded', 'false');
+  await expect(search).not.toHaveAttribute('aria-controls');
+  await search.fill('zl');
+  await expect(search).toHaveAttribute('aria-expanded', 'true');
+  await expect(status).toBeEmpty();
+});
+
+test('Copy link: when the browser blocks copying, the field with the link says what it is', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('blocked')) } });
+  });
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.locator('.top-actions .menu-trigger').click();
+  await page.locator('.top-actions .menu-pop button', { hasText: 'Copy link' }).click();
+  const field = page.locator('input[name="share-link"]');
+  await expect(field).toBeFocused();
+  await expect(field).toHaveAccessibleName('Copy this link:');
+});
+
+test('fees: the monthly figures are not named "per hour"; only the hourly path is', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await expect(page.locator('dl.fee-summary')).toHaveAccessibleName('');
+  await expect(page.locator('ol.fee-flow')).toHaveAccessibleName('From the invoice to your account, per hour');
 });
 
 test('card options saved by an older version, or with one the card can\'t take, keep the others', async ({ page }) => {

@@ -115,7 +115,7 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
       <p className="muted small">{t.intro}</p>
 
       {/* The answer first (what reaches you a month), then the choices that lead to it. */}
-      <dl className="stat-row fee-summary" aria-label={t.flowLabel}>
+      <dl className="stat-row fee-summary">
         <div className="stat-result"><dt>{t.sumReaches}</dt><dd>{formatMoney(monthRon * kept)} <span className="unit">{t.ronMonth}</span></dd></div>
         <div className={kept < 1 ? 'stat-cut' : undefined}><dt>{t.sumFees}</dt><dd>{kept < 1 ? '−' : ''}{formatMoney(monthRon * (1 - kept))} <span className="unit">{t.ronMonth}</span></dd></div>
       </dl>

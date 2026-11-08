@@ -131,8 +131,8 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
       {copied === 'manual' && (
         <div className="top-panel with-x" role="dialog" aria-label={t.copyManual}>
           <button type="button" className="panel-x" aria-label={t.close} title={t.close} onClick={() => setCopied('no')}>×</button>
-          <p>{t.copyManual}</p>
-          <input readOnly name="share-link" value={link} onFocus={(e) => e.target.select()} autoFocus />
+          <p id="copy-manual">{t.copyManual}</p>
+          <input readOnly name="share-link" aria-labelledby="copy-manual" value={link} onFocus={(e) => e.target.select()} autoFocus />
         </div>
       )}
       {showSteps && <InstallSteps onClose={() => setShowSteps(false)} />}
