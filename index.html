@@ -28,6 +28,15 @@
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>
+    <script>
+      // One address for the app: GitHub Pages serves it at …github.io//FreelancingToolkit/ too, where it registered a
+      // second service worker, with its own copy of the app (an older one at times) and its own install. It runs
+      // before the app and the manifest link below read the address, so both take the app's own path.
+      try {
+        var p = location.pathname.replace(/\/{2,}/g, '/');
+        if (p !== location.pathname) history.replaceState(history.state, '', location.origin + p + location.search + location.hash);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

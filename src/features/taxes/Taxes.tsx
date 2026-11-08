@@ -115,6 +115,9 @@ export const OPTIONS_QUERY: UrlQuery<TaxOptions> = {
     return mergeTaxOptions(out);
   },
   isValid: isOptions,
+  // Merged as the page below merges the saved value: the start puts it into the address on the converter page too,
+  // where this page isn't open, so a link copied there keeps the options.
+  upgrade: mergeTaxOptions,
   defaults: DEFAULT_TAX_OPTIONS,
   isDefault: (o) => JSON.stringify(o) === JSON.stringify(DEFAULT_TAX_OPTIONS),
   sparse: true,

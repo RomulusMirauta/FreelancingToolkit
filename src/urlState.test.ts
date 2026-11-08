@@ -272,3 +272,50 @@ describe('the tax income at start follows the working time and custom rates in t
     expect(start('?amount=40&currency=EUR&per=hour&hours=4', { 'ft.source': SOURCE, 'ft.work': AT_4H, 'ft.taxIncome': income })).toEqual(income);
   });
 });
+
+describe('saved card options at start', () => {
+  // A tiny browser: an address that history.replaceState changes, and the app's storage.
+  let url: URL;
+  let store: Map<string, string>;
+  beforeEach(() => {
+    vi.stubGlobal('location', {
+      get href() { return url.href; },
+      get search() { return url.search; },
+      get hash() { return url.hash; },
+    });
+    vi.stubGlobal('history', { state: null, replaceState: (_: unknown, __: string, next: string) => { url = new URL(next, url); } });
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+  });
+  afterEach(() => {
+    flushQuery();
+    vi.unstubAllGlobals();
+  });
+
+  /** A start on the converter page with `options` saved: the address then, and whether what is saved is as it was. */
+  const start = (options: unknown) => {
+    url = new URL('https://x.test/app/');
+    const raw = JSON.stringify(options);
+    store = new Map([['ft.taxOptions', raw]]);
+    applyUrlState();
+    flushQuery();
+    return { address: url.search, kept: store.get('ft.taxOptions') === raw };
+  };
+
+  it('go into the address merged, as the tax page merges them: in an older shape, or with one the card can\'t take', () => {
+    // Only the tax page merged them, once it opened: until then the converter page's address, and a link copied
+    // there, had none of them. The tax page still saves the merged value.
+    const older = {
+      ...DEFAULT_TAX_OPTIONS,
+      employee: { dependants: 2, under26: true },
+      pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1500, bonus: 1 },
+    };
+    expect(start(older)).toEqual({ address: '?dependants=2&under26=1&expenses_pfa=1500', kept: true });
+    expect(start({ ...older, employee: { dependants: 2.5, under26: true, schoolChildren: 0 } }))
+      .toEqual({ address: '?under26=1&expenses_pfa=1500', kept: true });
+    expect(start('broken').address).toBe('');
+  });
+});

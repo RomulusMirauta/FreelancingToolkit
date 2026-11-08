@@ -148,6 +148,18 @@ describe('opening a shared link', () => {
     expect(local.get('ft.columns')).toBe('["RON","EUR"]');
   });
 
+  it('"Copy link" while the address catches up (a key held down) has the latest change', async () => {
+    const share = await load();
+    const { flushQuery, writeQuery } = await import('./query');
+    // Past the changes that go into the address at once, the latest waits a moment for it.
+    let n = 0;
+    do writeQuery((p) => p.set('days_off', String(++n)));
+    while (url.searchParams.get('days_off') === String(n) && n < 1000);
+    expect(url.searchParams.get('days_off')).not.toBe(String(n));
+    expect(share.shareUrl('converter')).toMatch(new RegExp(`[?&]days_off=${n}(&|$)`));
+    flushQuery();
+  });
+
   it('nothing is kept between visits that opened no link', async () => {
     const share = await load();
     expect(share.sharedLinkState().opened).toBe(false);

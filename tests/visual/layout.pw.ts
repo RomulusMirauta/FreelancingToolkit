@@ -537,17 +537,50 @@ test('amounts: text put in at once is read whole, without its currency sign, in 
   await expect.poll(() => saved(page, 'ft.source')).toContain('"amount":1234.56');
 });
 
-test('holding an arrow key in a field keeps the page, and the address catches up', async ({ page }, info) => {
+test('holding an arrow key in a field keeps the page, under Safari\'s limit, and the address catches up, also when the page is left', async ({ page }, info) => {
   test.skip(isPhone(info), 'keyboards only');
+  // Each step changed the address twice (working time, and the income that follows it); Safari throws on a 101st
+  // change within 10 seconds, which used to leave an empty page. Chrome doesn't, so the changes are counted.
+  await page.addInitScript(() => {
+    const replace = history.replaceState.bind(history);
+    const w = window as unknown as { addressChanges: number };
+    w.addressChanges = 0;
+    history.replaceState = (...args: Parameters<History['replaceState']>) => {
+      w.addressChanges++;
+      replace(...args);
+    };
+  });
+  const addressChanges = () => page.evaluate(() => (window as unknown as { addressChanges: number }).addressChanges);
   await openApp(page, { lang: 'en', tab: 'converter' });
   const field = page.locator('input[name="daysOff"]');
   await field.focus();
-  // Each step changed the address twice (working time, and the income that follows it); Safari throws on a 101st
-  // change within 10 seconds, which used to leave an empty page.
-  for (let i = 0; i < 70; i++) await page.keyboard.press('ArrowUp');
-  await expect(field).toHaveValue('70');
-  await expect(page).toHaveURL(/days_off=70/);
+  const before = await addressChanges();
+  for (let i = 0; i < 120; i++) await page.keyboard.press('ArrowUp');
+  await expect(field).toHaveValue('120');
+  await expect(page).toHaveURL(/days_off=120(&|$)/);
+  expect(await addressChanges() - before).toBeLessThan(100);
   await expect(page.locator('.app-header')).toBeVisible();
+  // Past the changes that go into the address at once, the latest waits up to 250 ms for it: leaving the page in that
+  // time (another site, or a phone closing the hidden page) keeps it all the same.
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowUp');
+  await page.goto('./icon.svg');
+  await page.goBack();
+  await expect(field).toHaveValue('125');
+  await expect(page).toHaveURL(/days_off=125(&|$)/);
+});
+
+test('a reload right after a change keeps it', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  const income = page.locator('.income-main input');
+  await income.selectText();
+  await page.keyboard.type('1234');
+  await expect(page).toHaveURL(/income=1234(&|#|$)/);
+  // The browser picks the address it reloads before the page can write to it, and the address wins over what is
+  // saved: a change that waited 250 ms for the address went back to 1,234 (F5 just after typing).
+  await page.keyboard.type('5');
+  await page.reload();
+  await expect(income).toHaveValue('12,345');
+  expect(await saved(page, 'ft.taxIncome')).toContain('"amount":12345,');
 });
 
 /** Own settings saved, then someone's link opened in the same tab: its banner. */
@@ -659,6 +692,18 @@ test('with site data blocked, a link sets the app for the visit, as its banner s
   await expect(banner).toHaveCount(0);
   await expect(byName(page, 'hour-EUR')).toHaveValue('50.00');
   await expect(byName(page, 'hour-PLN')).toHaveCount(1);
+});
+
+test('an address with a double slash opens the app at its own address', async ({ page }) => {
+  // GitHub Pages serves the app at …github.io//FreelancingToolkit/ too, where it registered a second service worker
+  // with its own copy of the app, and a change went into that address.
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('.//?lang=en#taxes');
+  await drawn(page);
+  await expect(page).toHaveURL((u) => u.pathname === '/' && u.search === '?lang=en' && u.hash === '#taxes');
+  await page.locator('.income-main input').selectText();
+  await page.keyboard.type('5000');
+  await expect(page).toHaveURL((u) => u.pathname === '/' && u.searchParams.get('income') === '5000');
 });
 
 test('"Reset app" says the language and theme go back to Romanian and automatic, and they do', async ({ page }) => {
@@ -934,7 +979,12 @@ test('card options saved by an older version, or with one the card can\'t take, 
     employee: { dependants: 2.5, under26: true },
     pfaReal: { expensesMonthly: 1500, hasSalary: false, pensioner: false, sickLeave: false },
   })));
-  // The installed app opens on the bare address. The income is low, where the dependants change the net.
+  // The installed app opens on the bare address, on the converter: the tax page isn't there to merge them, and the
+  // address, so a link copied there, had none of them.
+  await page.goto('./?lang=en');
+  await drawn(page);
+  await expect(page).toHaveURL(/under26=1&expenses_pfa=1500(&|$)/);
+  // The income is low, where the dependants change the net.
   await page.goto('./?lang=en&income=5000&income_currency=RON&income_per=month#taxes');
   await expect(regimeCard(page, 'pfaReal').locator('input[name="amount"]')).toHaveValue('1,500');
   await expect(regimeCard(page, 'employee').locator('.take-home')).not.toContainText('NaN');
