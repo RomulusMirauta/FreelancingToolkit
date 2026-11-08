@@ -5,6 +5,7 @@ import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../li
 import { refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
+import { legalBasis } from './Breakdown';
 
 const isShare = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 100;
 
@@ -109,7 +110,7 @@ export function Vat({ annual }: { annual: number }) {
       <p className="muted small">
         {t.scope}{' '}
         {sources.map((s) => s && (
-          <a key={s.key} href={s.source} target="_blank" rel="noreferrer" className="vat-source" title={s.legal}>§{' '}{s.legal}</a>
+          <a key={s.key} href={s.source} target="_blank" rel="noreferrer" className="vat-source" title={legalBasis(s, lang)}>§{' '}{legalBasis(s, lang)}</a>
         ))}
       </p>
     </Fold>

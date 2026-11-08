@@ -264,6 +264,8 @@ export const en = {
     monthSuffix: 'RON/month',
     yearSuffix: 'RON/year',
     source: 'Source',
+    yes: 'Yes',
+    no: 'No',
   },
   board: {
     finalMonthly: 'Take-home per month',
@@ -713,6 +715,8 @@ export const ro: Strings = {
     monthSuffix: 'RON/lună',
     yearSuffix: 'RON/an',
     source: 'Sursă',
+    yes: 'Da',
+    no: 'Nu',
   },
   board: {
     finalMonthly: 'Suma finală primită (lunar)',

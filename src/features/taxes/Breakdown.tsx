@@ -1,7 +1,7 @@
 import { AmountInput } from '../../lib/ui/AmountInput';
-import { useLang, useT } from '../../lib/i18n';
-import { paramInfo } from '../../lib/tax/params';
-import { formatMoney } from '../../lib/ui/numbers';
+import { useLang, useT, type Lang } from '../../lib/i18n';
+import { paramInfo, type ParamInfo } from '../../lib/tax/params';
+import { formatMoney, formatNumber } from '../../lib/ui/numbers';
 
 export interface Line {
   label: string;
@@ -54,24 +54,41 @@ export function lineAmount(kind: Line['kind'], x: number): string {
 /** Small "§" links to the official sources of the parameters, one per document, with the legal basis on hover. */
 export function Sources({ keys }: { keys: string[] }) {
   const lang = useLang();
-  const sourceWord = useT().taxes.source;
+  const t = useT().taxes;
   const byUrl = new Map<string, string[]>();
   for (const k of keys) {
     const p = paramInfo(k);
     if (!p) continue;
-    const value = typeof p.value === 'number' && p.value < 1 ? `${+(p.value * 100).toFixed(2)}%` : String(p.value);
-    const unit = p.unit && !value.endsWith('%') ? ` ${p.unit}` : '';
-    byUrl.set(p.source, [...(byUrl.get(p.source) ?? []), `${lang === 'ro' ? p.ro : p.en}: ${value}${unit} (${p.legal})`]);
+    byUrl.set(p.source, [...(byUrl.get(p.source) ?? []), sourceLine(p, lang, t)]);
   }
   return (
     <span className="sources">
       {[...byUrl].map(([url, lines]) => (
-        <a key={url} href={url} target="_blank" rel="noreferrer" title={lines.join('\n')} aria-label={`${sourceWord}: ${lines.join('; ')}`}>
+        <a key={url} href={url} target="_blank" rel="noreferrer" title={lines.join('\n')} aria-label={`${t.source}: ${lines.join('; ')}`}>
           §
         </a>
       ))}
     </span>
   );
+}
+
+/**
+ * A parameter as its § reads it, in the page's language: "Gross minimum wage, January–June 2026: 4,050 RON/month
+ * (HG 1506/2024 art. 1; …)". A percentage keeps its base ("15% of the minimum wage"), and a yes or no is a word.
+ */
+export function sourceLine(p: ParamInfo, lang: Lang, t: { yes: string; no: string }): string {
+  const en = lang === 'en';
+  const value = typeof p.value === 'string'
+    ? p.value === 'Da' ? t.yes : p.value === 'Nu' ? t.no : p.value
+    : p.value < 1 ? `${formatNumber(p.value * 100, 2)}%` : formatNumber(p.value, 4);
+  // A yes or no has no unit: "Da/Nu" only names the choice.
+  const unit = typeof p.value === 'number' && p.unit ? ` ${en ? p.unitEn ?? p.unit : p.unit}` : '';
+  return `${en ? p.en : p.ro}: ${value}${unit} (${legalBasis(p, lang)})`;
+}
+
+/** A parameter's legal basis in the page's language: in English the words around the citations are English. */
+export function legalBasis(p: ParamInfo, lang: Lang): string {
+  return lang === 'en' ? p.legalEn ?? p.legal : p.legal;
 }
 
 export function Toggle({ label, checked, onChange, hint }: {

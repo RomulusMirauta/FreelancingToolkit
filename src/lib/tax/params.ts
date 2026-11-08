@@ -6,10 +6,14 @@ export interface ParamInfo {
   group: string;
   value: number | string;
   unit: string;
+  /** The unit in English, for every unit there is ("lei/lună" is "RON/month"). */
+  unitEn?: string;
   ro: string;
   en: string;
   valid?: string;
   legal: string;
+  /** The legal basis in English, where it says more than its citations; the citations stay as they are. */
+  legalEn?: string;
   source: string;
   status: string;
   note?: string;
