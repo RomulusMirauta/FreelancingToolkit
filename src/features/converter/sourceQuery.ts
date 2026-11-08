@@ -1,7 +1,7 @@
 import { CURRENCIES } from '../../lib/currency/currencies';
 import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
-import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period } from '../../lib/time/periods';
+import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
 import { MAX_AMOUNT, roundMoney } from '../../lib/ui/numbers';
 import { readQuery, writeQuery } from '../../lib/ui/query';
 import { linkOpenedNow } from '../../lib/ui/share';
@@ -53,12 +53,16 @@ export function monthIncome(monthRon: number): { amount: number; per: 'month'; c
   return { amount: Math.min(roundMoney(monthRon), MAX_AMOUNT), per: 'month', currency: 'RON' };
 }
 
+/** The converter's rates: BNR's (or the market's), with the saved custom rates on top. */
+function savedRates(): Record<string, number> {
+  const overrides = readJson('ft.customRates');
+  return effectiveRates(BNR_RATES, typeof overrides === 'object' && overrides ? (overrides as Record<string, number>) : {});
+}
+
 /** The tax page's income as the converter sends it: the amount per month in lei, with the saved working time and custom rates. */
 function followedIncome(source: Source): { amount: number; per: 'month'; currency: 'RON' } {
   const work = readWork(readJson('ft.work')) ?? DEFAULT_WORK;
-  const overrides = readJson('ft.customRates');
-  const rates = effectiveRates(BNR_RATES, typeof overrides === 'object' && overrides ? (overrides as Record<string, number>) : {});
-  return monthIncome(convert(rescale(source.amount, source.period, 'month', work), source.currency, 'RON', rates));
+  return monthIncome(convert(rescale(source.amount, source.period, 'month', work), source.currency, 'RON', savedRates()));
 }
 
 /** The converter's saved amount, or the default one when none (or one it can't use) is saved. */
@@ -80,6 +84,25 @@ export function incomeFollowsConverter(defaultSource: Source): boolean {
   if (!sourceFollowsIncome()) return true;
   // The converter's amount is this very income: it follows when the converter gives it back as it is.
   return income.amount === followedIncome(savedSource(defaultSource)).amount;
+}
+
+/**
+ * For the income norm's limit: the converter's amount a year in EUR, when the tax income is that amount passed on (lei
+ * a month) and it was typed in another currency. 2,000 EUR a month comes as 10,681.60 RON, and is compared with 25,000
+ * EUR, as when typed in EUR on the tax page. Worked out from the amount typed, not back from the lei, which are
+ * rounded to the ban a month: 25,000 EUR a year would come back as 25,000.01. Undefined, so the limit stays in lei,
+ * for an income in another currency or period, a converter amount in lei, and an income more than 10% off the
+ * converter's amount today (one from an address's income= alone, say); one sent on an earlier banking day is only a
+ * little off. Decided on the income shown, not on the saved one, which is written after the render.
+ */
+export function followedEurYear(income: { amount: number; per: Period; currency: string }, work: WorkSettings, defaultSource: Source): number | undefined {
+  if (income.per !== 'month' || income.currency !== 'RON') return undefined;
+  const source = savedSource(defaultSource);
+  if (source.currency === 'RON') return undefined;
+  const rates = savedRates();
+  const monthNow = convert(rescale(source.amount, source.period, 'month', work), source.currency, 'RON', rates);
+  if (!(Math.abs(income.amount - monthNow) <= 0.1 * monthNow)) return undefined;
+  return Math.round(convert(rescale(source.amount, source.period, 'year', work), source.currency, 'EUR', rates) * 100) / 100;
 }
 
 /**

@@ -5,7 +5,7 @@ import { BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale } from '
 import { useLang, useT } from '../../lib/i18n';
 import { PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
 import { todayInRomania } from '../../lib/time/today';
-import { bareAmount, formatEditable, formatMoney, isAtOnce, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
+import { bareAmount, formatEditable, formatMoney, isAtOnce, isSaneAmount, parseAmount, roundMoney } from '../../lib/ui/numbers';
 import { notifyTooBig, refuseNonNumberPaste, refuseWord } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
@@ -96,14 +96,19 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
 
   // The tax page's income follows the converter: whenever the amount per month changes here (rate, working
   // time, custom rate), it is sent on. Compared with the last value, not skipped on mount, so StrictMode's
-  // double effect doesn't overwrite an income set on the tax page.
+  // double effect doesn't overwrite an income set on the tax page. Only a change made here, and one the tax page
+  // would see (monthIncome rounds to the ban): a working-time change moves an amount a month or a year in its last
+  // digit, and at New Year the holidays move the amount with nothing changed here (useToday in App.tsx). Sent,
+  // either turned an income typed on the tax page in euros into lei; the income keeps its figure, as on a reload.
   const monthRon = valueAt('month', 'RON');
-  const sentRef = useRef(monthRon);
+  const lastRef = useRef({ monthRon, source, work, overrides });
   useEffect(() => {
-    if (sentRef.current === monthRon) return;
-    sentRef.current = monthRon;
+    const last = lastRef.current;
+    lastRef.current = { monthRon, source, work, overrides };
+    if (roundMoney(last.monthRon) === roundMoney(monthRon)) return;
+    if (last.source === source && last.work === work && last.overrides === overrides) return;
     onIncome(monthRon);
-  }, [monthRon, onIncome]);
+  }, [monthRon, source, work, overrides, onIncome]);
 
   // The cell typed into lives in the address too (?amount=40&currency=EUR&per=hour).
   useEffect(() => {

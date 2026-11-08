@@ -171,6 +171,28 @@ test('income norm: an income in EUR is compared with 25,000 EUR, and net to gros
   await expect(rows.locator(mark)).toHaveCount(0);
 });
 
+test('income norm: an amount in EUR typed in the converter, or in a link, is compared with 25,000 EUR too', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const card = page.locator('article.regime').filter({ has: page.locator('#rg-pfaNorm') });
+  const income = page.locator('.income-main input');
+  // The converter gives the tax page lei a month: 2,000 EUR a month came as 10,683.20 RON, over 126,037.50 RON a
+  // year, and the norm was "Over the limit", with the star on SRL micro.
+  await focusCell(page, byName(page, 'month-EUR'));
+  await page.keyboard.type('2000');
+  await page.locator('.cta').click();
+  await expect(card).toHaveClass(/is-best/);
+  await expect(card.locator('.not-ranked-tag')).toHaveCount(0);
+  // Exactly on the limit, from a link's amount: worked back from its lei a month, rounded to the ban, it would be 25,000.01.
+  await page.goto('./?lang=en&amount=25000&currency=EUR&per=year#taxes');
+  await expect(income).toHaveValue('11,128.33');
+  await expect(card).toHaveClass(/is-best/);
+  await expect(card.locator('.not-ranked-tag')).toHaveCount(0);
+  // The same lei typed on the tax page are an income in lei: the limit stays in lei.
+  await income.selectText();
+  await page.keyboard.type('10683.2');
+  await expect(card.locator('.not-ranked-tag')).toHaveText('Over the limit');
+});
+
 const regimeCard = (page: Page, regime: string) => page.locator('article.regime').filter({ has: page.locator(`#rg-${regime}`) });
 
 test('tax cards: the bar of what you keep follows the take-home, and the details keep the minus of a loss', async ({ page }) => {
@@ -1198,6 +1220,75 @@ test('a page left open warns of old rates from midnight in Romania', async ({ pa
   await expect(ratesLine(page)).toHaveClass('warn');
   await expect(ratesLine(page)).toHaveAttribute('role', 'status');
   await expect(ratesLine(page)).toContainText('these rates are more than a few days old');
+});
+
+test('an income typed per year stays as typed when the working time changes, and one that moves the amount a month is sent', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // 25,000 EUR a year typed on the tax page, which makes it the converter's amount too.
+  await page.goto('./?lang=en&income=25000&income_currency=EUR&income_per=year&amount=25000&currency=EUR&per=year');
+  const hours = byName(page, 'hoursPerDay');
+  await hours.selectText();
+  await page.keyboard.type('7');
+  // Its amount a month stays 11,128.33 RON, only a hair off in the last digit: sent, it made the income lei a month.
+  await expect(page).toHaveURL(/hours=7/);
+  expect(await saved(page, 'ft.taxIncome')).toBe('{"amount":25000,"per":"year","currency":"EUR"}');
+  await expect(page).toHaveURL(/income=25000&income_currency=EUR&income_per=year/);
+  // 45 EUR an hour moves with the hours: 36,456.42 RON a month at 7 hours a day, 31,248.36 at 6.
+  await focusCell(page, byName(page, 'hour-EUR'));
+  await page.keyboard.type('45');
+  await expect.poll(() => saved(page, 'ft.taxIncome')).toBe('{"amount":36456.42,"per":"month","currency":"RON"}');
+  await hours.selectText();
+  await page.keyboard.type('6');
+  await expect.poll(() => saved(page, 'ft.taxIncome')).toBe('{"amount":31248.36,"per":"month","currency":"RON"}');
+});
+
+test('over New Year, with the converter open, the clock leaves an income typed on the tax page as it was', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-12-31T23:00:00+02:00') });
+  // 50 EUR an hour typed on the tax page (the converter's amount too), with the public holidays taken off.
+  await page.goto('./?lang=en&holidays=1&income=50&income_currency=EUR&income_per=hour&amount=50&currency=EUR&per=hour');
+  const label = page.locator('.settings-check span');
+  await expect(label).toHaveText('Take off the public holidays (11 working days in 2026)');
+  await page.clock.fastForward('01:30:00');
+  await expect(label).toHaveText('Take off the public holidays (9 working days in 2027)');
+  await expect(byName(page, 'month-RON')).toHaveValue('44,691.39');
+  // The converter's amount a month moved with the holidays and was sent: the income became 44,691.39 RON a month,
+  // and "Reset tab" on the converter reset it from then on.
+  await page.evaluate(() => { location.hash = '#taxes'; });
+  await expect(page.locator('.income-main input')).toHaveValue('50');
+  expect(await saved(page, 'ft.taxIncome')).toBe('{"amount":50,"per":"hour","currency":"EUR"}');
+  await expect(page).toHaveURL(/income=50&income_currency=EUR&income_per=hour/);
+});
+
+test('over New Year, an income that follows the converter keeps its figure, as on a reload, until the converter changes', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-12-31T23:00:00+02:00') });
+  // 40 EUR an hour in the converter, with the public holidays taken off: 35,468.22 RON a month in 2026.
+  await page.goto('./?lang=en&holidays=1&amount=40&currency=EUR&per=hour');
+  expect(await saved(page, 'ft.taxIncome')).toBe('{"amount":35468.22,"per":"month","currency":"RON"}');
+  await page.clock.fastForward('01:30:00');
+  const month = byName(page, 'month-RON');
+  await expect(month).toHaveValue('35,753.11');
+  // It moved only with the converter open; with the tax page open, or the app closed, it stayed.
+  await page.evaluate(() => { location.hash = '#taxes'; });
+  await expect(page.locator('.income-main input')).toHaveValue('35,468.22');
+  // An amount typed in the converter is sent, with the new year's holidays.
+  await page.evaluate(() => { location.hash = ''; });
+  await focusCell(page, byName(page, 'hour-EUR'));
+  await page.keyboard.type('41');
+  await expect(month).toHaveValue('36,646.94');
+  await expect.poll(() => saved(page, 'ft.taxIncome')).toBe('{"amount":36646.94,"per":"month","currency":"RON"}');
+});
+
+test('an amount typed as the new year comes in, before the page has noticed it, is still sent', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-12-31T23:00:00+02:00') });
+  await page.goto('./?lang=en&holidays=1&amount=40&currency=EUR&per=hour');
+  // Focused first: that draws the page again, which would bring in the new year on its own.
+  await focusCell(page, byName(page, 'hour-EUR'));
+  // The timers slept through midnight, so the next keystroke brings the new year and the amount typed together: a
+  // check on the year alone would drop it.
+  await page.clock.setSystemTime(new Date('2027-01-01T09:00:00+02:00'));
+  await page.keyboard.insertText('41');
+  await expect(byName(page, 'month-RON')).toHaveValue('36,646.94');
+  await expect.poll(() => saved(page, 'ft.taxIncome')).toBe('{"amount":36646.94,"per":"month","currency":"RON"}');
 });
 
 test.describe('in another time zone', () => {

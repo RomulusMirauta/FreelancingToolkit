@@ -5,6 +5,7 @@ import { BNR_RATES, effectiveRates, isMarketRate } from '../../lib/currency/rate
 import { DEFAULT_WORK, PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
 import { DEFAULT_SOURCE } from '../converter/Converter';
 import { CurrencyPicker } from '../converter/CurrencyPicker';
+import { followedEurYear } from '../converter/sourceQuery';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { useT } from '../../lib/i18n';
 import { PARAMS_CHECKED_ON, PARAMS_YEAR } from '../../lib/tax/params';
@@ -144,7 +145,8 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
   const [reference, setReference] = usePersistentState<BoardRegime>('ft.taxRef', 'employee', isRegime);
   useUrlQuery(REF_QUERY, reference);
   const annual = annualLei(income, work);
-  const eur = annualEur(annual, income.currency);
+  // An income that follows the converter comes as lei a month: in EUR too when the converter's amount is in another currency.
+  const eur = annualEur(annual, income.currency) ?? followedEurYear(income, work, DEFAULT_SOURCE);
 
   const results = useMemo(
     () => Object.fromEntries(BOARD_REGIMES.map((r) => [r, computeRegime(r, annual, options, eur)])) as Record<BoardRegime, RegimeResult>,

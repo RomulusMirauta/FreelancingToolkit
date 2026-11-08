@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BNR_RATES } from '../../lib/currency/rates';
-import { DEFAULT_WORK, rescale } from '../../lib/time/periods';
+import { convert } from '../../lib/currency/convert';
+import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
+import { DEFAULT_WORK, rescale, type Period } from '../../lib/time/periods';
 import { MAX_AMOUNT, roundMoney } from '../../lib/ui/numbers';
 import { flushQuery } from '../../lib/ui/query';
 import { droppedParams } from '../../lib/ui/urlQuery';
-import { applySourceQuery, incomeFollowsConverter, monthIncome } from './sourceQuery';
+import { applySourceQuery, followedEurYear, incomeFollowsConverter, monthIncome } from './sourceQuery';
 
 // A tiny browser: an address that history.replaceState changes, and the app's storage with an amount and an
 // income of its own.
@@ -117,5 +118,47 @@ describe('whether the tax income only follows the converter, for "Reset tab" on 
   it('with no income saved, there is nothing to reset', () => {
     save({ 'ft.source': { period: 'hour', currency: 'EUR', amount: 40 } });
     expect(incomeFollowsConverter(DEFAULT_SOURCE)).toBe(false);
+  });
+});
+
+describe('the converter\'s amount a year in EUR, for the income norm\'s limit on a tax income that follows it', () => {
+  const RATES = effectiveRates(BNR_RATES, {});
+  /** The converter's amount, saved, and the tax income it sends: lei a month, at today's rates unless others are given. */
+  const typed = (amount: number, currency: string, period: Period, rates = RATES) => {
+    store = new Map([['ft.source', JSON.stringify({ period, currency, amount })]]);
+    return monthIncome(convert(rescale(amount, period, 'month', DEFAULT_WORK), currency, 'RON', rates));
+  };
+  const eur = (income: { amount: number; per: Period; currency: string }) => followedEurYear(income, DEFAULT_WORK, DEFAULT_SOURCE);
+
+  it('is the amount typed in the converter, not worked back from the lei the tax page gets', () => {
+    expect(eur(typed(2000, 'EUR', 'month'))).toBe(24_000);
+    // Worked back from the lei, rounded to the ban a month, 25,000 EUR a year would come back as 25,000.01: over the limit.
+    expect(eur(typed(25_000, 'EUR', 'year'))).toBe(25_000);
+    expect(eur(typed(25_001, 'EUR', 'year'))).toBe(25_001);
+    expect(eur(typed(12, 'EUR', 'hour'))).toBe(24_960);
+    expect(eur(typed(26_000, 'USD', 'year'))).toBeCloseTo((26_000 * RATES.USD!) / RATES.EUR!, 1);
+  });
+
+  it('also for an income sent on an earlier banking day, or at a custom EUR rate', () => {
+    expect(eur(typed(2000, 'EUR', 'month', { ...RATES, EUR: RATES.EUR! - 0.001 }))).toBe(24_000);
+    const custom = typed(2000, 'EUR', 'month', effectiveRates(BNR_RATES, { EUR: 5 }));
+    store.set('ft.customRates', '{"EUR":5}');
+    expect(custom.amount).toBe(10_000);
+    expect(eur(custom)).toBe(24_000);
+  });
+
+  it('is undefined, so the limit stays in lei, for lei typed on the tax page, an income far off the converter\'s amount, or one in another currency or period', () => {
+    // Lei a month typed on the tax page are the converter's amount too (saveSource).
+    const sent = typed(2000, 'EUR', 'month');
+    store = new Map([['ft.source', JSON.stringify({ period: 'month', currency: 'RON', amount: sent.amount })]]);
+    expect(eur(sent)).toBeUndefined();
+    // An address's income= alone, with nothing saved: the converter's default 30 EUR an hour is about 27,800 lei a month.
+    store = new Map();
+    expect(eur({ amount: 5000, per: 'month', currency: 'RON' })).toBeUndefined();
+    // More than 10% over the converter's 2,000 EUR a month.
+    typed(2000, 'EUR', 'month');
+    expect(eur({ ...sent, amount: roundMoney(sent.amount * 1.11) })).toBeUndefined();
+    expect(eur({ amount: 2000, per: 'month', currency: 'EUR' })).toBeUndefined();
+    expect(eur({ amount: sent.amount * 12, per: 'year', currency: 'RON' })).toBeUndefined();
   });
 });

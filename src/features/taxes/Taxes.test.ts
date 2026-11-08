@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
 import { en, ro } from '../../lib/i18n/strings';
 import { DEFAULT_TAX_OPTIONS, MAIN_REGIMES, computeRegime, type BoardRegime } from '../../lib/tax/regimes';
-import { DEFAULT_WORK, type Period, type WorkSettings } from '../../lib/time/periods';
-import { annualEur, annualLei, neededGross } from './Taxes';
+import { DEFAULT_WORK, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
+import { DEFAULT_SOURCE } from '../converter/Converter';
+import { followedEurYear, monthIncome } from '../converter/sourceQuery';
+import { annualEur, annualLei, neededGross, type TaxIncome } from './Taxes';
 
 const lei = (amount: number, per: Period = 'month') => ({ amount, per, currency: 'RON' });
 
@@ -62,11 +65,13 @@ describe('an income exactly on a threshold, as typed on the page', () => {
 });
 
 describe('the income-norm limit on the cards', () => {
-  // The notice the card shows and "Most money" goes by, for an income as typed.
-  const norm = (amount: number, currency: string, per: Period = 'year') => {
-    const annual = annualLei({ amount, per, currency }, DEFAULT_WORK);
-    return computeRegime('pfaNorm', annual, DEFAULT_TAX_OPTIONS, annualEur(annual, currency)).notice;
+  // The notice the card shows and "Most money" goes by, for an income as the board gets it.
+  const verdict = (income: TaxIncome) => {
+    const annual = annualLei(income, DEFAULT_WORK);
+    const eur = annualEur(annual, income.currency) ?? followedEurYear(income, DEFAULT_WORK, DEFAULT_SOURCE);
+    return computeRegime('pfaNorm', annual, DEFAULT_TAX_OPTIONS, eur).notice;
   };
+  const norm = (amount: number, currency: string, per: Period = 'year') => verdict({ amount, per, currency });
   const over = (overLimit: boolean) => ({ kind: 'normLimit', overLimit });
 
   it('an income in EUR is compared with 25,000 EUR: 24,000 and 25,000 a year are allowed, 25,001 is not', () => {
@@ -76,9 +81,51 @@ describe('the income-norm limit on the cards', () => {
     expect(norm(25_001, 'EUR')).toEqual(over(true));
   });
 
+  it('an income in EUR comes back from lei as typed, whatever the day\'s rate', () => {
+    // Without the rounding, 25,000 EUR a year comes back as 25,000.000000000004 at about 7% of EUR rates (5.2014, say),
+    // over the limit, while at the others, today's included, every other test passes.
+    const off: number[] = [];
+    for (let cents = 2_499_000; cents <= 2_500_000; cents++) {
+      const typed = cents / 100;
+      if (annualEur(annualLei({ amount: typed, per: 'year', currency: 'EUR' }, DEFAULT_WORK), 'EUR') !== typed) off.push(typed);
+    }
+    expect(off.slice(0, 5)).toEqual([]);
+  });
+
   it('an income in lei keeps the limit in lei, at the 2025 average', () => {
     expect(norm(126_037.5, 'RON')).toEqual(over(false));
     expect(norm(126_037.51, 'RON')).toEqual(over(true));
+  });
+
+  describe('an amount typed in the converter, which the tax page gets as lei a month', () => {
+    let store: Map<string, string>;
+    beforeEach(() => {
+      store = new Map();
+      vi.stubGlobal('localStorage', {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => store.set(k, v),
+        removeItem: (k: string) => store.delete(k),
+      });
+    });
+    afterEach(() => vi.unstubAllGlobals());
+    /** The converter's amount, saved, and the income it sends to the tax page (followConverter). */
+    const converter = (amount: number, currency: string, per: Period) => {
+      store.set('ft.source', JSON.stringify({ period: per, currency, amount }));
+      return monthIncome(convert(rescale(amount, per, 'month', DEFAULT_WORK), currency, 'RON', effectiveRates(BNR_RATES, {})));
+    };
+
+    it('in EUR, is compared with 25,000 EUR too: 2,000 a month and 25,000 a year are allowed, 25,001 is not', () => {
+      // At 5.3408, 2,000 EUR a month came as 10,681.60 RON, 128,179.20 a year: "Over the limit", with the star on SRL micro.
+      expect(verdict(converter(2_000, 'EUR', 'month'))).toEqual(over(false));
+      expect(verdict(converter(25_000, 'EUR', 'year'))).toEqual(over(false));
+      expect(verdict(converter(25_001, 'EUR', 'year'))).toEqual(over(true));
+    });
+
+    it('in lei, or typed in lei on the tax page (the converter\'s amount too), keeps the limit in lei', () => {
+      expect(verdict(converter(126_037.51, 'RON', 'year'))).toEqual(over(true));
+      store.set('ft.source', JSON.stringify({ period: 'month', currency: 'RON', amount: 10_503.13 }));
+      expect(verdict({ amount: 10_503.13, per: 'month', currency: 'RON' })).toEqual(over(true));
+    });
   });
 
   it('over the limit, the warning reads the revenue as last year\'s and leaves next year to the 2026 average', () => {
