@@ -13,7 +13,10 @@ import { AddCurrency } from './AddCurrency';
 import { trackEvent } from '../../lib/analytics';
 import { RateTiles } from './RateTiles';
 import { writeSourceQuery } from './sourceQuery';
-import { ADDED_QUERY, COLUMNS_QUERY, DEFAULT_COLUMNS, GOAL_QUERY, RATES_QUERY, isCodes, isColumns, isFlag, isOverrides } from './converterQueries';
+import {
+  ADDED_QUERY, COLUMNS_QUERY, DEFAULT_COLUMNS, GOAL_QUERY, RATES_QUERY,
+  isCodes, isColumns, isFlag, isOverrides, knownAdded, knownColumns, knownRates,
+} from './converterQueries';
 import { useUrlQuery } from '../../lib/ui/urlQuery';
 
 /** The cell the user last typed into; every other cell is derived from it. */
@@ -57,10 +60,11 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const lang = useLang();
   const nameOf = (code: string) => (lang === 'ro' ? BY_CODE.get(code)?.ro : BY_CODE.get(code)?.name) ?? code;
   const [source, setSource] = usePersistentState('ft.source', DEFAULT_SOURCE, isSource);
-  const [shown, setShown] = usePersistentState('ft.columns', DEFAULT_COLUMNS, isColumns);
+  // A saved currency the rates no longer have leaves on its own; the others, and their custom rates, stay.
+  const [shown, setShown] = usePersistentState('ft.columns', DEFAULT_COLUMNS, isColumns, knownColumns);
   /** Currencies the user added from the dropdown; they get a chip next to the main ones. */
-  const [added, setAdded] = usePersistentState<string[]>('ft.addedCurrencies', [], isCodes);
-  const [overrides, setOverrides] = usePersistentState('ft.customRates', {}, isOverrides);
+  const [added, setAdded] = usePersistentState<string[]>('ft.addedCurrencies', [], isCodes, knownAdded);
+  const [overrides, setOverrides] = usePersistentState('ft.customRates', {}, isOverrides, knownRates);
   /** The "Or work backwards" note beside the grid; its × hides it (Reset tab brings it back). */
   const [goalShown, setGoalShown] = usePersistentState('ft.goalNote', true, isFlag);
   // Every one of these is in the address too (?currencies=, ?added=, ?rates=, ?goal_note=).
@@ -74,7 +78,8 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const chips = [...new Set([...MAIN_CODES, ...added, ...shown])];
   const columns = chips.filter((c) => shown.includes(c));
   const toggle = (code: string) => {
-    if (!shown.includes(code)) setShown([...shown, code]);
+    // Back in chip order: a currency turned off and on again leaves the saved columns as they were.
+    if (!shown.includes(code)) setShown(chips.filter((c) => c === code || shown.includes(c)));
     else if (shown.length > 1) setShown(shown.filter((c) => c !== code));
   };
   const add = (code: string) => {

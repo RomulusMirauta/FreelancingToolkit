@@ -14,10 +14,28 @@ export const DEFAULT_COLUMNS = isPhone ? ['EUR', 'RON'] : ['EUR', 'RON', 'USD', 
 export const isCodes = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((c) => typeof c === 'string' && KNOWN.has(c));
 export const isColumns = (v: unknown): v is string[] => isCodes(v) && v.length > 0 && new Set(v).size === v.length;
+const isAdded = (v: unknown): v is string[] => isCodes(v) && new Set(v).size === v.length;
 export const isOverrides = (v: unknown): v is Record<string, number> =>
   typeof v === 'object' && v !== null && !Array.isArray(v) &&
   Object.entries(v).every(([code, x]) => KNOWN.has(code) && isSaneAmount(x) && x > 0);
 export const isFlag = (v: unknown): v is boolean => typeof v === 'boolean';
+
+/**
+ * A saved or linked list that names a currency the rates no longer have (the market list is downloaded again with
+ * every deploy) keeps the other currencies; null when none is left, or when the list is broken otherwise.
+ */
+const knownList = (isValid: (v: unknown) => v is string[]) => (v: unknown): string[] | null => {
+  const kept = Array.isArray(v) ? v.filter((c) => KNOWN.has(c)) : [];
+  return kept.length > 0 && isValid(kept) ? kept : null;
+};
+export const knownColumns = knownList(isColumns);
+export const knownAdded = knownList(isAdded);
+/** The same for custom rates: those of the other currencies stay. */
+export const knownRates = (v: unknown): Record<string, number> | null => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
+  const kept = Object.fromEntries(Object.entries(v).filter(([code]) => KNOWN.has(code)));
+  return Object.keys(kept).length > 0 && isOverrides(kept) ? kept : null;
+};
 
 /** "eur, ron" → ['EUR', 'RON']; empty → []. */
 const codes = (s: string) => (s.trim() === '' ? [] : s.split(',').map((c) => c.trim().toUpperCase()));
@@ -29,6 +47,7 @@ export const COLUMNS_QUERY: UrlQuery<string[]> = {
   toParams: (v) => [v.join(',')],
   fromParams: ([s]) => codes(s!),
   isValid: isColumns,
+  upgrade: knownColumns,
   defaults: DEFAULT_COLUMNS,
 };
 
@@ -38,7 +57,8 @@ export const ADDED_QUERY: UrlQuery<string[]> = {
   names: ['added'],
   toParams: (v) => [v.join(',')],
   fromParams: ([s]) => codes(s!),
-  isValid: (v): v is string[] => isCodes(v) && new Set(v).size === v.length,
+  isValid: isAdded,
+  upgrade: knownAdded,
   defaults: [],
 };
 
@@ -58,6 +78,7 @@ export const RATES_QUERY: UrlQuery<Record<string, number>> = {
     return out;
   },
   isValid: isOverrides,
+  upgrade: knownRates,
   defaults: {},
 };
 

@@ -93,17 +93,22 @@ describe('a changed setting reads back the same', () => {
   });
 });
 
+/** What applyUrlQuery keeps of a value read from the address or saved: all of it, the part `upgrade` keeps, or null. */
+const kept = (key: string, value: unknown) => {
+  const q = byKey(key);
+  return q.isValid(value) ? value : (q.upgrade?.(value) ?? null);
+};
+
 describe('a broken address value is not used', () => {
   const bad = (key: string, values: string[]) => {
-    const q = byKey(key);
-    const v = q.fromParams(values, null);
-    return v === null || !q.isValid(v);
+    const v = byKey(key).fromParams(values, null);
+    return v === null || kept(key, v) === null;
   };
 
   it('unknown language, theme, currency, platform or reference card', () => {
     expect(bad('ft.lang', ['de'])).toBe(true);
     expect(bad('ft.theme', ['purple'])).toBe(true);
-    expect(bad('ft.columns', ['EUR,XXX'])).toBe(true);
+    expect(bad('ft.columns', ['XXX'])).toBe(true);
     expect(bad('ft.columns', [''])).toBe(true);
     expect(bad('ft.columns', ['EUR,EUR'])).toBe(true);
     expect(bad('ft.addedCurrencies', ['ZZZ'])).toBe(true);
@@ -137,6 +142,35 @@ describe('a broken address value is not used', () => {
     expect(o.employee.schoolChildren).toBe(2);
     expect(o.srlMicro.ownerPay).toBe('cim');
     expect(o.pfaReal.sickLeave).toBe(false);
+  });
+});
+
+describe('a currency the rates no longer have', () => {
+  // XYZ stands for a code the market list stopped listing after it was saved or put in a link.
+  it('leaves a saved list on its own: the other columns, added currencies and custom rates stay', () => {
+    expect(kept('ft.columns', ['EUR', 'RON', 'TRY', 'XYZ'])).toEqual(['EUR', 'RON', 'TRY']);
+    expect(kept('ft.addedCurrencies', ['TRY', 'XYZ', 'PLN'])).toEqual(['TRY', 'PLN']);
+    expect(kept('ft.customRates', { EUR: 5.1, XYZ: 1.2, USD: 4.7 })).toEqual({ EUR: 5.1, USD: 4.7 });
+  });
+
+  it('leaves a link on its own too', () => {
+    const fromLink = (key: string, value: string) => kept(key, byKey(key).fromParams([value], null));
+    expect(fromLink('ft.columns', 'EUR,RON,TRY,XYZ')).toEqual(['EUR', 'RON', 'TRY']);
+    expect(fromLink('ft.addedCurrencies', 'TRY,XYZ')).toEqual(['TRY']);
+    expect(fromLink('ft.customRates', 'EUR:5.1,XYZ:1.2')).toEqual({ EUR: 5.1 });
+  });
+
+  it('with nothing else in it, the setting goes back to the saved value or the default', () => {
+    expect(kept('ft.columns', ['XYZ'])).toBeNull();
+    expect(kept('ft.addedCurrencies', ['XYZ'])).toBeNull();
+    expect(kept('ft.customRates', { XYZ: 1.2 })).toBeNull();
+  });
+
+  it('only the unknown code goes: a list that is broken otherwise is still not used', () => {
+    expect(kept('ft.columns', ['EUR', 'EUR', 'XYZ'])).toBeNull();
+    expect(kept('ft.addedCurrencies', ['TRY', 'TRY', 'XYZ'])).toBeNull();
+    expect(kept('ft.customRates', { EUR: -1, XYZ: 1.2 })).toBeNull();
+    expect(kept('ft.columns', 'EUR')).toBeNull();
   });
 });
 

@@ -53,6 +53,21 @@ const TWO: UrlQuery<Two> = {
   sparse: true,
 };
 
+/** Letters a to c, as a currency list holds the codes the rates have: with others, it keeps these. */
+const ABC = ['a', 'b', 'c'];
+const LETTERS: UrlQuery<string[]> = {
+  key: 'ft.letters',
+  names: ['letters'],
+  toParams: (v) => [v.join(',')],
+  fromParams: ([s]) => s!.split(','),
+  isValid: (v): v is string[] => Array.isArray(v) && v.length > 0 && v.every((x) => ABC.includes(x)),
+  upgrade: (v) => {
+    const kept = Array.isArray(v) ? v.filter((x) => ABC.includes(x)) : [];
+    return kept.length ? kept : null;
+  },
+  defaults: ['a'],
+};
+
 describe('amounts in the address', () => {
   it('writes a changed value and removes the default', () => {
     writeUrlQuery(PAY, { amount: 250.5, per: 'year' });
@@ -120,6 +135,34 @@ describe('amounts in the address', () => {
     url = new URL('https://x.test/app/?a=3');
     applyUrlQuery(TWO);
     expect(JSON.parse(store.get('ft.two')!)).toEqual({ note: 'kept', a: 3, b: 0 });
+  });
+
+  it('a value kept in part: the rest is used, saved and left in the address, and the toast is told', () => {
+    store.set('ft.letters', JSON.stringify(['c']));
+    url = new URL('https://x.test/app/?letters=b,z,c&fold=x');
+    const before = droppedParams().length;
+    applyUrlQuery(LETTERS);
+    expect(droppedParams().slice(before)).toEqual(['letters']);
+    expect(JSON.parse(store.get('ft.letters')!)).toEqual(['b', 'c']);
+    expect(address()).toBe('?letters=b,c&fold=x');
+  });
+
+  it('with nothing left to keep, it is dropped as broken (noted once) and the saved value shown', () => {
+    store.set('ft.letters', JSON.stringify(['c']));
+    url = new URL('https://x.test/app/?letters=y,z');
+    const before = droppedParams().length;
+    applyUrlQuery(LETTERS);
+    expect(droppedParams().slice(before)).toEqual(['letters']);
+    expect(JSON.parse(store.get('ft.letters')!)).toEqual(['c']);
+    expect(address()).toBe('?letters=c');
+  });
+
+  it('a saved value kept in part goes into the address without the rest; nothing is noted', () => {
+    store.set('ft.letters', JSON.stringify(['b', 'z']));
+    const before = droppedParams().length;
+    applyUrlQuery(LETTERS);
+    expect(droppedParams().length).toBe(before);
+    expect(address()).toBe('?letters=b');
   });
 
   it('reads numbers with a dot, and refuses negatives and words', () => {

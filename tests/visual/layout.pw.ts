@@ -294,6 +294,20 @@ test('custom rate: three decimals keep their decimal mark after a reload and a l
   await expect.poll(() => saved(page, 'ft.customRates')).toBe('{"USD":4.817}');
 });
 
+test('rate cards: a currency quoted per 100 shows its move, and a market rate is the one said to be in use', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('./?lang=en&currencies=EUR,RON,HUF,ARS');
+  const card = (code: string) => page.locator('.rate-tile').filter({ has: byName(page, `rate-${code}`) });
+  // In the test rates the forint fell 0.05%: 0.000008 lei, under the 0.00005 lei that used to count as no move.
+  await expect(card('HUF').locator('.rate-chg')).toHaveClass('rate-chg down');
+  await expect(card('HUF').locator('.rate-chg')).toHaveText('▼down−0.05%');
+  await expect(card('EUR').locator('.rate-in-use')).toHaveText('BNR rate in use');
+  await expect(card('ARS').locator('.rate-in-use')).toHaveText('market rate in use');
+  await chooseLanguage(page, 'Română');
+  await expect(card('EUR').locator('.rate-in-use')).toHaveText('se folosește cursul BNR');
+  await expect(card('ARS').locator('.rate-in-use')).toHaveText('se folosește cursul de piață');
+});
+
 test('working time, fees and VAT: the fields take the new decimal mark after a language switch', async ({ page }) => {
   await openApp(page, { lang: 'ro', tab: 'converter' });
   await page.goto('./?lang=ro&hours=7.5&days=4.5&transfer=wise&transfer_pct=0.5');
@@ -485,4 +499,48 @@ test('card options saved by an older version, or with one the card can\'t take, 
   await expect.poll(() => saved(page, 'ft.taxOptions')).toContain('"employee":{"dependants":0,"under26":true,"schoolChildren":0}');
   await expect(page).toHaveURL(/expenses_pfa=1500/);
   await expect(page).not.toHaveURL(/dependants=/);
+});
+
+test('a currency the rates no longer have leaves on its own; the other currencies and custom rates stay', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // XYZ stands for a code the market list stopped listing after it was saved: the columns, the added currencies and
+  // every custom rate went back to their defaults, and the saved ones were deleted.
+  await page.evaluate(() => {
+    localStorage.setItem('ft.columns', JSON.stringify(['EUR', 'RON', 'TRY', 'XYZ']));
+    localStorage.setItem('ft.addedCurrencies', JSON.stringify(['TRY', 'XYZ']));
+    localStorage.setItem('ft.customRates', JSON.stringify({ EUR: 5.1, XYZ: 1.2 }));
+  });
+  await page.goto('./?lang=en');
+  await expect(byName(page, 'rate-EUR')).toHaveValue('5.1');
+  await expect.poll(() => saved(page, 'ft.columns')).toBe('["EUR","RON","TRY"]');
+  expect(await saved(page, 'ft.addedCurrencies')).toBe('["TRY"]');
+  expect(await saved(page, 'ft.customRates')).toBe('{"EUR":5.1}');
+  await expect(page).toHaveURL(/currencies=EUR,RON,TRY(&|$)/);
+  await expect(page).toHaveURL(/rates=EUR(:|%3A)5\.1(&|$)/);
+  // Saved, not linked: no word about the link.
+  await expect(page.locator('.toast')).toHaveCount(0);
+
+  // In a link it leaves on its own too, and the toast says something in the link wasn't valid.
+  await page.goto('./?lang=en&currencies=EUR,USD,XYZ&rates=USD:4.9,XYZ:1.2');
+  await expect(page.locator('.toast')).toContainText('Some settings in the link weren’t valid.');
+  await expect.poll(() => saved(page, 'ft.columns')).toBe('["EUR","USD"]');
+  expect(await saved(page, 'ft.customRates')).toBe('{"USD":4.9}');
+  await expect(page).toHaveURL(/currencies=EUR,USD(&|$)/);
+  await expect(page).not.toHaveURL(/XYZ/);
+});
+
+test('a currency turned off and on again is no change: nothing saved or in the address, and the Tools dot stays still', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  const eur = page.locator('.chips .chip').filter({ hasText: 'EUR' });
+  const dot = page.locator('.reset-wrap .dot');
+  await expect(dot).not.toHaveClass(/pulse/);
+  await eur.click();
+  await expect(eur).toHaveAttribute('aria-pressed', 'false');
+  await expect(dot).toHaveClass(/pulse/);
+  // Turned on again, it went to the end of the saved columns (RON, USD, GBP, EUR) while the grid looked as before.
+  await eur.click();
+  await expect(eur).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => saved(page, 'ft.columns')).toBeNull();
+  await expect(dot).not.toHaveClass(/pulse/);
+  await expect(page).not.toHaveURL(/currencies=/);
 });

@@ -1,6 +1,6 @@
 import { crossRate } from '../../lib/currency/convert';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
-import { baseRate, isMarketRate, rateChange, rateSeries } from '../../lib/currency/rates';
+import { baseRate, isMarketRate, rateChange, rateDirection, rateSeries } from '../../lib/currency/rates';
 import { useLang, useT } from '../../lib/i18n';
 import { formatEditableRate, formatNumber, formatRate, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
 import { notifyTooBig, refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
@@ -15,9 +15,6 @@ interface Props {
   /** The grid's first currency, for the cross rate line ("1 EUR = 1,12 USD"). */
   anchor: string;
 }
-
-/** Below this (RON per unit) a move counts as no change. */
-const FLAT = 0.00005;
 
 /**
  * One card per currency (XE / Wise style): the published rate in large type, its change against the previous
@@ -44,7 +41,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
         const custom = overrides[code];
         const published = baseRate(code) ?? 0;
         const change = rateChange(code);
-        const dir = !change ? null : Math.abs(change.change) < FLAT ? 'flat' : change.change > 0 ? 'up' : 'down';
+        const dir = change ? rateDirection(change) : null;
         const sign = dir === 'up' ? '+' : dir === 'down' ? '−' : '';
         const vs = change ? tc.rateVs(dayDate(change.previousDate)) : '';
         /** A custom rate equal to BNR's (as shown, or exactly) is no custom rate. */
@@ -87,7 +84,7 @@ export function RateTiles({ codes, rates, overrides, setOverrides, anchor }: Pro
                 {/* Which rate is in use, on every card: the same two lines, centred beside the field. */}
                 {custom !== undefined
                   ? <span className="applied-tag">{tc.customApplied}</span>
-                  : <span className="rate-in-use">{tc.customUsingBnr}</span>}
+                  : <span className="rate-in-use">{isMarketRate(code) ? tc.customUsingMarket : tc.customUsingBnr}</span>}
               </span>
               <input
                 // Uncontrolled: a new language mounts it again, so the saved rate takes that language's decimal mark.

@@ -19,6 +19,11 @@ export interface UrlQuery<T> {
    */
   fromParams: (values: string[], saved: unknown) => unknown;
   isValid: (value: unknown) => value is T;
+  /**
+   * What can still be used of a value that isn't valid as it is (a list naming a currency the rates no longer have
+   * keeps the others), or null. usePersistentState takes the same for the saved value.
+   */
+  upgrade?: (value: unknown) => T | null;
   defaults: T;
   /** Whether the whole value is the default (then nothing is stored). Default: its parameters are the defaults'. */
   isDefault?: (value: T) => boolean;
@@ -49,7 +54,8 @@ export function noteDropped(names: readonly string[]): void {
 
 /**
  * Runs once before the first render. A valid value in the address wins over the saved one (and is saved);
- * a broken one is dropped from the address. Without one, a saved value is written into the address.
+ * a broken one is dropped from the address, and so is the part of one that `upgrade` leaves out. Without one,
+ * a saved value is written into the address.
  */
 export function applyUrlQuery<T>(q: UrlQuery<T>): void {
   const params = readQuery();
@@ -63,8 +69,14 @@ export function applyUrlQuery<T>(q: UrlQuery<T>): void {
   }
   const base = q.toParams(q.defaults);
   const complete = q.sparse || q.names.every((n) => params.has(n));
-  const fromUrl = present && complete ? q.fromParams(q.names.map((n, i) => params.get(n) ?? base[i]!), saved) : null;
+  const read = present && complete ? q.fromParams(q.names.map((n, i) => params.get(n) ?? base[i]!), saved) : null;
+  const fromUrl = read === null || q.isValid(read) ? read : (q.upgrade?.(read) ?? null);
   if (fromUrl !== null && q.isValid(fromUrl)) {
+    // Kept in part: what was left out is noted for the toast, and the address keeps the rest.
+    if (fromUrl !== read) {
+      noteDropped(q.names.filter((n) => params.has(n)));
+      writeUrlQuery(q, fromUrl);
+    }
     if (!(q.isValid(saved) && same(q, saved, fromUrl))) {
       try {
         if (q.isDefault ? q.isDefault(fromUrl) : same(q, fromUrl, q.defaults)) localStorage.removeItem(q.key);
@@ -79,7 +91,8 @@ export function applyUrlQuery<T>(q: UrlQuery<T>): void {
     noteDropped(q.names.filter((n) => params.has(n)));
     writeQuery((p) => q.names.forEach((n) => p.delete(n)));
   }
-  if (q.isValid(saved)) writeUrlQuery(q, saved);
+  const usable = q.isValid(saved) ? saved : (q.upgrade?.(saved) ?? null);
+  if (usable !== null) writeUrlQuery(q, usable);
 }
 
 /** Keeps the address in step with the value while the page that edits it is open. */

@@ -40,6 +40,17 @@ export function rateChange(code: string, history: DayRates[] = BNR_HISTORY, tabl
   return { previousDate: previous!.date, change: now - before, share: (now - before) / before };
 }
 
+/** The card shows a move in percent with two decimals: under this it reads 0%, so it counts as no move. */
+const FLAT_PERCENT = 0.005;
+
+/**
+ * Which way a rate moved, judged by its share: the currencies BNR quotes per 100 (HUF, JPY, KRW, IDR, ISK) move by
+ * millionths of a leu per unit, so a threshold in lei called their real moves unchanged (HUF −0.31%: 0.000046 lei).
+ */
+export function rateDirection(c: RateChange): 'up' | 'down' | 'flat' {
+  return Math.abs(c.share) * 100 < FLAT_PERCENT ? 'flat' : c.share > 0 ? 'up' : 'down';
+}
+
 /** A currency's rates over the saved banking days, oldest first (for a small chart); days without it are skipped. */
 export function rateSeries(code: string, history: DayRates[] = BNR_HISTORY): { date: string; rate: number }[] {
   return history
