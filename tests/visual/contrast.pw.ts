@@ -33,8 +33,11 @@ for (const colorScheme of ['dark', 'light'] as const) {
       await openApp(page, { lang: 'ro', tab: 'taxes' });
       await openFolds(page);
       expect(await contrastProblems(page)).toEqual([]);
-      await page.locator('.regime.is-best .ref-toggle').first().click();
-      await expect(page.locator('.delta.neg').first()).toBeVisible();
+      const best = page.locator('.regime.is-best').first();
+      await best.locator('.ref-toggle').click();
+      await expect(best).toHaveClass(/\bis-ref\b/);
+      // On the cards: the legend above them always has a "−" pill of its own.
+      await expect(page.locator('.board .regime .delta.neg').first()).toBeVisible();
       expect(await contrastProblems(page)).toEqual([]);
     });
   });

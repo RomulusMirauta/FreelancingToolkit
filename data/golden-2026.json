@@ -1,82 +1,318 @@
 {
   "employee_month": {
     "4050 H1": {
-      "gross": 4050,
-      "mw": 4050,
-      "nontaxable": 300,
-      "cas": 938,
-      "cass": 375,
-      "deduction": 810,
-      "tax": 163,
-      "net": 2574,
-      "cam": 84,
-      "employer_top_up": 0,
-      "employer_cost": 4134
+      "input": {
+        "gross": 4050,
+        "half": 1
+      },
+      "expected": {
+        "gross": 4050,
+        "mw": 4050,
+        "nontaxable": 300,
+        "cas": 938,
+        "cass": 375,
+        "deduction": 810,
+        "tax": 163,
+        "net": 2574,
+        "cam": 84,
+        "employer_top_up": 0,
+        "employer_cost": 4134
+      }
     },
     "4325 H2": {
-      "gross": 4325,
-      "mw": 4325,
-      "nontaxable": 200,
-      "cas": 1031,
-      "cass": 413,
-      "deduction": 865,
-      "tax": 182,
-      "net": 2699,
-      "cam": 93,
-      "employer_top_up": 0,
-      "employer_cost": 4418
+      "input": {
+        "gross": 4325,
+        "half": 2
+      },
+      "expected": {
+        "gross": 4325,
+        "mw": 4325,
+        "nontaxable": 200,
+        "cas": 1031,
+        "cass": 413,
+        "deduction": 865,
+        "tax": 182,
+        "net": 2699,
+        "cam": 93,
+        "employer_top_up": 0,
+        "employer_cost": 4418
+      }
     },
     "5000 H1": {
-      "gross": 5000,
-      "mw": 4050,
-      "nontaxable": 0,
-      "cas": 1250,
-      "cass": 500,
-      "deduction": 425,
-      "tax": 283,
-      "net": 2967,
-      "cam": 113,
-      "employer_top_up": 0,
-      "employer_cost": 5113
+      "input": {
+        "gross": 5000,
+        "half": 1
+      },
+      "expected": {
+        "gross": 5000,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 1250,
+        "cass": 500,
+        "deduction": 425,
+        "tax": 283,
+        "net": 2967,
+        "cam": 113,
+        "employer_top_up": 0,
+        "employer_cost": 5113
+      }
     },
     "5000 H2": {
-      "gross": 5000,
-      "mw": 4325,
-      "nontaxable": 0,
-      "cas": 1250,
-      "cass": 500,
-      "deduction": 562,
-      "tax": 269,
-      "net": 2981,
-      "cam": 113,
-      "employer_top_up": 0,
-      "employer_cost": 5113
+      "input": {
+        "gross": 5000,
+        "half": 2
+      },
+      "expected": {
+        "gross": 5000,
+        "mw": 4325,
+        "nontaxable": 0,
+        "cas": 1250,
+        "cass": 500,
+        "deduction": 562,
+        "tax": 269,
+        "net": 2981,
+        "cam": 113,
+        "employer_top_up": 0,
+        "employer_cost": 5113
+      }
     },
     "10000 H2": {
-      "gross": 10000,
-      "mw": 4325,
-      "nontaxable": 0,
-      "cas": 2500,
-      "cass": 1000,
-      "deduction": 0,
-      "tax": 650,
-      "net": 5850,
-      "cam": 225,
-      "employer_top_up": 0,
-      "employer_cost": 10225
+      "input": {
+        "gross": 10000,
+        "half": 2
+      },
+      "expected": {
+        "gross": 10000,
+        "mw": 4325,
+        "nontaxable": 0,
+        "cas": 2500,
+        "cass": 1000,
+        "deduction": 0,
+        "tax": 650,
+        "net": 5850,
+        "cam": 225,
+        "employer_top_up": 0,
+        "employer_cost": 10225
+      }
     },
     "6000 H1 2 dep u26 1 child": {
-      "gross": 6000,
-      "mw": 4050,
-      "nontaxable": 0,
-      "cas": 1500,
-      "cass": 600,
-      "deduction": 1133,
-      "tax": 277,
-      "net": 3623,
-      "cam": 135,
-      "employer_top_up": 0,
-      "employer_cost": 6135
+      "input": {
+        "gross": 6000,
+        "half": 1,
+        "dependants": 2,
+        "under26": true,
+        "school_children": 1
+      },
+      "expected": {
+        "gross": 6000,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 1500,
+        "cass": 600,
+        "deduction": 1133,
+        "tax": 277,
+        "net": 3623,
+        "cam": 135,
+        "employer_top_up": 0,
+        "employer_cost": 6135
+      }
+    },
+    "4300 H1": {
+      "input": {
+        "gross": 4300,
+        "half": 1
+      },
+      "expected": {
+        "gross": 4300,
+        "mw": 4050,
+        "nontaxable": 300,
+        "cas": 1000,
+        "cass": 400,
+        "deduction": 709,
+        "tax": 189,
+        "net": 2711,
+        "cam": 90,
+        "employer_top_up": 0,
+        "employer_cost": 4390
+      }
+    },
+    "4600 H2": {
+      "input": {
+        "gross": 4600,
+        "half": 2
+      },
+      "expected": {
+        "gross": 4600,
+        "mw": 4325,
+        "nontaxable": 200,
+        "cas": 1100,
+        "cass": 440,
+        "deduction": 735,
+        "tax": 213,
+        "net": 2847,
+        "cam": 99,
+        "employer_top_up": 0,
+        "employer_cost": 4699
+      }
+    },
+    "3000 H1": {
+      "input": {
+        "gross": 3000,
+        "half": 1
+      },
+      "expected": {
+        "gross": 3000,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 750,
+        "cass": 300,
+        "deduction": 810,
+        "tax": 114,
+        "net": 1836,
+        "cam": 68,
+        "employer_top_up": 263,
+        "employer_cost": 3331
+      }
+    },
+    "5000 H2 3 dep": {
+      "input": {
+        "gross": 5000,
+        "half": 2,
+        "dependants": 3
+      },
+      "expected": {
+        "gross": 5000,
+        "mw": 4325,
+        "nontaxable": 0,
+        "cas": 1250,
+        "cass": 500,
+        "deduction": 1211,
+        "tax": 204,
+        "net": 3046,
+        "cam": 113,
+        "employer_top_up": 0,
+        "employer_cost": 5113
+      }
+    },
+    "6050 H1 4 dep": {
+      "input": {
+        "gross": 6050,
+        "half": 1,
+        "dependants": 4
+      },
+      "expected": {
+        "gross": 6050,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 1513,
+        "cass": 605,
+        "deduction": 1013,
+        "tax": 292,
+        "net": 3640,
+        "cam": 136,
+        "employer_top_up": 0,
+        "employer_cost": 6186
+      }
+    },
+    "6051 H1 4 dep": {
+      "input": {
+        "gross": 6051,
+        "half": 1,
+        "dependants": 4
+      },
+      "expected": {
+        "gross": 6051,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 1513,
+        "cass": 605,
+        "deduction": 0,
+        "tax": 393,
+        "net": 3540,
+        "cam": 136,
+        "employer_top_up": 0,
+        "employer_cost": 6187
+      }
+    },
+    "6325 H2 1 dep": {
+      "input": {
+        "gross": 6325,
+        "half": 2,
+        "dependants": 1
+      },
+      "expected": {
+        "gross": 6325,
+        "mw": 4325,
+        "nontaxable": 0,
+        "cas": 1581,
+        "cass": 633,
+        "deduction": 216,
+        "tax": 390,
+        "net": 3721,
+        "cam": 142,
+        "employer_top_up": 0,
+        "employer_cost": 6467
+      }
+    },
+    "6050 H1 u26": {
+      "input": {
+        "gross": 6050,
+        "half": 1,
+        "under26": true
+      },
+      "expected": {
+        "gross": 6050,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 1513,
+        "cass": 605,
+        "deduction": 608,
+        "tax": 332,
+        "net": 3600,
+        "cam": 136,
+        "employer_top_up": 0,
+        "employer_cost": 6186
+      }
+    },
+    "10000 H1 u26": {
+      "input": {
+        "gross": 10000,
+        "half": 1,
+        "under26": true
+      },
+      "expected": {
+        "gross": 10000,
+        "mw": 4050,
+        "nontaxable": 0,
+        "cas": 2500,
+        "cass": 1000,
+        "deduction": 0,
+        "tax": 650,
+        "net": 5850,
+        "cam": 225,
+        "employer_top_up": 0,
+        "employer_cost": 10225
+      }
+    },
+    "10000 H2 u26": {
+      "input": {
+        "gross": 10000,
+        "half": 2,
+        "under26": true
+      },
+      "expected": {
+        "gross": 10000,
+        "mw": 4325,
+        "nontaxable": 0,
+        "cas": 2500,
+        "cass": 1000,
+        "deduction": 0,
+        "tax": 650,
+        "net": 5850,
+        "cam": 225,
+        "employer_top_up": 0,
+        "employer_cost": 10225
+      }
     }
   },
   "owner_salary_year": {
@@ -174,6 +410,135 @@
       "take_home": 311886.0
     }
   },
+  "pfa_options": {
+    "100000 norm 48600": {
+      "input": {
+        "revenue": 100000,
+        "norm": 48600
+      },
+      "expected": {
+        "revenue": 100000,
+        "net_income": 48600,
+        "cas": 12150.0,
+        "cass": 4860.0,
+        "tax": 4860.0,
+        "take_home": 78130.0
+      }
+    },
+    "100000 norm 20000": {
+      "input": {
+        "revenue": 100000,
+        "norm": 20000
+      },
+      "expected": {
+        "revenue": 100000,
+        "net_income": 48600,
+        "cas": 12150.0,
+        "cass": 4860.0,
+        "tax": 4860.0,
+        "take_home": 78130.0
+      }
+    },
+    "100000 norm 72000": {
+      "input": {
+        "revenue": 100000,
+        "norm": 72000
+      },
+      "expected": {
+        "revenue": 100000,
+        "net_income": 72000,
+        "cas": 12150.0,
+        "cass": 7200.0,
+        "tax": 7200.0,
+        "take_home": 73450.0
+      }
+    },
+    "100000 norm 48600 pensioner": {
+      "input": {
+        "revenue": 100000,
+        "norm": 48600,
+        "pensioner": true
+      },
+      "expected": {
+        "revenue": 100000,
+        "net_income": 48600,
+        "cas": 0.0,
+        "cass": 4860.0,
+        "tax": 4860.0,
+        "take_home": 90280.0
+      }
+    },
+    "100000 pensioner": {
+      "input": {
+        "revenue": 100000,
+        "pensioner": true
+      },
+      "expected": {
+        "revenue": 100000,
+        "net_income": 100000,
+        "cas": 0.0,
+        "cass": 10000.0,
+        "tax": 9000.0,
+        "take_home": 81000.0
+      }
+    },
+    "20000 pensioner": {
+      "input": {
+        "revenue": 20000,
+        "pensioner": true
+      },
+      "expected": {
+        "revenue": 20000,
+        "net_income": 20000,
+        "cas": 0.0,
+        "cass": 2000.0,
+        "tax": 1800.0,
+        "take_home": 16200.0
+      }
+    },
+    "12000 has salary": {
+      "input": {
+        "revenue": 12000,
+        "has_salary": true
+      },
+      "expected": {
+        "revenue": 12000,
+        "net_income": 12000,
+        "cas": 0.0,
+        "cass": 1200.0,
+        "tax": 1080.0,
+        "take_home": 9720.0
+      }
+    },
+    "120000 expenses 12000": {
+      "input": {
+        "revenue": 120000,
+        "expenses": 12000
+      },
+      "expected": {
+        "revenue": 120000,
+        "net_income": 108000,
+        "cas": 24300.0,
+        "cass": 10800.0,
+        "tax": 7290.0,
+        "take_home": 65610.0
+      }
+    },
+    "66002.40 expenses 17402.40": {
+      "input": {
+        "revenue": 66002.4,
+        "expenses": 17402.4
+      },
+      "expected": {
+        "revenue": 66002.4,
+        "net_income": 48599.99999999999,
+        "cas": 12150.0,
+        "cass": 4859.999999999999,
+        "tax": 3158.9999999999995,
+        "take_home": 28430.999999999993
+      }
+    }
+  },
   "srl": {
     "100000": {
       "regime": "micro",
@@ -228,6 +593,126 @@
       "take_home": 409072.2528
     }
   },
+  "srl_options": {
+    "300000 micro expenses 60000": {
+      "input": {
+        "revenue": 300000,
+        "expenses": 60000
+      },
+      "expected": {
+        "regime": "micro",
+        "revenue": 300000,
+        "salary_gross": 50250,
+        "cam": 1062,
+        "company_tax": 3000.0,
+        "profit": 185688.0,
+        "dividend_tax": 29710.08,
+        "net_dividends": 155977.91999999998,
+        "cass_dividends": 9720.0,
+        "salary_net": 31638,
+        "take_home": 177895.91999999998
+      }
+    },
+    "300000 profit expenses 60000": {
+      "input": {
+        "revenue": 300000,
+        "expenses": 60000,
+        "chose_profit_tax": true
+      },
+      "expected": {
+        "regime": "profit",
+        "revenue": 300000,
+        "salary_gross": 50250,
+        "cam": 1062,
+        "company_tax": 30190.08,
+        "profit": 158497.91999999998,
+        "dividend_tax": 25359.667199999996,
+        "net_dividends": 133138.2528,
+        "cass_dividends": 9720.0,
+        "salary_net": 31638,
+        "take_home": 155056.2528
+      }
+    },
+    "600000 profit no salary expenses 120000": {
+      "input": {
+        "revenue": 600000,
+        "expenses": 120000,
+        "owner_employed": false,
+        "chose_profit_tax": true
+      },
+      "expected": {
+        "regime": "profit",
+        "revenue": 600000,
+        "salary_gross": 0,
+        "cam": 0,
+        "company_tax": 76800.0,
+        "profit": 403200.0,
+        "dividend_tax": 64512.0,
+        "net_dividends": 338688.0,
+        "cass_dividends": 9720.0,
+        "salary_net": 0,
+        "take_home": 328968.0
+      }
+    },
+    "300000 no employee": {
+      "input": {
+        "revenue": 300000,
+        "owner_employed": false
+      },
+      "expected": {
+        "regime": "profit",
+        "revenue": 300000,
+        "salary_gross": 0,
+        "cam": 0,
+        "company_tax": 48000.0,
+        "profit": 252000.0,
+        "dividend_tax": 40320.0,
+        "net_dividends": 211680.0,
+        "cass_dividends": 9720.0,
+        "salary_net": 0,
+        "take_home": 201960.0
+      }
+    },
+    "300000 another employee": {
+      "input": {
+        "revenue": 300000,
+        "owner_employed": false,
+        "other_employee": true
+      },
+      "expected": {
+        "regime": "micro",
+        "revenue": 300000,
+        "salary_gross": 0,
+        "cam": 0,
+        "company_tax": 3000.0,
+        "profit": 297000.0,
+        "dividend_tax": 47520.0,
+        "net_dividends": 249480.0,
+        "cass_dividends": 9720.0,
+        "salary_net": 0,
+        "take_home": 239760.0
+      }
+    },
+    "300000 not the only micro": {
+      "input": {
+        "revenue": 300000,
+        "single_micro": false
+      },
+      "expected": {
+        "regime": "profit",
+        "revenue": 300000,
+        "salary_gross": 50250,
+        "cam": 1062,
+        "company_tax": 39790.08,
+        "profit": 208897.91999999998,
+        "dividend_tax": 33423.667199999996,
+        "net_dividends": 175474.2528,
+        "cass_dividends": 9720.0,
+        "salary_net": 31638,
+        "take_home": 197392.2528
+      }
+    }
+  },
   "copyright": {
     "40000": {
       "gross": 40000,
@@ -270,9 +755,48 @@
       "take_home": 153980.0
     }
   },
+  "copyright_options": {
+    "60000 employee or pensioner": {
+      "input": {
+        "gross": 60000,
+        "employee_or_pensioner": true
+      },
+      "expected": {
+        "gross": 60000,
+        "net_income": 36000.0,
+        "tax": 3600.0,
+        "cas": 0.0,
+        "cass": 0.0,
+        "take_home": 56400.0
+      }
+    },
+    "200000 employee or pensioner": {
+      "input": {
+        "gross": 200000,
+        "employee_or_pensioner": true
+      },
+      "expected": {
+        "gross": 200000,
+        "net_income": 120000.0,
+        "tax": 12000.0,
+        "cas": 0.0,
+        "cass": 0.0,
+        "take_home": 188000.0
+      }
+    }
+  },
   "copyright_gross_for_net": {
     "38000": 40425.53191489362,
     "60000": 66414.89361702128,
     "100000": 124478.72340425533
+  },
+  "copyright_gross_for_net_options": {
+    "50000 employee or pensioner": {
+      "input": {
+        "target": 50000,
+        "employee_or_pensioner": true
+      },
+      "expected": 53191.48936170213
+    }
   }
 }

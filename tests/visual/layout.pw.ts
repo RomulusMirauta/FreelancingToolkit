@@ -87,11 +87,14 @@ for (const lang of LANGS) {
   test(`calendar: every deadline has its card, under every filter (${lang})`, async ({ page }) => {
     await openApp(page, { lang, tab: 'taxes' });
     const chips = page.locator('.calendar .chips .chip');
-    for (let i = 0; i < (await chips.count()); i++) {
+    // All, PFA and SRL: with none found, the loop would check nothing and pass.
+    await expect(chips).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
       await chips.nth(i).click();
+      await expect(chips.nth(i)).toHaveAttribute('aria-pressed', 'true');
       const backgrounds = await page.locator('.deadlines li').evaluateAll((items) => items.map((li) => getComputedStyle(li).backgroundColor));
-      // A filter with three deadlines or fewer has only the big cards; the first one, "all", always has a list.
-      if (i === 0) expect(backgrounds.length).toBeGreaterThan(0);
+      // A filter with three deadlines or fewer has only the big cards: at the fixed date, PFA's. "All" and SRL have a list.
+      if (i !== 1) expect(backgrounds.length).toBeGreaterThan(0);
       expect(backgrounds).not.toContain('rgba(0, 0, 0, 0)');
     }
   });

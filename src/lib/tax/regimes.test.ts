@@ -4,8 +4,19 @@ import { compareYear } from './compare';
 import { copyrightYear } from './copyright';
 import { employeeMonth, employeeYear } from './employee';
 import { pfaYear } from './pfa';
-import { BOARD_REGIMES, DEFAULT_TAX_OPTIONS, computeRegime, computeSideJob, keptShare, mergeTaxOptions } from './regimes';
+import {
+  BOARD_REGIMES, DEFAULT_TAX_OPTIONS, computeRegime, computeSideJob, keptShare, mergeTaxOptions,
+  type LineKey, type RegimeResult, type TaxOptions,
+} from './regimes';
 import { mandateMonth, srlYear } from './srl';
+
+/** The default card options, with some of them changed. */
+function withOptions(patch: { [K in keyof TaxOptions]?: Partial<TaxOptions[K]> }): TaxOptions {
+  const o = structuredClone(DEFAULT_TAX_OPTIONS);
+  for (const k of Object.keys(patch) as (keyof TaxOptions)[]) Object.assign(o[k], patch[k]);
+  return o;
+}
+const lineOf = (r: RegimeResult, key: LineKey) => r.lines.find((l) => l.key === key)?.annual;
 
 describe('salary under the minimum base', () => {
   it('the employer pays the rest of CAS and CASS, and the net stays', () => {
@@ -41,6 +52,29 @@ describe('dependants that are not a whole number from 0 to 4', () => {
     expect(employeeMonth(5000, 1, { dependants: 2.5 })).toEqual(employeeMonth(5000, 1, { dependants: 2 }));
     expect(employeeMonth(5000, 2, { dependants: 7 })).toEqual(employeeMonth(5000, 2, { dependants: 4 }));
     expect(employeeMonth(5000, 1, { dependants: -1 })).toEqual(employeeMonth(5000, 1));
+  });
+});
+
+// Worked out by hand from params-2026.json and the Fiscal Code, here and in 'card options' below. The golden file comes
+// from a Python port of the same rules: it catches a slip in one of the two, not a rule both read wrong.
+describe('salary at the edges of the untaxed amount and the deduction (art. 77, OUG 89/2025 art. III)', () => {
+  it('the untaxed amount up to its ceiling, inclusive', () => {
+    // 4,300 in January–June: 300 untaxed, CAS 1,000, CASS 400, deduction 17.5% of 4,050 = 709, tax 189.
+    expect(employeeMonth(4_300, 1)).toMatchObject({ nontaxable: 300, net: 2_711 });
+    // 4,600 in July–December: 200 untaxed, CAS 1,100, CASS 440, deduction 17% of 4,325 = 735, tax 213.
+    expect(employeeMonth(4_600, 2)).toMatchObject({ nontaxable: 200, net: 2_847 });
+  });
+
+  it('the last step of the table, minimum wage + 2,000: 25% with 4 dependants, and nothing a leu above', () => {
+    // CAS 1,513, CASS 605, deduction 25% of 4,050 = 1,013, tax 292.
+    expect(employeeMonth(6_050, 1, { dependants: 4 })).toMatchObject({ deduction: 1_013, net: 3_640 });
+    expect(employeeMonth(6_051, 1, { dependants: 4 }).deduction).toBe(0);
+  });
+
+  it('under 26: 15% of the minimum wage up to minimum wage + 2,000, nothing above (alin. (10) lit. a))', () => {
+    expect(employeeMonth(6_050, 1, { under26: true }).deduction).toBe(608);
+    expect(employeeMonth(10_000, 1, { under26: true }).deduction).toBe(0);
+    expect(employeeMonth(10_000, 2, { under26: true }).deduction).toBe(0);
   });
 });
 
@@ -225,5 +259,67 @@ describe('tax board regimes', () => {
     expect(r.sideNet).toBeCloseTo(copyrightYear(60_000, true).takeHome, 6);
     expect(r.sideTaxShare).toBeCloseTo(0.06, 9);
     expect(r.notice).toBe('daEmployee');
+  });
+});
+
+describe('card options', () => {
+  it('income norm: CAS, CASS and 10% tax on the norm, with nothing deducted (art. 69^2, art. 118 alin. (2))', () => {
+    // The default norm, 48,600: CAS 25% of 12 minimum wages, 12,150; CASS 4,860; tax 4,860.
+    const r = computeRegime('pfaNorm', 100_000, DEFAULT_TAX_OPTIONS);
+    expect(lineOf(r, 'incomeTax')).toBeCloseTo(4_860, 6);
+    expect(r.takeHome).toBeCloseTo(78_130, 6);
+    // 72,000: CAS still 12,150 (under 24 minimum wages), CASS 7,200, tax 7,200.
+    expect(computeRegime('pfaNorm', 100_000, withOptions({ pfaNorm: { normYearly: 72_000 } })).takeHome).toBeCloseTo(73_450, 6);
+  });
+
+  it('income norm: a norm under 12 minimum wages is taxed as 48,600 (art. 69 alin. (3))', () => {
+    const r = computeRegime('pfaNorm', 100_000, withOptions({ pfaNorm: { normYearly: 20_000 } }));
+    expect(lineOf(r, 'taxedNorm')).toBe(48_600);
+    expect(r.takeHome).toBeCloseTo(78_130, 6);
+  });
+
+  it('PFA pensioner: no CAS (art. 150 alin. (1)), and CASS without the minimum of 6 minimum wages (art. 174 alin. (7))', () => {
+    // 100,000: CASS 10,000, tax 10% of 90,000.
+    const r = computeRegime('pfaReal', 100_000, withOptions({ pfaReal: { pensioner: true } }));
+    expect(lineOf(r, 'cas')).toBe(0);
+    expect(r.takeHome).toBeCloseTo(81_000, 6);
+    // 20,000: CASS 2,000, not 2,430.
+    expect(computeRegime('pfaReal', 20_000, withOptions({ pfaReal: { pensioner: true } })).takeHome).toBeCloseTo(16_200, 6);
+    // On the income norm: CASS 4,860 and tax 4,860 on 48,600.
+    expect(computeRegime('pfaNorm', 100_000, withOptions({ pfaNorm: { pensioner: true } })).takeHome).toBeCloseTo(90_280, 6);
+  });
+
+  it('PFA with a salary of at least 6 minimum wages: CASS without the minimum (art. 174 alin. (7) lit. a))', () => {
+    expect(computeRegime('pfaReal', 20_000, withOptions({ pfaReal: { hasSalary: true } })).takeHome).toBeCloseTo(16_200, 6);
+  });
+
+  it('SRL expenses lower the profit tax, 16% of what is left, but not the micro tax, 1% of revenue', () => {
+    // 600,000 less 120,000: profit tax 76,800, dividend tax 64,512 on 403,200, CASS 9,720 (24 minimum wages).
+    const profit = computeRegime('srlProfitNoSalary', 600_000, withOptions({ srlProfitNoSalary: { expensesMonthly: 10_000 } }));
+    expect(lineOf(profit, 'profitTax')).toBeCloseTo(76_800, 6);
+    expect(profit.takeHome).toBeCloseTo(328_968, 6);
+    // 300,000 less 60,000, the owner's 50,250 and CAM 1,062: micro tax 3,000, profit 185,688.
+    const micro = computeRegime('srlMicro', 300_000, withOptions({ srlMicro: { expensesMonthly: 5_000 } }));
+    expect(lineOf(micro, 'microTax')).toBeCloseTo(3_000, 6);
+    expect(lineOf(micro, 'profit')).toBeCloseTo(185_688, 6);
+  });
+
+  it('micro-enterprise: an employee, the owner or another, and no other micro-enterprise (art. 47 alin. (1))', () => {
+    const notice = (srlMicro: Partial<TaxOptions['srlMicro']>) => computeRegime('srlMicro', 300_000, withOptions({ srlMicro })).notice;
+    expect(notice({ ownerEmployed: false })).toEqual({ kind: 'microFallback', reason: 'noEmployee' });
+    expect(notice({ ownerEmployed: false, otherEmployee: true })).toEqual({ kind: 'microOk' });
+    expect(notice({ singleMicro: false })).toEqual({ kind: 'microFallback', reason: 'otherMicro' });
+  });
+
+  it('mandate: CAM is due (art. 220^4), and the profit-tax card pays the owner by mandate too', () => {
+    expect(mandateMonth(4_050).cam).toBe(91);
+    // 6 × 2,369 in January–June, 6 × 2,530 in July–December (CAS 1,081, CASS 433, tax 281 on 4,325).
+    const r = computeRegime('srlProfitSalary', 300_000, withOptions({ srlProfitSalary: { ownerPay: 'mandate' } }));
+    expect(lineOf(r, 'ownerNet')).toBe(29_394);
+  });
+
+  it('copyright, also an employee or a pensioner: only the income tax (art. 150, art. 154 alin. (1) lit. h^1))', () => {
+    // 200,000: tax 12,000 on 120,000; without the option, also CAS 24,300 and CASS 9,720.
+    expect(computeRegime('copyright', 200_000, withOptions({ copyright: { insured: true } })).takeHome).toBeCloseTo(188_000, 6);
   });
 });

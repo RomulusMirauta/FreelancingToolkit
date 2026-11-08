@@ -84,6 +84,8 @@ def employee_year(gross: float, **kw) -> dict:
 
 def cas_band(net: float) -> float:
     """CAS on independent activities and IP income: fixed amount per band (minimum chosen base)."""
+    # To the ban: revenue less expenses can come out a hair under a band it is exactly on (66,002.40 - 17,402.40).
+    net = round(net, 2)
     if net >= mw(P["PragCAS2"]):
         return mw(P["PragCAS2"]) * P["CotaCAS"]
     if net >= mw(P["PragCAS1"]):
@@ -214,23 +216,71 @@ def eur_per_hour_to_monthly_lei(rate: float, hours_day=8, days_week=5, weeks_yea
     return rate * hours_day * days_week * weeks_year / 12 * P["CursEUR"]
 
 
+def case(fn, **inputs) -> dict:
+    """One case: its inputs by `fn`'s parameter names, which the tests hand to the engine, and what `fn` gives."""
+    return {"input": inputs, "expected": fn(**inputs)}
+
+
 def golden() -> dict:
     scenarios = {"5000": 5000, "10000": 10000, "20000": 20000,
                  "30 EUR/h": eur_per_hour_to_monthly_lei(30)}
     return {
         "employee_month": {
-            "4050 H1": employee_month(4050, 1), "4325 H2": employee_month(4325, 2),
-            "5000 H1": employee_month(5000, 1), "5000 H2": employee_month(5000, 2),
-            "10000 H2": employee_month(10000, 2),
-            "6000 H1 2 dep u26 1 child": employee_month(6000, 1, dependants=2, under26=True, school_children=1),
+            "4050 H1": case(employee_month, gross=4050, half=1),
+            "4325 H2": case(employee_month, gross=4325, half=2),
+            "5000 H1": case(employee_month, gross=5000, half=1),
+            "5000 H2": case(employee_month, gross=5000, half=2),
+            "10000 H2": case(employee_month, gross=10000, half=2),
+            "6000 H1 2 dep u26 1 child": case(employee_month, gross=6000, half=1, dependants=2, under26=True,
+                                              school_children=1),
+            # The edges: the untaxed amount up to its ceiling, a salary under the minimum, the deduction table's
+            # last step (minimum wage + 2,000) and past it, and the under-26 deduction on both sides of that step.
+            "4300 H1": case(employee_month, gross=4300, half=1),
+            "4600 H2": case(employee_month, gross=4600, half=2),
+            "3000 H1": case(employee_month, gross=3000, half=1),
+            "5000 H2 3 dep": case(employee_month, gross=5000, half=2, dependants=3),
+            "6050 H1 4 dep": case(employee_month, gross=6050, half=1, dependants=4),
+            "6051 H1 4 dep": case(employee_month, gross=6051, half=1, dependants=4),
+            "6325 H2 1 dep": case(employee_month, gross=6325, half=2, dependants=1),
+            "6050 H1 u26": case(employee_month, gross=6050, half=1, under26=True),
+            "10000 H1 u26": case(employee_month, gross=10000, half=1, under26=True),
+            "10000 H2 u26": case(employee_month, gross=10000, half=2, under26=True),
         },
         "owner_salary_year": owner_salary_year(True),
         "compare_monthly": {name: compare(x) for name, x in scenarios.items()},
         "scenario_monthly_gross": scenarios,
         "pfa": {str(r): pfa_year(r) for r in (20000, 48600, 97200, 120000, 300000, 400000)},
+        # The options the cards offer, each where it changes the result.
+        "pfa_options": {
+            "100000 norm 48600": case(pfa_year, revenue=100000, norm=48600),
+            "100000 norm 20000": case(pfa_year, revenue=100000, norm=20000),
+            "100000 norm 72000": case(pfa_year, revenue=100000, norm=72000),
+            "100000 norm 48600 pensioner": case(pfa_year, revenue=100000, norm=48600, pensioner=True),
+            "100000 pensioner": case(pfa_year, revenue=100000, pensioner=True),
+            "20000 pensioner": case(pfa_year, revenue=20000, pensioner=True),
+            "12000 has salary": case(pfa_year, revenue=12000, has_salary=True),
+            "120000 expenses 12000": case(pfa_year, revenue=120000, expenses=12000),
+            "66002.40 expenses 17402.40": case(pfa_year, revenue=66002.4, expenses=17402.4),
+        },
         "srl": {str(r): srl_year(r) for r in (100000, 300000, 509850, 600000)},
+        "srl_options": {
+            "300000 micro expenses 60000": case(srl_year, revenue=300000, expenses=60000),
+            "300000 profit expenses 60000": case(srl_year, revenue=300000, expenses=60000, chose_profit_tax=True),
+            "600000 profit no salary expenses 120000": case(srl_year, revenue=600000, expenses=120000,
+                                                            owner_employed=False, chose_profit_tax=True),
+            "300000 no employee": case(srl_year, revenue=300000, owner_employed=False),
+            "300000 another employee": case(srl_year, revenue=300000, owner_employed=False, other_employee=True),
+            "300000 not the only micro": case(srl_year, revenue=300000, single_micro=False),
+        },
         "copyright": {str(g): copyright_year(g) for g in (40000, 40500, 81000, 162000, 200000)},
+        "copyright_options": {
+            "60000 employee or pensioner": case(copyright_year, gross=60000, employee_or_pensioner=True),
+            "200000 employee or pensioner": case(copyright_year, gross=200000, employee_or_pensioner=True),
+        },
         "copyright_gross_for_net": {str(t): copyright_gross_for_net(t) for t in (38000, 60000, 100000)},
+        "copyright_gross_for_net_options": {
+            "50000 employee or pensioner": case(copyright_gross_for_net, target=50000, employee_or_pensioner=True),
+        },
     }
 
 
