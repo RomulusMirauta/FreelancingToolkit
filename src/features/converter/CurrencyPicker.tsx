@@ -49,6 +49,7 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -56,21 +57,23 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
   const options = CURRENCIES.filter((c) => !exclude.includes(c.code)).sort((a, b) => a.code.localeCompare(b.code));
   const matches = searchCurrencies(options, query);
 
-  const close = () => {
+  /** The search box goes with the panel: the focus goes back to the button, as in ListPicker, not to the page. */
+  const close = (refocus = true) => {
     setOpen(false);
     setQuery('');
     setActive(0);
+    if (refocus) buttonRef.current?.focus();
   };
   const pick = (code: string) => {
     onPick(code);
     close();
   };
 
-  // Close on a click outside.
+  // Close on a click outside, which leaves the focus where the click put it.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) close();
+      if (!rootRef.current?.contains(e.target as Node)) close(false);
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
@@ -94,6 +97,7 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
   return (
     <div className="add-currency" ref={rootRef}>
       <button
+        ref={buttonRef}
         type="button"
         className={triggerClass}
         aria-label={triggerLabel}
@@ -104,7 +108,15 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
         {trigger}
       </button>
       {open && (
-        <div className="add-pop" ref={popRef}>
+        <div
+          className="add-pop"
+          ref={popRef}
+          // Tab and Shift+Tab close it once the focus has gone on, so it doesn't stay open over the fields after it.
+          // Not on the key itself: Firefox loses the focus when the search box goes before it has moved it.
+          onBlur={(e) => {
+            if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget)) close(false);
+          }}
+        >
           <input
             type="search"
             name="currency-search"
@@ -137,7 +149,8 @@ export function CurrencyPicker({ trigger, triggerClass, triggerLabel, exclude = 
             }}
           />
           {matches.length > 0 && (
-            <ul className="add-list" role="listbox" id={listId} ref={listRef} aria-label={t.list}>
+            // Out of the Tab order (the arrows move through it), so Tab leaves the panel at once.
+            <ul className="add-list" role="listbox" id={listId} ref={listRef} tabIndex={-1} aria-label={t.list}>
               {matches.map((c, i) => (
                 <li
                   key={c.code}

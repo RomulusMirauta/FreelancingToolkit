@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { PAGE_FOLDS, PAGE_KEYS, PAGE_QUERY, type Page } from '../../lib/ui/settingsKeys';
 import { flushQuery, writeQuery } from '../../lib/ui/query';
@@ -20,7 +20,7 @@ export { APP_KEYS, PAGE_FOLDS, PAGE_KEYS, type Page } from '../../lib/ui/setting
  * Floating "Tools" menu: fold all, "Reset tab" and "Reset app".
  * "Reset tab" is instant and clears only the open page's settings. "Reset app" asks first, in a small panel
  * in the page (window.confirm is suppressed in embedded browsers such as VS Code's); Cancel has the focus,
- * Esc or a click outside closes it.
+ * Esc or a click outside closes it, and Esc and Cancel give the focus back to "Tools".
  */
 export function ResetApp({ page }: { page: Page }) {
   const t = useT().reset;
@@ -33,12 +33,17 @@ export function ResetApp({ page }: { page: Page }) {
   const [asking, setAsking] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const menu = useHoverMenu();
+  /** The focused Cancel goes with the question: the focus goes back to "Tools", or it would fall to the page. */
+  const stopAsking = useCallback(() => {
+    if (menu.rootRef.current?.contains(document.activeElement)) menu.triggerRef.current?.focus();
+    setAsking(false);
+  }, [menu.rootRef, menu.triggerRef]);
 
   useEffect(() => {
     if (!asking) return;
     cancelRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setAsking(false);
+      if (e.key === 'Escape') stopAsking();
     };
     const onDown = (e: PointerEvent) => {
       if (!menu.rootRef.current?.contains(e.target as Node)) setAsking(false);
@@ -49,24 +54,32 @@ export function ResetApp({ page }: { page: Page }) {
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onDown);
     };
-  }, [asking, menu.rootRef]);
+  }, [asking, menu.rootRef, stopAsking]);
 
   return (
     // hoverProps only reads refs inside its event handlers, not while rendering.
     // eslint-disable-next-line react/refs
     <div className={`reset-wrap hover-menu${menu.open && !asking ? ' open' : ''}${asking ? ' asking' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
+      {/* Before its items, so Tab goes from it into them; they are positioned above it, so the order doesn't show.
+          The button's name says what the pulsing dot shows: a label on the dot inside it is not read. */}
+      <button type="button" ref={menu.triggerRef} className="reset-app menu-trigger" aria-expanded={menu.open} aria-controls="tools-panel" onClick={menu.toggle} aria-label={modified ? t.menuModified : t.menu}>
+        <span className="icon" aria-hidden="true"><ToolsIcon /></span>
+        <span className="menu-word">{t.menu}</span>
+        {/* Always there to draw the eye; it pulses while something can be reset. */}
+        <span className={`dot${modified ? ' pulse' : ''}`} aria-hidden="true" />
+      </button>
       {asking && (
         <div className="reset-confirm" role="alertdialog" aria-modal="false" aria-labelledby="reset-title" aria-describedby="reset-desc">
           <h2 id="reset-title">{t.confirmTitle}</h2>
           <p id="reset-desc">{t.confirmText}</p>
           <div className="actions">
-            <button ref={cancelRef} type="button" className="secondary" onClick={() => setAsking(false)}>{t.confirmCancel}</button>
+            <button ref={cancelRef} type="button" className="secondary" onClick={stopAsking}>{t.confirmCancel}</button>
             <button type="button" className="danger" onClick={resetApp}>{t.confirmOk}</button>
           </div>
         </div>
       )}
       {/* Hidden behind "Tools" until hovered or clicked; opens upwards. */}
-      <div className="reset-row menu-pop" role="menu" aria-label={t.menu}>
+      <div className="reset-row menu-pop" id="tools-panel" role="group" aria-label={t.menu}>
         <button
           type="button"
           className="reset-app"
@@ -105,13 +118,6 @@ export function ResetApp({ page }: { page: Page }) {
           <ResetLabel full={t.label} short={t.short} />
         </button>
       </div>
-      {/* The button's name says what the pulsing dot shows: a label on the dot inside it is not read. */}
-      <button type="button" className="reset-app menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={modified ? t.menuModified : t.menu}>
-        <span className="icon" aria-hidden="true"><ToolsIcon /></span>
-        <span className="menu-word">{t.menu}</span>
-        {/* Always there to draw the eye; it pulses while something can be reset. */}
-        <span className={`dot${modified ? ' pulse' : ''}`} aria-hidden="true" />
-      </button>
     </div>
   );
 }

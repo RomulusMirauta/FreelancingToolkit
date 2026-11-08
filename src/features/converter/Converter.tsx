@@ -198,9 +198,10 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                 <CurrencyCode code={code} />
               </button>
             );
-            // "+ Add currency" follows the last chip and wraps only together with it, never alone on a row.
+            // "+ Add currency" follows the last chip and wraps only together with it, never alone on a row. A key of
+            // its own, not the chip's: after an add the same button stays, with the focus the list gave back to it.
             return i < chips.length - 1 ? button : (
-              <div key={code} className="chips-last">
+              <div key="chips-last" className="chips-last">
                 {button}
                 <AddCurrency exclude={chips} onAdd={add} />
               </div>

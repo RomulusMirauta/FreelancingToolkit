@@ -94,8 +94,9 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
   const lang = useLang();
   const [fees, setFees] = useFees();
   // Bumped when a choice sets a %, so the uncontrolled % fields show the new value; a new language remounts them
-  // too, for its decimal mark.
+  // too, for its decimal mark. Only the fields: the lists keep their button, which the focus goes back to.
   const [picks, setPicks] = useState(0);
+  const pctKey = `${picks}-${lang}`;
   const kept = keptShare(fees);
   const feesMonth = monthRon * (1 - kept);
   // The minus only on an amount that shows: with nothing to take a cut of, 0,00 rather than −0,00.
@@ -123,9 +124,10 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
         <div className={cut ? 'stat-cut' : undefined}><dt>{t.sumFees}</dt><dd>{cut ? '−' : ''}{formatMoney(feesMonth)} <span className="unit">{t.ronMonth}</span></dd></div>
       </dl>
 
-      <div className="fee-steps" key={`${picks}-${lang}`}>
+      <div className="fee-steps">
         <FeeStep
           step={1}
+          pctKey={pctKey}
           label={t.platform}
           options={PLATFORMS}
           names={t.platforms}
@@ -141,6 +143,7 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
         />
         <FeeStep
           step={2}
+          pctKey={pctKey}
           label={t.transfer}
           options={TRANSFERS}
           names={t.transfers}
@@ -179,8 +182,10 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
   );
 }
 
-function FeeStep<Id extends string>({ step, label, options, names, hints, selected, pct, customLabel, customHint, pctLabel, search, onPick, onPct }: {
+function FeeStep<Id extends string>({ step, pctKey, label, options, names, hints, selected, pct, customLabel, customHint, pctLabel, search, onPick, onPct }: {
   step: number;
+  /** A new one remounts the % field, which shows its value only when it mounts. */
+  pctKey: string;
   label: string;
   options: readonly { id: Id; pct: number }[];
   names: Record<Id, string>;
@@ -216,6 +221,7 @@ function FeeStep<Id extends string>({ step, label, options, names, hints, select
         />
         <label className="fee-pct">
           <input
+            key={pctKey}
             inputMode="decimal"
             autoComplete="off"
             name={`fee-${step}`}

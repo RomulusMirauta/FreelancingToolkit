@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '../../lib/i18n';
 import type { Page } from '../../lib/ui/settingsKeys';
 import type { Lang } from '../../lib/i18n';
@@ -63,6 +63,15 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
   }, []);
 
   const menu = useHoverMenu();
+  // A panel takes the focus in it away when it closes: the focus goes back to the menu's button, not to the page.
+  const closeCopy = () => {
+    setCopied('no');
+    menu.triggerRef.current?.focus();
+  };
+  const closeSteps = () => {
+    setShowSteps(false);
+    menu.triggerRef.current?.focus();
+  };
 
   const copy = async () => {
     const url = shareUrl(view);
@@ -100,28 +109,28 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
     // hoverProps only reads refs inside its event handlers, not while rendering.
     // eslint-disable-next-line react/refs
     <div className={`top-actions hover-menu${menu.open ? ' open' : ''}`} ref={menu.rootRef} {...menu.hoverProps}>
-      <button type="button" className="top-btn menu-trigger" aria-haspopup="menu" aria-expanded={menu.open} onClick={menu.toggle} aria-label={t.advanced} title={t.advanced}>
+      <button type="button" ref={menu.triggerRef} className="top-btn menu-trigger" aria-expanded={menu.open} aria-controls="settings-panel" onClick={menu.toggle} aria-label={t.advanced} title={t.advanced}>
         <GearIcon />
         <span>{t.advanced}</span>
         <span className="chev" aria-hidden="true" />
       </button>
-      <div className="menu-pop" role="menu" aria-label={t.advanced}>
-        <div className="menu-theme" role="none">
+      <div className="menu-pop" id="settings-panel" role="group" aria-label={t.advanced}>
+        <div className="menu-theme">
           <span id="menu-theme-label">{t.theme}</span>
           <ThemeSlider theme={theme} setTheme={setTheme} />
         </div>
-        <div className="menu-theme" role="none">
+        <div className="menu-theme">
           <span>{t.language}</span>
           <LangSlider lang={lang} setLang={setLang} />
         </div>
-        <div className="menu-sep" role="separator" />
-        <button type="button" role="menuitem" onClick={copy} title={t.shareTitle}>
+        <div className="menu-sep" />
+        <button type="button" onClick={copy} title={t.shareTitle}>
           <LinkIcon />
           <b>{copied === 'yes' ? t.copied : t.share}</b>
           <small>{t.shareHint}</small>
         </button>
         {!installed && (
-          <button type="button" role="menuitem" onClick={() => { menu.setOpen(false); void install(); }} title={t.installTitle}>
+          <button type="button" onClick={() => { menu.close(); void install(); }} title={t.installTitle}>
             <InstallIcon />
             <b>{t.install}</b>
             <small>{t.installHint}</small>
@@ -129,25 +138,30 @@ export function TopActions({ view, theme, setTheme, lang, setLang }: {
         )}
       </div>
       {copied === 'manual' && (
-        <div className="top-panel with-x" role="dialog" aria-label={t.copyManual}>
-          <button type="button" className="panel-x" aria-label={t.close} title={t.close} onClick={() => setCopied('no')}>×</button>
+        <div className="top-panel with-x" role="dialog" aria-label={t.copyManual} onKeyDown={(e) => { if (e.key === 'Escape') closeCopy(); }}>
+          <button type="button" className="panel-x" aria-label={t.close} title={t.close} onClick={closeCopy}>×</button>
           <p id="copy-manual">{t.copyManual}</p>
           <input readOnly name="share-link" aria-labelledby="copy-manual" value={link} onFocus={(e) => e.target.select()} autoFocus />
         </div>
       )}
-      {showSteps && <InstallSteps onClose={() => setShowSteps(false)} />}
+      {showSteps && <InstallSteps onClose={closeSteps} />}
     </div>
   );
 }
 
-/** Plain steps for this device first, then the others. */
+/** Plain steps for this device first, then the others. Esc closes them too. */
 function InstallSteps({ onClose }: { onClose: () => void }) {
   const t = useT().app;
   const device = detectDevice();
   const order: Device[] = [device, ...(['desktop', 'android', 'ios'] as const).filter((d) => d !== device)];
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  // Opened from the menu, now hidden: the focus comes to the title, so a screen reader reads the steps from the top.
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
   return (
-    <div className="top-panel install-steps" role="dialog" aria-labelledby="install-title">
-      <h2 id="install-title">{t.installHow}</h2>
+    <div className="top-panel install-steps" role="dialog" aria-labelledby="install-title" onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+      <h2 id="install-title" ref={titleRef} tabIndex={-1}>{t.installHow}</h2>
       <p className="muted small">{t.installWhy}</p>
       {order.map((d, i) => (
         <details key={d} open={i === 0}>

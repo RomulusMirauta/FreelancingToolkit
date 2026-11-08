@@ -704,6 +704,172 @@ test('Copy link: when the browser blocks copying, the field with the link says w
   await expect(field).toHaveAccessibleName('Copy this link:');
 });
 
+/** The focus is on something in the page, and nothing open is drawn over its middle. */
+const focusInView = (page: Page) =>
+  page.evaluate(() => {
+    const el = document.activeElement!;
+    const r = el.getBoundingClientRect();
+    return el !== document.body && el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  });
+
+const settingsButton = (page: Page) => page.locator('.top-actions .menu-trigger');
+const toolsButton = (page: Page) => page.locator('.reset-wrap > .menu-trigger');
+
+test('"Settings & options" and "Tools" are buttons that show a named group, not menus whose arrow keys do nothing', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // Both were role="menu" around radio groups and plain buttons, which axe calls critical.
+  await expect(page.locator('[role="menu"], [role="menuitem"], [role="none"], [aria-haspopup="menu"]')).toHaveCount(0);
+  for (const [button, name] of [[settingsButton(page), 'Settings & options'], [toolsButton(page), 'Tools']] as const) {
+    const panel = page.locator(`[id="${await button.getAttribute('aria-controls')}"]`);
+    await expect(panel).toHaveAttribute('role', 'group');
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await button.click();
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAccessibleName(name);
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+  }
+});
+
+test('keyboard: Esc in "Settings & options" gives the focus back to its button, and tabbing out of it closes it', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const gear = settingsButton(page);
+  const panel = page.locator('.top-actions .menu-pop');
+  await gear.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(panel.getByRole('radio', { name: 'Automatic (follows the system)' })).toBeFocused();
+  // The menu went with the focus on its theme switch, and the focus fell to the page.
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(gear).toBeFocused();
+  // Tabbed past its last item, it stayed open over the Converter button, which had the focus under it.
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  for (let i = 0; i < 6 && (await panel.evaluate((p) => p.contains(document.activeElement))); i++) await page.keyboard.press('Tab');
+  await expect(panel).toBeHidden();
+  await expect(gear).toHaveAttribute('aria-expanded', 'false');
+  expect(await focusInView(page)).toBe(true);
+});
+
+test('keyboard: Tab goes from "Tools" into its items, and Esc there or in "Reset app?" gives the focus back to it', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  // English is a setting, so "Reset app" can be chosen.
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const tools = toolsButton(page);
+  const items = page.locator('.reset-row');
+  await tools.focus();
+  await page.keyboard.press('Enter');
+  // The items came before their button: Tab left the page, and only Shift+Tab reached them.
+  await page.keyboard.press('Tab');
+  await expect(items.getByRole('button', { name: 'Hide the sections' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(items).toBeHidden();
+  await expect(tools).toBeFocused();
+  // "Reset app?" took its focused Cancel with it, on Esc and on Cancel, and the focus fell to the page.
+  const confirm = page.locator('.reset-confirm');
+  for (const key of ['Escape', 'Enter']) {
+    await page.keyboard.press('Enter');
+    await items.getByRole('button', { name: 'Reset app' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await page.keyboard.press(key);
+    await expect(confirm).toHaveCount(0);
+    await expect(tools).toBeFocused();
+  }
+});
+
+test('keyboard: the install steps take the focus, and they and the copy-link panel give it back to "Settings & options"', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await page.addInitScript(() => {
+    // The app's own steps rather than Chrome's install dialog, and copying blocked, for the panel with the link.
+    window.addEventListener('beforeinstallprompt', (e) => e.stopImmediatePropagation(), true);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('blocked')) } });
+  });
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const gear = settingsButton(page);
+  const choose = async (item: string) => {
+    await gear.focus();
+    await page.keyboard.press('Enter');
+    await page.locator('.top-actions .menu-pop button', { hasText: item }).focus();
+    await page.keyboard.press('Enter');
+  };
+  const steps = page.locator('.install-steps');
+  // The focus stayed on the menu's item, hidden, and fell to the page; Esc left the steps open.
+  await choose('Install the app');
+  await expect(steps.getByRole('heading', { name: 'How to install the app' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(steps).toHaveCount(0);
+  await expect(gear).toBeFocused();
+  // Close took the focus with it.
+  await choose('Install the app');
+  await steps.getByRole('button', { name: 'Close' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(steps).toHaveCount(0);
+  await expect(gear).toBeFocused();
+
+  const link = page.locator('input[name="share-link"]');
+  for (const close of ['Escape', '×']) {
+    await choose('Copy link');
+    await expect(link).toBeFocused();
+    if (close === '×') await page.locator('.panel-x').focus();
+    await page.keyboard.press(close === '×' ? 'Enter' : 'Escape');
+    await expect(link).toHaveCount(0);
+    await expect(gear).toBeFocused();
+  }
+});
+
+test('keyboard: "+ Add currency" gives the focus back to its button after a choice or Esc, and Tab closes its list', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const add = page.locator('.add-btn');
+  const list = page.locator('.add-pop');
+  // The focus fell to the page, and the button was drawn anew, beside the new last chip.
+  await add.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('huf');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => saved(page, 'ft.addedCurrencies')).toBe('["HUF"]');
+  await expect(add).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+  await expect(add).toBeFocused();
+  // Tab went on through the table with the list still open over it.
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(list).toHaveCount(0);
+  expect(await focusInView(page)).toBe(true);
+});
+
+test('keyboard: a fee platform and the tax page\'s currency give the focus back to their button after a choice', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // Each choice drew both fee steps anew, their buttons with them, and the focus fell to the page.
+  const platform = page.locator('.fee-step').first().getByRole('button');
+  await platform.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.type('fiverr');
+  await page.keyboard.press('Enter');
+  await expect(byName(page, 'fee-1')).toHaveValue('20');
+  await expect(platform).toBeFocused();
+
+  await page.goto('./?lang=en#taxes');
+  const currency = page.locator('.income-row-main .add-currency').first().getByRole('button');
+  await currency.focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('eur');
+  await page.keyboard.press('Enter');
+  await expect(currency).toHaveAccessibleName('Currency: EUR €');
+  await expect(currency).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.add-pop')).toHaveCount(0);
+  await expect(currency).toBeFocused();
+});
+
 test('fees: the monthly figures are not named "per hour"; only the hourly path is', async ({ page }) => {
   await openApp(page, { lang: 'en', tab: 'converter' });
   await expect(page.locator('dl.fee-summary')).toHaveAccessibleName('');
