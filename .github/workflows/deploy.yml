@@ -8,10 +8,9 @@ on:
     - cron: '30 11 * * 1-5'
   workflow_dispatch:
 
+# Read-only unless a job asks for more: each one gets only what its own steps need.
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: pages
@@ -21,8 +20,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write # to push the new rates; only the commit step gets the token
+      pages: read # configure-pages reads the site's settings
     steps:
+      # Without the token in .git/config, the packages npm installs and runs can't push.
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v5
         with:
           node-version: 26
@@ -38,13 +43,16 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Commit the new rates snapshots
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ! git diff --quiet -- src/data/rates.json src/data/market-rates.json; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git commit -m "Update exchange rates" -- src/data/rates.json src/data/market-rates.json
-            git pull --rebase --autostash
-            git push
+            remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+            git pull --rebase --autostash "$remote" "$GITHUB_REF"
+            git push "$remote" "HEAD:$GITHUB_REF"
           fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
@@ -55,9 +63,30 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # npm run rates keeps the saved rates when a download fails or looks wrong, so that new code still deploys. Once they
+  # are older than BNR's holidays or a missed update explain (a source that moved or stopped answering), this job fails
+  # the run, after the deploy, and GitHub emails the owner.
+  freshness:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The branch as the build job left it, with the rates it committed.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+      - run: node scripts/check-rates-age.mjs
