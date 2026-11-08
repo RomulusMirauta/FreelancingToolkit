@@ -49,9 +49,13 @@ export function isTaxIncome(v: unknown): v is TaxIncome {
     PERIODS.includes(x.per) && typeof x.currency === 'string' && KNOWN.has(x.currency);
 }
 
-/** Converts the entered income to lei per year: BNR reference rate, and the working time for hours, days and weeks. */
+/**
+ * Converts the entered income to lei per year: BNR reference rate, and the working time for hours, days and weeks.
+ * Rounded to the ban: through the billable hours, 4,050 a month comes out a hair under 48,600, which would put an
+ * income exactly on a threshold (CAS, the untaxed amount, the micro-enterprise ceiling) on the wrong side of it.
+ */
 export function annualLei(i: TaxIncome, work: WorkSettings): number {
-  return rescale(convert(i.amount, i.currency, 'RON', RATES), i.per, 'year', work);
+  return Math.round(rescale(convert(i.amount, i.currency, 'RON', RATES), i.per, 'year', work) * 100) / 100;
 }
 
 const isOptions = (v: unknown): v is TaxOptions => JSON.stringify(mergeTaxOptions(v)) === JSON.stringify(v);

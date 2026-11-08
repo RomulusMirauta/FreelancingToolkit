@@ -2,8 +2,10 @@ import { P, mw } from './params';
 
 /** CAS on independent activities and IP income: a fixed amount per band (minimum chosen base). */
 export function casBand(net: number): number {
-  if (net >= mw(P.PragCAS2)) return mw(P.PragCAS2) * P.CotaCAS;
-  if (net >= mw(P.PragCAS1)) return mw(P.PragCAS1) * P.CotaCAS;
+  // To the ban: revenue less expenses can come out a hair under a band it is exactly on (66,002.40 − 17,402.40).
+  const n = Math.round(net * 100) / 100;
+  if (n >= mw(P.PragCAS2)) return mw(P.PragCAS2) * P.CotaCAS;
+  if (n >= mw(P.PragCAS1)) return mw(P.PragCAS1) * P.CotaCAS;
   return 0;
 }
 

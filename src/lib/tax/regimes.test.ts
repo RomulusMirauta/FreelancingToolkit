@@ -41,6 +41,32 @@ describe('micro-enterprise ceiling', () => {
   });
 });
 
+describe('income-norm limit', () => {
+  it('revenue of exactly 25,000 EUR at the 2025 average rate is still allowed', () => {
+    expect(computeRegime('pfaNorm', 126_037.5, DEFAULT_TAX_OPTIONS).notice).toEqual({ kind: 'normLimit', overLimit: false });
+    expect(computeRegime('pfaNorm', 126_037.51, DEFAULT_TAX_OPTIONS).notice).toEqual({ kind: 'normLimit', overLimit: true });
+  });
+});
+
+describe('PFA net income exactly on a CAS band', () => {
+  it('revenue minus expenses of exactly 12 or 24 minimum wages pays that band, whatever the bani', () => {
+    const off: string[] = [];
+    for (const [monthly, cas] of [[4050, 12_150], [8100, 24_300]] as const) {
+      for (let bani = 1; bani <= 200_000; bani++) {
+        // A year of (monthly + expenses) a month, to the ban, as the tax page passes it.
+        const revenue = (12 * (100 * monthly + bani)) / 100;
+        if (pfaYear(revenue, { expenses: 12 * (bani / 100) }).cas !== cas) off.push(`${monthly} + ${bani / 100}`);
+      }
+    }
+    expect(off.slice(0, 10)).toEqual([]);
+  });
+
+  it('on the card: 5,500.20 a month less 1,450.20 of expenses', () => {
+    const o = { ...DEFAULT_TAX_OPTIONS, pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1450.2 } };
+    expect(computeRegime('pfaReal', 66_002.4, o).lines.find((l) => l.key === 'cas')!.annual).toBe(12_150);
+  });
+});
+
 describe('tax board regimes', () => {
   it('with default options, match the comparison engine (and so the golden file)', () => {
     for (const monthly of Object.values(golden.scenario_monthly_gross)) {

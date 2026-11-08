@@ -90,7 +90,8 @@ export interface RegimeResult {
 
 const CAS_KEYS = ['CotaCAS', 'PragCAS1', 'PragCAS2', 'SalMinRef'];
 const CASS_TIER_KEYS = ['CotaCASS', 'CASSPrag1', 'CASSPrag2', 'CASSPrag3', 'SalMinRef'];
-export const NORM_LIMIT_LEI = P.PlafonNormaEUR * P.CursEURMediu2025;
+// Rounded to the ban like the micro-enterprise ceiling, so a future rate can't leave it a hair off (2026's is exact).
+export const NORM_LIMIT_LEI = Math.round(P.PlafonNormaEUR * P.CursEURMediu2025 * 100) / 100;
 
 /** The range of the optional sick-leave insurance over the year: the lowest month and the highest. */
 export const SICK_LEAVE_MONTHLY_MIN = P.CotaConcediiPFA * P.SalMin;
