@@ -4,7 +4,7 @@ import { compareYear } from './compare';
 import { copyrightYear } from './copyright';
 import { employeeMonth, employeeYear } from './employee';
 import { pfaYear } from './pfa';
-import { BOARD_REGIMES, DEFAULT_TAX_OPTIONS, computeRegime, computeSideJob, mergeTaxOptions } from './regimes';
+import { BOARD_REGIMES, DEFAULT_TAX_OPTIONS, computeRegime, computeSideJob, keptShare, mergeTaxOptions } from './regimes';
 import { mandateMonth, srlYear } from './srl';
 
 describe('salary under the minimum base', () => {
@@ -31,6 +31,16 @@ describe('salary under the minimum base', () => {
     const lines = computeRegime('employee', 36_000, DEFAULT_TAX_OPTIONS).lines.map((l) => l.key);
     expect(lines).toContain('employerTopUp');
     expect(computeRegime('employee', 60_000, DEFAULT_TAX_OPTIONS).lines.map((l) => l.key)).not.toContain('employerTopUp');
+  });
+});
+
+describe('dependants that are not a whole number from 0 to 4', () => {
+  it('still give a net: whole people count, and 4 is the most', () => {
+    // 5,000 a month is under the minimum wage + 2,000, where the deduction table is read; 2.5 gave NaN.
+    for (const dependants of [2.5, -1, Number.NaN]) expect(Number.isFinite(employeeMonth(5000, 1, { dependants }).net), String(dependants)).toBe(true);
+    expect(employeeMonth(5000, 1, { dependants: 2.5 })).toEqual(employeeMonth(5000, 1, { dependants: 2 }));
+    expect(employeeMonth(5000, 2, { dependants: 7 })).toEqual(employeeMonth(5000, 2, { dependants: 4 }));
+    expect(employeeMonth(5000, 1, { dependants: -1 })).toEqual(employeeMonth(5000, 1));
   });
 });
 
@@ -158,6 +168,47 @@ describe('tax board regimes', () => {
     const merged = mergeTaxOptions({ employee: { dependants: 2, under26: 'yes' }, bogus: {} });
     expect(merged.employee).toEqual({ dependants: 2, under26: false, schoolChildren: 0 });
     expect(merged.pfaNorm).toEqual(DEFAULT_TAX_OPTIONS.pfaNorm);
+  });
+
+  it('merging saved options keeps people only as whole numbers in the pickers\' ranges, as the address does', () => {
+    const employee = (saved: object) => mergeTaxOptions({ employee: saved }).employee;
+    // From an old link or edited storage: 2.5 dependants made the CIM card NaN, a billion children cancelled the tax.
+    expect(employee({ dependants: 2.5, under26: true, schoolChildren: 11 })).toEqual({ dependants: 0, under26: true, schoolChildren: 0 });
+    expect(employee({ dependants: 7, under26: false, schoolChildren: 999_999_999 })).toEqual(DEFAULT_TAX_OPTIONS.employee);
+    expect(employee({ dependants: 1.5, under26: false, schoolChildren: 0.5 })).toEqual(DEFAULT_TAX_OPTIONS.employee);
+    for (let n = 0; n <= 4; n++) expect(employee({ dependants: n }).dependants).toBe(n);
+    for (let n = 0; n <= 10; n++) expect(employee({ schoolChildren: n }).schoolChildren).toBe(n);
+    // Amounts keep their cents.
+    expect(mergeTaxOptions({ pfaReal: { expensesMonthly: 1450.2 } }).pfaReal.expensesMonthly).toBe(1450.2);
+  });
+
+  it('the bar of what you keep is the take-home over the gross: expenses are spent, not kept', () => {
+    // 30,000 a month with 20,000 of expenses: 6,277.50 a month on the PFA is 20.9% of the gross (it said 87.6%) and
+    // 6,651 on the SRL without salary 22.2% (it said 88.8%).
+    const o = {
+      ...DEFAULT_TAX_OPTIONS,
+      pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 20_000 },
+      srlProfitNoSalary: { expensesMonthly: 20_000 },
+    };
+    expect(keptShare(computeRegime('pfaReal', 360_000, o), 360_000)).toBeCloseTo(75_330 / 360_000, 9);
+    expect(keptShare(computeRegime('srlProfitNoSalary', 360_000, o), 360_000)).toBeCloseTo(79_812 / 360_000, 9);
+  });
+
+  it('without expenses, what you keep is what the taxes leave, on every card', () => {
+    for (const annual of [120_000, 333_265.92]) {
+      for (const regime of BOARD_REGIMES) {
+        const r = computeRegime(regime, annual, DEFAULT_TAX_OPTIONS);
+        expect(keptShare(r, annual), regime).toBeCloseTo(1 - r.taxShare, 9);
+      }
+    }
+  });
+
+  it('a loss, or no income, keeps nothing', () => {
+    // 1,500 a month on the income norm: its taxes are more than that, a take-home of −322.50 a month.
+    const norm = computeRegime('pfaNorm', 18_000, DEFAULT_TAX_OPTIONS);
+    expect(norm.takeHome / 12).toBeCloseTo(-322.5, 6);
+    expect(keptShare(norm, 18_000)).toBe(0);
+    for (const regime of BOARD_REGIMES) expect(keptShare(computeRegime(regime, 0, DEFAULT_TAX_OPTIONS), 0), regime).toBe(0);
   });
 
   it('CIM + PFA: salary of at least 6 minimum wages a year waives the CASS minimum on the PFA', () => {

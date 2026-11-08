@@ -9,7 +9,8 @@ import { CurrencyCode } from '../../lib/currency/CurrencyCode';
 import { useT } from '../../lib/i18n';
 import { PARAMS_CHECKED_ON, PARAMS_YEAR } from '../../lib/tax/params';
 import {
-  BOARD_REGIMES, DEFAULT_TAX_OPTIONS, MAIN_REGIMES, OTHER_REGIMES, computeRegime, mergeTaxOptions, type BoardRegime, type RegimeResult, type TaxOptions,
+  BOARD_REGIMES, DEFAULT_TAX_OPTIONS, MAIN_REGIMES, OTHER_REGIMES, TAX_OPTION_MAX, computeRegime, mergeTaxOptions,
+  type BoardRegime, type RegimeResult, type TaxOptions,
 } from '../../lib/tax/regimes';
 import { solveForTakeHome } from '../../lib/tax/solve';
 import { AmountInput } from '../../lib/ui/AmountInput';
@@ -87,8 +88,6 @@ const OPTION_PARAMS: readonly [string, keyof TaxOptions, string][] = [
   ['expenses_profit', 'srlProfitNoSalary', 'expensesMonthly'],
   ['copyright_insured', 'copyright', 'insured'],
 ];
-/** The pickers' ranges: 0-4 dependants ("4+"), 0-10 children; both whole numbers. */
-const OPTION_MAX: Record<string, number> = { dependants: 4, schoolChildren: 10 };
 
 const optionValue = (o: TaxOptions, regime: keyof TaxOptions, field: string) => (o[regime] as unknown as Record<string, unknown>)[field];
 
@@ -108,7 +107,7 @@ export const OPTIONS_QUERY: UrlQuery<TaxOptions> = {
       if (typeof fallback === 'boolean') v = s === '1' ? true : s === '0' ? false : null;
       else if (typeof fallback === 'number') {
         const n = numberParam(s);
-        const max = OPTION_MAX[f];
+        const max = TAX_OPTION_MAX[f];
         v = n !== null && (max === undefined || (Number.isInteger(n) && n <= max)) ? n : null;
       } else v = s === 'cim' || s === 'mandate' ? s : null;
       out[r]![f] = v ?? fallback;
@@ -135,7 +134,9 @@ export const REF_QUERY: UrlQuery<BoardRegime> = {
 export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncome: (i: TaxIncome) => void; work: WorkSettings }) {
   const { taxes: t, board: tb, locale } = useT();
   const phone = useIsPhone();
-  const [options, setOptions] = usePersistentState('ft.taxOptions', DEFAULT_TAX_OPTIONS, isOptions);
+  // Saved by an older version (an option added or gone since), or with one option the card can't take: merged, so the
+  // others are kept rather than all reset.
+  const [options, setOptions] = usePersistentState('ft.taxOptions', DEFAULT_TAX_OPTIONS, isOptions, mergeTaxOptions);
   useUrlQuery(OPTIONS_QUERY, options);
   const [reference, setReference] = usePersistentState<BoardRegime>('ft.taxRef', 'employee', isRegime);
   useUrlQuery(REF_QUERY, reference);

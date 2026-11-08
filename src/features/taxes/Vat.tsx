@@ -18,6 +18,19 @@ export const VAT_QUERY: UrlQuery<number> = {
   defaults: 100,
 };
 
+/**
+ * Where the income that counts stands against the VAT threshold, in whole percent. Over it means above it: exactly
+ * 395,000 RON is still within (Cod fiscal art. 310 alin. (1) "nu depășește", alin. (6)). The percentage is rounded
+ * towards its side of the threshold, so it never reads 100% on the wrong side: just under it 99%, just over it 101%
+ * (and 79% just under 80%, where the bar turns amber). In bani, so a whole percentage stays whole: 0.57 × 100 is
+ * 56.99999999999999.
+ */
+export function vatReading(counted: number): { pct: number; state: 'under' | 'near' | 'over' } {
+  const pct = Math.round(counted * 100) / P.PlafonTVA;
+  if (pct > 100) return { pct: Math.ceil(pct), state: 'over' };
+  return { pct: Math.floor(pct), state: pct >= 80 ? 'near' : 'under' };
+}
+
 /** VAT in short: the exemption threshold against the income that counts, and what changes by where the client is. */
 export function Vat({ annual }: { annual: number }) {
   const t = useT().vat;
@@ -27,14 +40,14 @@ export function Vat({ annual }: { annual: number }) {
   // Only supplies located in Romania count (Cod fiscal art. 310 alin. (2)); the app can't tell, so it asks.
   const counted = annual * romaniaPct / 100;
   const share = counted / P.PlafonTVA;
-  const over = share >= 1;
-  const state = over ? 'over' : share >= 0.8 ? 'near' : 'under';
+  const { pct, state } = vatReading(counted);
+  const shown = formatNumber(pct, 0);
   const threshold = formatNumber(P.PlafonTVA, 0);
   const rate = formatNumber(P.CotaTVA * 100);
   const sources = [paramInfo('CotaTVA'), paramInfo('PlafonTVA')];
 
   return (
-    <Fold id="vat" title={t.title} summary={t.foldSummary(formatNumber(share * 100, 0))} className="other-income vat">
+    <Fold id="vat" title={t.title} summary={t.foldSummary(shown)} className="other-income vat">
       <p className="muted small">{t.intro(rate, threshold)}</p>
 
       {/* Label above, the bar, its scale, then the reading: colour and an icon both carry the state. */}
@@ -63,7 +76,7 @@ export function Vat({ annual }: { annual: number }) {
         </label>
         <div className="vat-meter-head">
           <span>{t.meterLabel}</span>
-          <strong>{formatNumber(share * 100, 0)}%</strong>
+          <strong>{shown}%</strong>
         </div>
         <div
           className="vat-bar"
@@ -71,7 +84,7 @@ export function Vat({ annual }: { annual: number }) {
           aria-valuemin={0}
           aria-valuemax={P.PlafonTVA}
           aria-valuenow={Math.min(Math.round(counted), P.PlafonTVA)}
-          aria-valuetext={`${formatNumber(share * 100, 0)}%`}
+          aria-valuetext={`${shown}%`}
           aria-label={t.meterLabel}
         >
           <span style={{ width: `${Math.min(share, 1) * 100}%` }} />
@@ -80,8 +93,8 @@ export function Vat({ annual }: { annual: number }) {
         <p>
           <span className={`state-icon ${state}`} aria-hidden="true">{state === 'over' ? '!' : state === 'near' ? '!' : '✓'}</span>
           <span>
-            <strong>{t.meter(formatMoney(counted), formatNumber(share * 100, 0), threshold)}</strong>
-            <span className="vat-verdict">{over ? t.over : share >= 0.8 ? t.near : t.under}</span>
+            <strong>{t.meter(formatMoney(counted), shown, threshold)}</strong>
+            <span className="vat-verdict">{t[state]}</span>
           </span>
         </p>
       </div>

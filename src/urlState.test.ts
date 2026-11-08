@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { URL_QUERIES } from './urlState';
 import { SOURCE_PARAMS } from './features/converter/sourceQuery';
 import { APP_KEYS, APP_QUERY, PAGE_KEYS, PAGE_QUERY } from './lib/ui/settingsKeys';
-import { DEFAULT_TAX_OPTIONS } from './lib/tax/regimes';
+import { DEFAULT_TAX_OPTIONS, mergeTaxOptions } from './lib/tax/regimes';
 import type { UrlQuery } from './lib/ui/urlQuery';
 
 // The app's source files, as text.
@@ -137,5 +137,33 @@ describe('a broken address value is not used', () => {
     expect(o.employee.schoolChildren).toBe(2);
     expect(o.srlMicro.ownerPay).toBe('cim');
     expect(o.pfaReal.sickLeave).toBe(false);
+  });
+});
+
+describe('saved card options', () => {
+  const q = () => byKey('ft.taxOptions');
+
+  it('a number of people that isn\'t whole or is past the picker\'s range is refused, as in the address', () => {
+    // Stored by an old link (?share=1&taxOptions={…}) or edited by hand: it was valid, went into the address, and
+    // 2.5 dependants made the CIM card NaN.
+    for (const employee of [
+      { dependants: 2.5, under26: false, schoolChildren: 0 },
+      { dependants: 0, under26: false, schoolChildren: 11 },
+      { dependants: 0, under26: false, schoolChildren: 1e8 },
+    ]) expect(q().isValid({ ...DEFAULT_TAX_OPTIONS, employee }), JSON.stringify(employee)).toBe(false);
+  });
+
+  it('an older shape is not valid as it is, and merges into a valid value with every option it had', () => {
+    // Saved before an option existed (`schoolChildren` here), with one since dropped (`bonus`).
+    const older = {
+      ...DEFAULT_TAX_OPTIONS,
+      employee: { dependants: 2, under26: true },
+      pfaReal: { ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1500, bonus: 1 },
+    };
+    expect(q().isValid(older)).toBe(false);
+    const merged = mergeTaxOptions(older);
+    expect(q().isValid(merged)).toBe(true);
+    expect(merged.employee).toEqual({ dependants: 2, under26: true, schoolChildren: 0 });
+    expect(merged.pfaReal).toEqual({ ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1500 });
   });
 });

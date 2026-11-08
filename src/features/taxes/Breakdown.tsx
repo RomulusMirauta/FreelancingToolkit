@@ -32,8 +32,8 @@ export function Breakdown({ lines, caption }: { lines: Line[]; caption: string }
               {l.label}
               {l.sources && <Sources keys={l.sources} />}
             </th>
-            <td>{amount(l, l.annual / 12)}</td>
-            <td>{amount(l, l.annual)}</td>
+            <td>{lineAmount(l.kind, l.annual / 12)}</td>
+            <td>{lineAmount(l.kind, l.annual)}</td>
           </tr>
         ))}
       </tbody>
@@ -41,8 +41,14 @@ export function Breakdown({ lines, caption }: { lines: Line[]; caption: string }
   );
 }
 
-function amount(l: Line, x: number): string {
-  return (l.kind === 'minus' && x !== 0 ? '−' : '') + formatMoney(Math.abs(x));
+/**
+ * A line's amount: one taken off shows a minus, and any other keeps its own (a negative take-home, a loss), as on
+ * the card. Under half a ban it is 0,00, never −0,00.
+ */
+export function lineAmount(kind: Line['kind'], x: number): string {
+  if (Math.abs(x) < 0.005) return formatMoney(0);
+  const negative = kind === 'minus' ? x > 0 : x < 0;
+  return (negative ? '−' : '') + formatMoney(Math.abs(x));
 }
 
 /** Small "§" links to the official sources of the parameters, one per document, with the legal basis on hover. */

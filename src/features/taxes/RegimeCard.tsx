@@ -2,7 +2,7 @@ import { useT } from '../../lib/i18n';
 import { P } from '../../lib/tax/params';
 import type { ConsFacts } from '../../lib/i18n/strings';
 import {
-  NORM_LIMIT_LEI, SICK_LEAVE_MONTHLY_MAX, SICK_LEAVE_MONTHLY_MIN, ownerSalaryTaxesMonthly,
+  NORM_LIMIT_LEI, SICK_LEAVE_MONTHLY_MAX, SICK_LEAVE_MONTHLY_MIN, keptShare, ownerSalaryTaxesMonthly,
   type BoardRegime, type Notice, type RegimeResult, type TaxOptions,
 } from '../../lib/tax/regimes';
 import { contributionFloor } from '../../lib/tax/employee';
@@ -33,13 +33,14 @@ interface Props {
 }
 
 /** One regime: the monthly take-home up top with its difference to the reference, then options and details. */
-export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome, isBest, notRanked = false, options, setOptions, onSetReference, canBeReference = true }: Props) {
+export function RegimeCard({ regime, annual, result, referenceRegime, referenceTakeHome, isBest, notRanked = false, options, setOptions, onSetReference, canBeReference = true }: Props) {
   const t = useT();
   const tb = t.board;
   const isRef = regime === referenceRegime;
   const diff = (result.takeHome - referenceTakeHome) / 12;
   const sign = Math.abs(diff) < 0.5 ? 'eq' : diff > 0 ? 'pos' : 'neg';
   const pct = (x: number) => `${formatNumber(x * 100, 1)}%`;
+  const kept = keptShare(result, annual);
 
   return (
     <article className={`regime${isBest ? ' is-best' : ''}${isRef ? ' is-ref' : ''}`} aria-labelledby={`rg-${regime}`}>
@@ -77,8 +78,8 @@ export function RegimeCard({ regime, result, referenceRegime, referenceTakeHome,
             <span className="vs"> {tb.vsRef(t.regimes[referenceRegime])}</span>
           </span>
         )}
-        <span className="kept-meter" role="img" aria-label={tb.keptBar(pct(1 - result.taxShare))} title={tb.keptBar(pct(1 - result.taxShare))}>
-          <span style={{ width: `${Math.max(0, Math.min(1, 1 - result.taxShare)) * 100}%` }} />
+        <span className="kept-meter" role="img" aria-label={tb.keptBar(pct(kept))} title={tb.keptBar(pct(kept))}>
+          <span style={{ width: `${kept * 100}%` }} />
         </span>
         <dl className="regime-stats">
           <div><dt>{tb.statYear}</dt><dd>{formatMoney(result.takeHome)} RON</dd></div>
@@ -163,7 +164,7 @@ function Options({ regime, options, setOptions }: { regime: BoardRegime; options
           <NumberField label={to.expensesMonthly} value={o.expensesMonthly} onChange={(v) => set('srlMicro', { expensesMonthly: v })} suffix={monthSuffix} />
           <Toggle label={to.ownerEmployed} checked={o.ownerEmployed} onChange={(v) => set('srlMicro', { ownerEmployed: v })} />
           {o.ownerEmployed && <OwnerPayChoice value={o.ownerPay} onChange={(v) => set('srlMicro', { ownerPay: v })} />}
-          <Toggle label={to.otherEmployee} checked={o.otherEmployee} onChange={(v) => set('srlMicro', { otherEmployee: v })} />
+          <Toggle label={to.otherEmployee} hint={to.otherEmployeeHint} checked={o.otherEmployee} onChange={(v) => set('srlMicro', { otherEmployee: v })} />
           <Toggle label={to.singleMicro} checked={o.singleMicro} onChange={(v) => set('srlMicro', { singleMicro: v })} />
         </div>
       );

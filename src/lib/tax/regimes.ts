@@ -39,7 +39,13 @@ export const DEFAULT_TAX_OPTIONS: TaxOptions = {
   copyright: { insured: false },
 };
 
-/** Keeps saved options usable after the shape changes: unknown keys are dropped, missing ones defaulted. */
+/** The pickers' ranges: 0-4 dependants ("4+"), 0-10 children; both whole numbers. */
+export const TAX_OPTION_MAX: Record<string, number> = { dependants: 4, schoolChildren: 10 };
+
+/**
+ * Keeps saved options usable after the shape changes: unknown keys are dropped, missing ones defaulted. A value
+ * the card can't take (2.5 dependants, from an old link or edited storage) is defaulted too, as in the address.
+ */
 export function mergeTaxOptions(saved: unknown): TaxOptions {
   const out = structuredClone(DEFAULT_TAX_OPTIONS) as unknown as Record<string, Record<string, unknown>>;
   if (typeof saved !== 'object' || saved === null) return out as unknown as TaxOptions;
@@ -49,7 +55,9 @@ export function mergeTaxOptions(saved: unknown): TaxOptions {
     for (const [k, v] of Object.entries(defaults)) {
       const sv = (s as Record<string, unknown>)[k];
       const okString = typeof sv !== 'string' || (k === 'ownerPay' && (sv === 'cim' || sv === 'mandate'));
-      if (typeof sv === typeof v && okString && (typeof sv !== 'number' || isSaneAmount(sv))) defaults[k] = sv;
+      const max = TAX_OPTION_MAX[k];
+      const okNumber = typeof sv !== 'number' || (isSaneAmount(sv) && (max === undefined || (Number.isInteger(sv) && sv <= max)));
+      if (typeof sv === typeof v && okString && okNumber) defaults[k] = sv;
     }
   }
   return out as unknown as TaxOptions;
@@ -123,6 +131,14 @@ export function ownerSalaryTaxesMonthly(): number {
 }
 
 const share = (paid: number, of: number) => (of > 0 ? paid / of : 0);
+
+/**
+ * The share of the gross amount taken home, for the bar on each card. Not 1 − `taxShare`: expenses are spent, not
+ * kept. Between 0 and 1: a loss, or no income at all, keeps nothing.
+ */
+export function keptShare(r: RegimeResult, annual: number): number {
+  return annual > 0 ? Math.min(1, Math.max(0, r.takeHome / annual)) : 0;
+}
 
 /**
  * One regime, one yearly amount (gross salary for the employee, revenue for the rest). `eurPerYear`: the same amount

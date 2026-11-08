@@ -168,6 +168,42 @@ test('income norm: an income in EUR is compared with 25,000 EUR, and net to gros
   await expect(rows.locator(mark)).toHaveCount(0);
 });
 
+const regimeCard = (page: Page, regime: string) => page.locator('article.regime').filter({ has: page.locator(`#rg-${regime}`) });
+
+test('tax cards: the bar of what you keep follows the take-home, and the details keep the minus of a loss', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  // 30,000 RON a month with 20,000 of expenses: 6,277.50 a month is 20.9% of the gross (the bar said 87.6%).
+  await page.goto('./?lang=en&income=30000&income_currency=RON&income_per=month&expenses_pfa=20000#taxes');
+  const pfa = regimeCard(page, 'pfaReal');
+  await expect(pfa.locator('.take-home')).toContainText('6,277.50');
+  await expect(pfa.locator('.kept-meter')).toHaveAttribute('aria-label', 'You keep 20.9% of the gross');
+  // 1,500 RON a month: the income norm's taxes are more than that. The bar said −21.5%, the details 322.50 a month.
+  await page.goto('./?lang=en&income=1500&income_currency=RON&income_per=month#taxes');
+  const norm = regimeCard(page, 'pfaNorm');
+  await expect(norm.locator('.kept-meter')).toHaveAttribute('aria-label', 'You keep 0% of the gross');
+  await expect(norm.locator('.regime-details tr.total td')).toHaveText(['−322.50', '−3,870.00']);
+  // The micro-enterprise counts no pay for "Another employee", and says where it goes.
+  await expect(regimeCard(page, 'srlMicro').locator('label.toggle', { hasText: 'Another employee' }))
+    .toHaveAttribute('title', 'Their pay and the taxes on it are not counted: add them to the deductible expenses');
+});
+
+test('VAT: just under the threshold the meter reads 99%, exactly on it 100% and still within, a ban over it 101%', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  const meter = page.locator('.vat-meter');
+  for (const [income, pct, state, verdict] of [
+    ['394999.99', '99%', 'near', 'You are close to the threshold'],
+    ['395000', '100%', 'near', 'You are close to the threshold'],
+    ['395000.01', '101%', 'over', 'You are over the threshold'],
+  ] as const) {
+    await page.goto(`./?lang=en&income=${income}&income_currency=RON&income_per=year#taxes`);
+    await expect(meter).toHaveClass(new RegExp(state));
+    await expect(meter.locator('.vat-meter-head strong')).toHaveText(pct);
+    await expect(meter.locator('.vat-bar')).toHaveAttribute('aria-valuetext', pct);
+    await expect(meter.locator('p strong')).toContainText(`${pct} of the 395,000 RON threshold`);
+    await expect(meter.locator('.vat-verdict')).toContainText(verdict);
+  }
+});
+
 /** A toast waiting for the page, the way a reload hands one over. */
 const withToast = (page: Page) =>
   page.addInitScript(() => sessionStorage.setItem('ft-toast-after-reload', JSON.stringify([{ id: 'offline' }])));
@@ -432,4 +468,21 @@ test('shared link: "Keep the link’s" and "Reset app" end it, and a reload brin
   await page.reload();
   await drawn(page);
   await expect(banner).toHaveCount(0);
+});
+
+test('card options saved by an older version, or with one the card can\'t take, keep the others', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  // Saved before "Children in school" existed, with 2.5 dependants from an old link. An older shape sent every option
+  // back to its default and deleted the saved ones; 2.5 dependants, saved in the current shape, made the CIM card NaN.
+  await page.evaluate(() => localStorage.setItem('ft.taxOptions', JSON.stringify({
+    employee: { dependants: 2.5, under26: true },
+    pfaReal: { expensesMonthly: 1500, hasSalary: false, pensioner: false, sickLeave: false },
+  })));
+  // The installed app opens on the bare address. The income is low, where the dependants change the net.
+  await page.goto('./?lang=en&income=5000&income_currency=RON&income_per=month#taxes');
+  await expect(regimeCard(page, 'pfaReal').locator('input[name="amount"]')).toHaveValue('1,500');
+  await expect(regimeCard(page, 'employee').locator('.take-home')).not.toContainText('NaN');
+  await expect.poll(() => saved(page, 'ft.taxOptions')).toContain('"employee":{"dependants":0,"under26":true,"schoolChildren":0}');
+  await expect(page).toHaveURL(/expenses_pfa=1500/);
+  await expect(page).not.toHaveURL(/dependants=/);
 });

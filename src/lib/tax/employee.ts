@@ -40,7 +40,8 @@ export function employeeMonth(gross: number, half: Half, opts: EmployeeOptions =
   const cas = rnd(base * P.CotaCAS);
   const cass = rnd(base * P.CotaCASS);
 
-  let pct = [0.2, 0.25, 0.3, 0.35, 0.45][Math.min(dependants, 4)]!;
+  // A whole number of people from 0 to 4 ("4+"): any other count would read outside the table, and the net be NaN.
+  let pct = [0.2, 0.25, 0.3, 0.35, 0.45][Math.min(Math.max(Math.trunc(dependants) || 0, 0), 4)]!;
   if (gross > MW + P.DedPlafon) pct = 0;
   else if (gross > MW) pct = Math.max(0, pct - 0.005 * Math.ceil((gross - MW) / 50));
   let deduction = rnd(pct * MW) + P.DedCopil * schoolChildren;
