@@ -77,7 +77,16 @@ export function roundMoney(x: number): number {
  * Returns null for anything that is not a non-negative number.
  */
 export function parseAmount(text: string, as: NumberLang = lang): number | null {
-  let s = text.replace(/[\s ']/g, '');
+  const s = plainDigits(text, as);
+  if (s === null) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** What parseAmount reads, written plainly: its digits as they are, "." for the decimal mark ("1.200,50" → "1200.50"). */
+function plainDigits(text: string, as: NumberLang): string | null {
+  // Swiss amounts group with ’ (1’234.50).
+  let s = text.replace(/[\s '’]/g, '');
   if (s === '') return null;
   const lastComma = s.lastIndexOf(',');
   const lastDot = s.lastIndexOf('.');
@@ -90,9 +99,16 @@ export function parseAmount(text: string, as: NumberLang = lang): number | null 
     const groupsThousands = as === 'ro' ? /^\d{1,3}(\.\d{3})+$/ : /^\d{1,3}(\.\d{3}){2,}$/;
     if (groupsThousands.test(s)) s = s.replace(/\./g, '');
   }
-  if (!/^\d*\.?\d*$/.test(s) || s === '.') return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return /^\d*\.?\d*$/.test(s) && s !== '.' ? s : null;
+}
+
+/**
+ * An amount as it comes when copied, without the currency sign, code or unit around it: "$1,234.56", "USD 2,500.00",
+ * "1.234,56 lei", "12,5%". A decimal mark just before the first digit stays (".50"), and so does everything between
+ * the first and the last digit, so "1e3" or a date still doesn't read as an amount.
+ */
+export function bareAmount(text: string): string {
+  return text.replace(/^\D*?(?=[.,]?\d)|\D+$/g, '');
 }
 
 /** The language's marks: Romanian groups with "." and uses "," for decimals, English the other way round. */
@@ -135,4 +151,62 @@ export function groupTyped(text: string, caret = text.length, as: NumberLang = l
     if (out[pos] !== group) kept++;
   }
   return { text: out, caret: pos };
+}
+
+/**
+ * Text put into a field at once: pasted, dropped, or typed in whole by a phone keyboard's clipboard strip, which
+ * sends it as one `insertText` with no paste event.
+ */
+export const isAtOnce = (e: { inputType?: string; data?: string | null }): boolean =>
+  e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop' || (e.inputType === 'insertText' && (e.data?.length ?? 0) > 1);
+
+/**
+ * A keystroke in an amount: the thousands marks redone around it (groupTyped). A digit typed into a field that shows
+ * 0, before or after the 0, replaces it, and the other language's decimal key ("." in Romanian) types a decimal mark.
+ */
+export function typedAmount(before: string, after: string, caret: number, key: string | null, as: NumberLang = lang): { text: string; caret: number } {
+  const { group, decimal } = numberMarks(as);
+  if (before === '0' && /^(0\d|\d0)$/.test(after)) return { text: after[0] === '0' ? after[1]! : after[0]!, caret: 1 };
+  if (key === group && caret > 0) after = after.slice(0, caret - 1) + decimal + after.slice(caret);
+  return groupTyped(after, caret, as);
+}
+
+/**
+ * Text put into an amount at once (isAtOnce), read as a whole: in either convention, without the currency sign, code
+ * or unit around it (bareAmount). Over the whole field, or over a field that shows 0, it becomes that amount, rounded
+ * to 2 decimals ("$1,234.56" → 1.234,56 in Romanian); next to digits already there, its digits join them, so the
+ * field's own thousands marks are never read as decimals (0 pasted after 10.000 → 100.000). `replaced` is the
+ * selection the text went over, noted just before the change; without it, or when the change doesn't match it, the
+ * change is found by comparing the texts. `notAmount`: text that doesn't read as an amount ("1e3"), to be refused.
+ */
+export function pastedAmount(
+  before: string,
+  after: string,
+  caret: number,
+  replaced: readonly [number, number] | null,
+  as: NumberLang = lang,
+): { text: string; caret: number } | { notAmount: string } {
+  let [start, end] = replaced ?? [0, -1];
+  const fits = start <= end && end <= before.length && after.length >= start + before.length - end &&
+    after.startsWith(before.slice(0, start)) && after.endsWith(before.slice(end));
+  if (!fits) {
+    // The common start and end of the two texts, as insertedText finds them.
+    start = 0;
+    while (start < before.length && start < after.length && before[start] === after[start]) start++;
+    let same = 0;
+    while (same < before.length - start && same < after.length - start && before.at(-1 - same) === after.at(-1 - same)) same++;
+    end = before.length - same;
+  }
+  const added = after.slice(start, after.length - (before.length - end));
+  // Nothing to read (a mark, a space): as if typed.
+  if (!/\d/.test(added)) return groupTyped(after, caret, as);
+  const digits = plainDigits(bareAmount(added), as);
+  if (digits === null) return { notAmount: added };
+  const head = before === '0' ? '' : before.slice(0, start);
+  const tail = before === '0' ? '' : before.slice(end);
+  const n = Number(digits);
+  if (head === '' && tail === '' && Number.isFinite(n)) return { text: formatEditableGrouped(n, as), caret: Infinity };
+  // Beside other digits, or too long for a number (the field then refuses it as too big): its digits as if typed.
+  const typed = digits.replace('.', numberMarks(as).decimal);
+  return groupTyped(head + typed + tail, head.length + typed.length, as);
 }

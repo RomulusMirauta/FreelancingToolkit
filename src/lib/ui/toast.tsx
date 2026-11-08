@@ -64,6 +64,11 @@ export function notifyRestoredAfterReload(): void {
 
 const cut = (text: string) => (text.length > 24 ? `${text.slice(0, 23)}…` : text);
 
+/** Text with digits put into an amount at once that still isn't one ("1e3", a date): refused like a pasted word. */
+export function notifyNotNumber(text: string): void {
+  notify('notNumber', cut(text.trim()));
+}
+
 /** A paste with no digit at all into an amount ("thirty"): refused, with a word in the corner. */
 export function refuseNonNumberPaste(e: ClipboardEvent<HTMLInputElement>): void {
   const text = e.clipboardData.getData('text').trim();

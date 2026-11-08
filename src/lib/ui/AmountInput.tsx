@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useLang } from '../i18n';
-import { MAX_WHOLE_DIGITS, formatEditableGrouped, groupTyped, numberMarks, parseAmount } from './numbers';
-import { notifyTooBig, refuseNonNumberPaste, refuseWord } from './toast';
+import { MAX_WHOLE_DIGITS, formatEditableGrouped, isAtOnce, numberMarks, parseAmount, pastedAmount, typedAmount } from './numbers';
+import { notifyNotNumber, notifyTooBig, refuseNonNumberPaste, refuseWord } from './toast';
 
 /**
  * A money amount that groups thousands as it is typed (27.781,52 in Romanian, 27,781.52 in English).
@@ -13,6 +13,9 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
   const [text, setText] = useState(() => formatEditableGrouped(value));
   const caret = useRef<number | null>(null);
   const shownLang = useRef(lang);
+  /** The selection a change replaces, noted on beforeinput: comparing the texts misplaces a paste that starts like the
+      amount it replaces (1.5 over 1.000 read as 15). */
+  const replaced = useRef<[number, number] | null>(null);
 
   // Follow changes from outside (reset, the converter's link, a language switch).
   useEffect(() => {
@@ -28,6 +31,13 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
     if (caret.current !== null && ref.current === document.activeElement) ref.current?.setSelectionRange(caret.current, caret.current);
     caret.current = null;
   });
+
+  useEffect(() => {
+    const input = ref.current!;
+    const note = () => { replaced.current = [input.selectionStart ?? 0, input.selectionEnd ?? 0]; };
+    input.addEventListener('beforeinput', note);
+    return () => input.removeEventListener('beforeinput', note);
+  }, []);
 
   const { group, decimal } = numberMarks();
 
@@ -50,21 +60,19 @@ export function AmountInput({ value, onChange, name = 'amount' }: { value: numbe
         if (e.key === 'Delete' && el.value[at] === group) el.setSelectionRange(at + 1, at + 1);
       }}
       onChange={(e) => {
+        const over = replaced.current;
+        replaced.current = null;
         if (refuseWord(text, e.target.value)) return;
         const native = e.nativeEvent as InputEvent;
-        let raw = e.target.value;
+        const raw = e.target.value;
         const at = e.target.selectionStart ?? raw.length;
-        let next: { text: string; caret: number };
-        if (native.inputType === 'insertFromPaste' || native.inputType === 'insertFromDrop') {
-          // Pasted amounts may use either convention: read them whole.
-          const v = parseAmount(raw);
-          next = v === null ? groupTyped(raw, at) : { text: formatEditableGrouped(v), caret: Infinity };
-        } else {
-          // The other language's decimal key ("." in Romanian) still types a decimal mark.
-          if (native.inputType === 'insertText' && native.data === group && at > 0) {
-            raw = raw.slice(0, at - 1) + decimal + raw.slice(at);
-          }
-          next = groupTyped(raw, at);
+        // Pasted, dropped or put in by a phone keyboard's clipboard strip: read whole, in either convention.
+        const next = isAtOnce(native)
+          ? pastedAmount(text, raw, at, over)
+          : typedAmount(text, raw, at, native.inputType === 'insertText' ? native.data : null);
+        if ('notAmount' in next) {
+          notifyNotNumber(next.notAmount);
+          return;
         }
         // Over nine digits before the decimal mark: the keystroke (or paste) is refused, with a word in the corner.
         // Only when it adds digits, so a longer amount coming from elsewhere can still be shortened.

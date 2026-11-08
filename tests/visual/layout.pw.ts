@@ -301,6 +301,78 @@ test('converter: typing back the figure a cell shows keeps the amount typed else
   await expect(goal).not.toHaveValue('10.000,00');
 });
 
+test('amounts: digits typed into a field that shows 0 replace the 0, wherever the click put the caret', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  const option = (regime: string) => page.locator('article.regime').filter({ has: page.locator(`#rg-${regime}`) }).locator('input[name="amount"]');
+  // The fields are right-aligned: most of the box is left of the 0 (it gave 20.000), its right edge after it (02.000).
+  for (const [field, x, caret] of [[option('pfaReal'), 0.1, 0], [option('srlMicro'), 0.98, 1]] as const) {
+    await expect(field).toHaveValue('0');
+    const box = (await field.boundingBox())!;
+    await field.click({ position: { x: box.width * x, y: box.height / 2 } });
+    expect(await field.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(caret);
+    await page.keyboard.type('2000');
+    await expect(field).toHaveValue('2.000');
+  }
+  await expect(page).toHaveURL(/expenses_pfa=2000(&|#|$)/);
+  await expect(page).toHaveURL(/expenses_micro=2000(&|#|$)/);
+});
+
+/** Drags `text` from a span made for it to the end of `field`: a real drop, which the field reads as it reads a paste. */
+async function dropAtEnd(page: Page, field: Locator, text: string) {
+  await page.evaluate((t) => {
+    const span = document.createElement('span');
+    span.id = 'drag-me';
+    span.textContent = t;
+    span.style.cssText = 'position: fixed; top: 0; left: 0; z-index: 9999; font-size: 2rem;';
+    document.body.append(span);
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+  }, text);
+  const box = (await field.boundingBox())!;
+  await page.locator('#drag-me').dragTo(field, { targetPosition: { x: box.width - 3, y: box.height / 2 } });
+  await page.locator('#drag-me').evaluate((el) => el.remove());
+}
+
+test('amounts: text put in at once is read whole, without its currency sign, in either convention', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  const income = page.locator('.income-main input');
+  // A phone keyboard's clipboard strip types the copied text in at once, with no paste event. "$1,234.56" gave 1,23
+  // and "2500.00" 250.000.
+  for (const [text, shown, amount] of [['$1,234.56', '1.234,56', 1234.56], ['2500.00', '2.500', 2500]] as const) {
+    await income.selectText();
+    await page.keyboard.insertText(text);
+    await expect(income).toHaveValue(shown);
+    await expect.poll(() => saved(page, 'ft.taxIncome')).toContain(`"amount":${amount},`);
+  }
+  // Dropped (or pasted: the checks leave the clipboard alone) beside the digits, its digits join them. The field's
+  // own thousands mark was read as a decimal: "0" at the end of 10.000 gave 10.
+  await income.selectText();
+  await page.keyboard.type('10000');
+  await dropAtEnd(page, income, '0');
+  await expect(income).toHaveValue('100.000');
+  // Not an amount: refused whole, with the toast that quotes it (it gave 20.261.108).
+  await income.selectText();
+  await page.keyboard.insertText('2026-11-08');
+  await expect(page.locator('.toast')).toContainText('„2026-11-08” nu e un număr.');
+  await expect(income).toHaveValue('100.000');
+
+  // English: "1 234,56 €" gave 123,456.
+  await page.goto('./?lang=en#taxes');
+  await income.selectText();
+  await page.keyboard.insertText('1 234,56 €');
+  await expect(income).toHaveValue('1,234.56');
+  // A converter cell showed it as invalid and kept its figure.
+  await page.goto('./?lang=en');
+  const cell = byName(page, 'hour-EUR');
+  await focusCell(page, cell);
+  await page.keyboard.insertText('1.234,56 €');
+  await cell.blur();
+  await expect(cell).toHaveValue('1,234.56');
+  await expect.poll(() => saved(page, 'ft.source')).toContain('"amount":1234.56');
+});
+
 test('holding an arrow key in a field keeps the page, and the address catches up', async ({ page }, info) => {
   test.skip(isPhone(info), 'keyboards only');
   await openApp(page, { lang: 'en', tab: 'converter' });

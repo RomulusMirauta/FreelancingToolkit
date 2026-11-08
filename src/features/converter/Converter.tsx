@@ -4,7 +4,7 @@ import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale } from '../../lib/currency/rates';
 import { useLang, useT } from '../../lib/i18n';
 import { PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
-import { formatEditable, formatMoney, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
+import { bareAmount, formatEditable, formatMoney, isAtOnce, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
 import { notifyTooBig, refuseNonNumberPaste, refuseWord } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { CurrencyCode } from '../../lib/currency/CurrencyCode';
@@ -133,8 +133,11 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
     }
   };
 
-  const onType = (period: Period, currency: string, text: string) => {
-    if (editing && refuseWord(editing.text, text)) return;
+  const onType = (period: Period, currency: string, typed: string, atOnce: boolean) => {
+    if (editing && refuseWord(editing.text, typed)) return;
+    // Pasted with its currency sign or code ($1,234.56, 1.234,56 lei): read, and kept, without them.
+    const bare = bareAmount(typed);
+    const text = atOnce && parseAmount(typed) === null && parseAmount(bare) !== null ? bare : typed;
     const amount = parseAmount(text);
     // Above the limit the keystroke is refused (the cell keeps its text), with a word in the corner.
     if (amount !== null && !isSaneAmount(amount)) {
@@ -248,7 +251,7 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
                           // Only if focus stayed: select() would pull it back from wherever a fast Tab has moved it.
                           requestAnimationFrame(() => { if (document.activeElement === e.target) e.target.select(); });
                         }}
-                        onChange={(e) => onType(period, code, e.target.value)}
+                        onChange={(e) => onType(period, code, e.target.value, isAtOnce(e.nativeEvent as InputEvent))}
                         onPaste={refuseNonNumberPaste}
                         onBlur={() => setEditing(null)}
                         onKeyDown={(e) => onCellKey(e, row, col)}
