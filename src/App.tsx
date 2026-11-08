@@ -7,6 +7,7 @@ import { Fees } from './features/converter/Fees';
 import { ResetApp } from './features/reset/ResetApp';
 import { Settings } from './features/settings/Settings';
 import { DEFAULT_INCOME, INCOME_QUERY, Taxes, isTaxIncome, type TaxIncome } from './features/taxes/Taxes';
+import { MARKET_RATES } from './lib/currency/rates';
 import { DEFAULT_LANG, LangProvider, isLang, useT, type Lang } from './lib/i18n';
 import { DEFAULT_WORK, readWork } from './lib/time/periods';
 import { roundMoney } from './lib/ui/numbers';
@@ -132,7 +133,12 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
           <Taxes income={income} setIncome={setIncomeFromTaxes} work={work} />
         )}
       </main>
-      <footer className="muted small">{t.app.footer}</footer>
+      {/* ExchangeRate-API's terms ask for this link on the pages that use its rates: both, as a tax income can be in a market currency. */}
+      <footer className="muted small">
+        {t.app.footerBefore}
+        <a href={MARKET_RATES.provider} target="_blank" rel="noreferrer">{t.converter.marketBy}</a>
+        {t.app.footerAfter}
+      </footer>
       <ResetApp page={view} />
       <Toast />
     </>

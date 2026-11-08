@@ -6,8 +6,10 @@ describe('analytics', () => {
     expect(analyticsOn('freelancingtoolkit', 'romulusmirauta.github.io', true)).toBe(true);
     expect(analyticsOn('', 'romulusmirauta.github.io', true)).toBe(false);
     expect(analyticsOn('freelancingtoolkit', 'romulusmirauta.github.io', false)).toBe(false);
-    expect(analyticsOn('freelancingtoolkit', 'localhost', true)).toBe(false);
-    expect(analyticsOn('freelancingtoolkit', '127.0.0.1', true)).toBe(false);
+    // A phone test over the local network (vite preview --host) and a copy hosted elsewhere are not the live site.
+    for (const host of ['localhost', '127.0.0.1', '[::1]', '192.168.1.20', 'alice.github.io', 'freelancing.example.com']) {
+      expect(analyticsOn('freelancingtoolkit', host, true), host).toBe(false);
+    }
   });
 
   const env = { origin: 'https://romulusmirauta.github.io', width: 1280, code: 'x' };

@@ -352,6 +352,24 @@ test('rate cards: a currency quoted per 100 shows its move, and a market rate is
   await expect(card('ARS').locator('.rate-in-use')).toHaveText('se folosește cursul de piață');
 });
 
+test('market rates: both pages link to their source, as its terms ask, also with a tax income in a market currency', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  // This income is converted at a market rate, and the tax page had no link to where the rate came from.
+  await page.goto('./?lang=en&income=1000000&income_currency=VND&income_per=month#taxes');
+  await expect(page.locator('.income-row-main .income-total')).toContainText('(market rate, not BNR)');
+  const footer = page.locator('footer');
+  const credit = footer.getByRole('link');
+  await expect(credit).toHaveText('Rates By Exchange Rate API');
+  await expect(credit).toHaveAttribute('href', 'https://www.exchangerate-api.com');
+  await expect(credit).toBeVisible();
+  await expect(footer).toHaveText('Exchange rates: National Bank of Romania (BNR) reference rates; market rates for currencies BNR does not publish (Rates By Exchange Rate API). Not financial or tax advice.');
+  await page.goto('./?lang=ro');
+  await expect(page.locator('.rate-grid')).toBeVisible();
+  await expect(credit).toHaveText('Rates By Exchange Rate API');
+  await expect(credit).toHaveAttribute('href', 'https://www.exchangerate-api.com');
+  await expect(footer).toContainText('cursuri de piață (Rates By Exchange Rate API). Nu reprezintă');
+});
+
 test('working time, fees and VAT: the fields take the new decimal mark after a language switch', async ({ page }) => {
   await openApp(page, { lang: 'ro', tab: 'converter' });
   await page.goto('./?lang=ro&hours=7.5&days=4.5&transfer=wise&transfer_pct=0.5');

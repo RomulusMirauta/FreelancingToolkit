@@ -402,7 +402,7 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
   background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
 }
 /* Currencies BNR doesn't publish: priced at market rates, and say so. */
-.rates a { color: var(--accent); }
+.rates a, footer a { color: var(--accent); }
 .market-tag { margin-left: auto; flex: none; font-size: 0.72rem !important; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
 .badge.market { background: var(--warn-bg); color: var(--warn-text); }
 .add-empty { margin: 8px 4px 2px; font-size: 0.9rem; color: var(--muted); }

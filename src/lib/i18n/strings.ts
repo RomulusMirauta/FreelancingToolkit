@@ -94,7 +94,9 @@ export const en = {
         'The icon appears on your home screen, like any app.',
       ],
     },
-    footer: 'Exchange rates: National Bank of Romania (BNR) reference rates; market rates from ExchangeRate-API for currencies BNR does not publish. Not financial or tax advice.',
+    // The footer, around the link to the market rates' source (converter.marketBy).
+    footerBefore: 'Exchange rates: National Bank of Romania (BNR) reference rates; market rates for currencies BNR does not publish (',
+    footerAfter: '). Not financial or tax advice.',
   },
   reset: {
     confirmTitle: 'Reset the whole app?',
@@ -152,7 +154,8 @@ export const en = {
     customUsingBnr: 'BNR rate in use',
     customUsingMarket: 'market rate in use',
     marketOf: 'Market rates (not BNR) for the other currencies, from',
-    marketBy: 'Rates by Exchange Rate API',
+    // ExchangeRate-API's attribution, word for word as its terms give it, in both languages.
+    marketBy: 'Rates By Exchange Rate API',
     marketBadge: 'market rate',
     marketTitle: 'BNR does not publish this currency: market rate from ExchangeRate-API',
     custom: 'Custom',
@@ -545,7 +548,8 @@ export const ro: Strings = {
         'Iconița apare pe ecranul telefonului, ca orice aplicație.',
       ],
     },
-    footer: 'Cursuri valutare: cursurile de referință ale Băncii Naționale a României (BNR); pentru valutele pe care BNR nu le publică, cursuri de piață de la ExchangeRate-API. Nu reprezintă consultanță financiară sau fiscală.',
+    footerBefore: 'Cursuri valutare: cursurile de referință ale Băncii Naționale a României (BNR); pentru valutele pe care BNR nu le publică, cursuri de piață (',
+    footerAfter: '). Nu reprezintă consultanță financiară sau fiscală.',
   },
   reset: {
     confirmTitle: 'Resetezi toată aplicația?',
@@ -603,7 +607,7 @@ export const ro: Strings = {
     customUsingBnr: 'se folosește cursul BNR',
     customUsingMarket: 'se folosește cursul de piață',
     marketOf: 'Cursuri de piață (nu BNR) pentru celelalte valute, din',
-    marketBy: 'Rates by Exchange Rate API',
+    marketBy: 'Rates By Exchange Rate API',
     marketBadge: 'curs de piață',
     marketTitle: 'BNR nu publică această valută: curs de piață de la ExchangeRate-API',
     custom: 'Curs propriu',

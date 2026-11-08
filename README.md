@@ -33,14 +33,19 @@ It updates itself when a new version is published. Offline, it uses the exchange
 
 ## Privacy
 
-Everything runs in your browser: no account, no cookies. The only thing sent anywhere is a visit count to [GoatCounter](https://www.goatcounter.com) (open source, no cookies, no personal data): which page was opened (Converter or Taxes), three actions (link copied, app installed, currency added, with its code), the screen width and the site you came from (its name only), never your settings or amounts. Your settings are saved only on your device (browser storage). "Reset tab" and "Reset app" (under **Tools**, bottom right) clear them. "Copy link" puts your page settings (not language or theme) in the link itself, so they go wherever you send it. The address also keeps the converter amount you typed and the sections you folded (`?amount=40&currency=EUR&per=hour&fold=fees`), so a bookmark opens the app the same way.
+Everything runs in your browser: no account, no cookies. Your settings are saved on your device (browser storage) and in the page address, which holds every setting you change, amounts included (`?income=12000&income_currency=EUR&income_per=month&fold=fees`), so a reload or a bookmark opens the app the same way. Like any address, it stays in your browser history, and in a synced history on your other devices. "Reset tab" and "Reset app" (under **Tools**, bottom right) clear your settings from the device and from the address, not from the history. "Copy link" copies the address without your language and theme, so your settings go wherever you send it.
+
+Two services see your visits:
+
+- **GitHub Pages** hosts the app and logs visitors' IP addresses ([GitHub's note](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection)). It receives the page address, settings included, whenever the app loads from the internet: on a first visit, or when a link is opened in another browser. Once opened, the app loads from your device.
+- **[GoatCounter](https://www.goatcounter.com)** (open source, no cookies) counts the visits to the live site. The app sends which page was opened (Converter or Taxes), three actions (link copied, app installed, currency added, with its code), the screen width and the site you came from (its name only), never your settings or amounts. Like any web request, a count also carries your IP address, browser and language. From them GoatCounter keeps totals of browsers, operating systems, locations and languages; it doesn't store IP addresses, and keeps them in memory for up to 8 hours only, to recognise repeat visits ([its privacy policy](https://www.goatcounter.com/help/privacy)).
 
 ## Data sources
 
 | What | Source | Updated |
 | --- | --- | --- |
 | Exchange rates | [BNR reference rates](https://curs.bnr.ro/nbrfxrates.xml) | every banking day, after BNR publishes (about 13:00 Romanian time) |
-| Other currencies | [Rates by Exchange Rate API](https://www.exchangerate-api.com) (market rates, not BNR) | with the BNR rates |
+| Other currencies | [Rates By Exchange Rate API](https://www.exchangerate-api.com) (market rates, not BNR) | with the BNR rates |
 | 2026 tax rules | `data/params-2026.json`: each value with its legal basis, source link and date checked | by hand, per tax year |
 
 Rates are downloaded when the app is built, not by your browser, so the app always opens with a known set of rates and shows their date.
@@ -90,13 +95,15 @@ The visual tests (Playwright, with the installed Chrome) build the app with fixe
 2. In the fork: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 3. Push to `main` (or run the *Deploy* workflow by hand from the Actions tab).
 
-The app is built with relative paths, so it works under any repository name.
+The app is built with relative paths, so it works under any repository name. Visits are counted only on the original site, so a copy counts none: to count yours, set `GOATCOUNTER` and `LIVE_HOST` in `src/lib/analytics.ts` to your GoatCounter code and your site's host (`you.github.io`). Link previews (`og:url` and `og:image` in `index.html`) and the "What's new" link (`RELEASES` in `src/lib/ui/toast.tsx`) point to the original until you change them.
 
 ## Updating for a new tax year
 
-1. Add `data/params-<year>.json` with the verified values and their sources.
-2. Update `scripts/tax2026_reference.py` for any rule changes and regenerate the golden file: `python scripts/tax2026_reference.py`.
-3. Make the tests pass against the new golden file.
+1. Add `data/params-<year>.json` with the verified values and their sources, and point `src/lib/tax/params.ts` to it. Rename the keys named after a year (`CursEURMediu2025`, the previous year's average euro rate) there, in the JSON and in `src/lib/tax/regimes.ts`.
+2. Copy `scripts/tax2026_reference.py` to `scripts/tax<year>_reference.py`, point it to the new parameters and golden file (`load_params` and the file it writes), update it for any rule changes, then run it to write `data/golden-<year>.json`: `python scripts/tax<year>_reference.py`.
+3. Point `src/lib/tax/golden.test.ts`, `regimes.test.ts` and `solve.test.ts` to the new golden file, and change the engine in `src/lib/tax/` for the same rule changes, until `npm test` passes.
+4. Update what names the year: the texts in `src/lib/i18n/strings.ts` (both languages; search for the old year and the one before it), the descriptions in `index.html` and `package.json`, the manifest's description and screenshot labels in `vite.config.ts`, the install dialog's screenshots in `public/screenshots/`, and this README.
+5. Run `npm run test:visual`: change the checks in `tests/visual/layout.pw.ts` that use the old figures, and once the changed pages look right, run `npm run test:visual:update`.
 
 ## Changes
 

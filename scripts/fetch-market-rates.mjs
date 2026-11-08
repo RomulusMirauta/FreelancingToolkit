@@ -1,6 +1,6 @@
 // Downloads market rates for the currencies BNR does not publish into src/data/market-rates.json,
 // with their English and Romanian names. Source: ExchangeRate-API's open access endpoint (no key;
-// its terms ask for an attribution link, shown in the app next to these rates).
+// its terms ask for an attribution link on the pages that use these rates: the app's footer, on both pages).
 // Only a later day's rates replace the saved file, and only if they pass the checks in rates-snapshot.mjs, against the
 // saved ones and BNR's. Otherwise, as on any failure, the saved file stays, the run shows why (::error::) and the
 // script exits 0.
