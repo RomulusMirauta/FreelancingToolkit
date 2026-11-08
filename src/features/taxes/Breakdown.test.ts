@@ -72,7 +72,7 @@ describe('the § sources', () => {
   it('in English no parameter reads in Romanian, and the VAT links name their acts in English words', () => {
     const romanian = /[ăâîșțĂÂÎȘȚ]|\b(lei|din|prin|peste|salarii|minime|copil|modificat\w*|cursul|persoane|Da|Nu)\b|\/an\b/;
     expect(PARAM_INFO.map((p) => sourceIn('en', p)).filter((line) => romanian.test(line))).toEqual([]);
-    expect(legalBasis(paramInfo('CotaTVA')!, 'en')).toBe('Cod fiscal art. 291 alin. (1) lit. a), amended by Legea 141/2025');
+    expect(legalBasis(paramInfo('CotaTVA')!, 'en')).toBe('Cod fiscal art. 291 alin. (1), amended by Legea 141/2025 art. II pct. 42');
     expect(legalBasis(paramInfo('PlafonTVA')!, 'en')).toBe('Cod fiscal art. 310, amended by OG 22/2025');
     expect(legalBasis(paramInfo('PlafonTVA')!, 'ro')).toBe('Cod fiscal art. 310, modificat prin OG 22/2025');
   });

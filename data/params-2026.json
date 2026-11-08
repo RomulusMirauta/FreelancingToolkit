@@ -155,7 +155,7 @@
 
     {"key": "CotaTVA", "group": "TVA", "format": "pct", "value": 0.21, "unit": "",
      "ro": "Cota standard de TVA", "en": "Standard VAT rate",
-     "valid": "de la 01.08.2025", "legal": "Cod fiscal art. 291 alin. (1) lit. a), modificat prin Legea 141/2025", "legalEn": "Cod fiscal art. 291 alin. (1) lit. a), amended by Legea 141/2025",
+     "valid": "de la 01.08.2025", "legal": "Cod fiscal art. 291 alin. (1), modificat prin Legea 141/2025 art. II pct. 42", "legalEn": "Cod fiscal art. 291 alin. (1), amended by Legea 141/2025 art. II pct. 42",
      "source": "https://legislatie.just.ro/Public/DetaliiDocument/171282", "status": "confirmat din surse oficiale", "note": "Cota redusă unică: 11%."},
     {"key": "PlafonTVA", "group": "TVA", "format": "lei", "value": 395000, "unit": "lei/an", "unitEn": "RON/year",
      "ro": "Plafonul de scutire de TVA pentru întreprinderile mici", "en": "VAT exemption threshold for small businesses",

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLang, useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
-import { formatEditable, formatMoney, formatNumber, parseAmount } from '../../lib/ui/numbers';
+import { formatEditable, formatMoney, formatNumber, parseAmount, roundMoney } from '../../lib/ui/numbers';
 import { refuseNonNumberPaste, refuseWordIn } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
 import { numberParam, useUrlQuery, type UrlQuery } from '../../lib/ui/urlQuery';
@@ -97,6 +97,9 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
   // too, for its decimal mark.
   const [picks, setPicks] = useState(0);
   const kept = keptShare(fees);
+  const feesMonth = monthRon * (1 - kept);
+  // The minus only on an amount that shows: with nothing to take a cut of, 0,00 rather than −0,00.
+  const cut = roundMoney(feesMonth) > 0;
   const platformCut = hour * (fees.platformPct / 100);
   const transferCut = (hour - platformCut) * (fees.transferPct / 100);
 
@@ -117,7 +120,7 @@ export function Fees({ monthRon, hour, anchor }: ConverterSnapshot) {
       {/* The answer first (what reaches you a month), then the choices that lead to it. */}
       <dl className="stat-row fee-summary">
         <div className="stat-result"><dt>{t.sumReaches}</dt><dd>{formatMoney(monthRon * kept)} <span className="unit">{t.ronMonth}</span></dd></div>
-        <div className={kept < 1 ? 'stat-cut' : undefined}><dt>{t.sumFees}</dt><dd>{kept < 1 ? '−' : ''}{formatMoney(monthRon * (1 - kept))} <span className="unit">{t.ronMonth}</span></dd></div>
+        <div className={cut ? 'stat-cut' : undefined}><dt>{t.sumFees}</dt><dd>{cut ? '−' : ''}{formatMoney(feesMonth)} <span className="unit">{t.ronMonth}</span></dd></div>
       </dl>
 
       <div className="fee-steps" key={`${picks}-${lang}`}>

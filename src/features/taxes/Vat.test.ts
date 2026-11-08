@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { paramInfo } from '../../lib/tax/params';
 import { vatReading } from './Vat';
 
 describe('the VAT meter', () => {
@@ -27,5 +28,11 @@ describe('the VAT meter', () => {
     for (let p = 0; p <= 300; p++) if (vatReading(p * 3_950).pct !== p) off.push(p);
     expect(off).toEqual([]);
     expect(vatReading(0)).toEqual({ pct: 0, state: 'under' });
+  });
+});
+
+describe('the VAT sources', () => {
+  it('the 21% rate cites art. 291 alin. (1), a single sentence with no letters, as amended by Legea 141/2025', () => {
+    expect(paramInfo('CotaTVA')!.legal).toBe('Cod fiscal art. 291 alin. (1), modificat prin Legea 141/2025 art. II pct. 42');
   });
 });

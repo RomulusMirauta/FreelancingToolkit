@@ -187,6 +187,12 @@ test('tax cards: the bar of what you keep follows the take-home, and the details
     .toHaveAttribute('title', 'Their pay and the taxes on it are not counted: add them to the deductible expenses');
 });
 
+test('tax page in Romanian: "Microîntreprindere" wraps at its soft hyphen where it must, so nothing is wider than the page', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'taxes' });
+  // As one unbreakable word, it made the phone ranking 0.56 px too wide at 360 px.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+});
+
 test('VAT: just under the threshold the meter reads 99%, exactly on it 100% and still within, a ban over it 101%', async ({ page }) => {
   await openApp(page, { lang: 'en', tab: 'taxes' });
   const meter = page.locator('.vat-meter');
@@ -656,6 +662,19 @@ test('fees: the monthly figures are not named "per hour"; only the hourly path i
   await openApp(page, { lang: 'en', tab: 'converter' });
   await expect(page.locator('dl.fee-summary')).toHaveAccessibleName('');
   await expect(page.locator('ol.fee-flow')).toHaveAccessibleName('From the invoice to your account, per hour');
+});
+
+test('fees: with nothing to take a cut of, what goes on fees reads 0,00 RON, not −0,00', async ({ page }) => {
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  const fees = page.locator('dl.fee-summary > div').nth(1);
+  await expect(fees.locator('dd')).toHaveText(/^−\d/);
+  await expect(fees).toHaveClass('stat-cut');
+  // An amount of 0, and one whose fees come to under half a ban (11.8% of 0.01 RON).
+  for (const query of ['amount=0&currency=EUR&per=hour', 'amount=0.01&currency=RON&per=month']) {
+    await page.goto(`./?lang=ro&${query}`);
+    await expect(fees.locator('dd')).toHaveText('0,00 RON');
+    await expect(fees).not.toHaveClass('stat-cut');
+  }
 });
 
 test('card options saved by an older version, or with one the card can\'t take, keep the others', async ({ page }) => {

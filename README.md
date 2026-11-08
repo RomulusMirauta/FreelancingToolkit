@@ -21,13 +21,13 @@ As a PWA, the app can be installed like a regular app and keeps working without 
   1. Open the link above.
   2. In the address bar, on the right, click the install icon (a small screen with a down arrow), then **Install**.
   3. The app opens in its own window and is in the Start menu and on the desktop.
-  No icon? Menu ⋮ → *Cast, save and share* → *Install page as app*. Firefox can't install apps: use Chrome or Edge.
+  No icon? Chrome: menu ⋮ → *Cast, save and share* → *Install page as app*. Edge: menu … → *More tools* → *Apps* → *Install this site as an app*. Firefox on Windows (version 143 or later): the *Add tab to taskbar* button at the right of the address bar. On Mac or Linux, Firefox can't install apps: use Chrome or Edge.
 - **Android (Chrome)**
   1. Open the link in Chrome and tap the three dots ⋮ at the top right.
   2. Tap *Install app* (or *Add to Home screen*), then *Install*.
 - **iPhone or iPad (Safari)**
   1. Open the link in Safari.
-  2. Tap Share (the square with an arrow pointing up), then *Add to Home Screen* → *Add*.
+  2. Tap Share (the square with an arrow pointing up: on iPhone at the bottom of the screen, on iPad at the top, otherwise in the ⋯ menu), then *Add to Home Screen* → *Add*.
 
 It updates itself when a new version is published. Offline, it uses the exchange rates it last downloaded.
 
