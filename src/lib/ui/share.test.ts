@@ -219,6 +219,8 @@ describe('a link whose tab is closed before a choice', () => {
     backTo(linkTab);
     expect((await load(linkAddress)).sharedLinkState()).toEqual({ opened: true, hadOwn: true, same: false });
     expect(local.get('ft.columns')).toBe('["EUR","USD"]');
+    // All of them: the link has no working time, so it is on its default, not on the own one put back.
+    expect(local.has('ft.work')).toBe(false);
     // Then closed without a choice: the next visit puts the own settings back again.
     await visit();
     expect(ownSettings()).toEqual(OWN);

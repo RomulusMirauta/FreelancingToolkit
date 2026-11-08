@@ -14,6 +14,8 @@ const LATER = 'ft-toast-after-reload';
 const RATES_BEFORE = 'ft-rates-before';
 /** The last app version this browser ran; not an `ft.` key, so it never counts as a changed setting. */
 const SEEN_VERSION = 'ft-version';
+/** The last app version this tab ran (session storage, the tab's own). */
+const TAB_VERSION = 'ft-tab-version';
 /** How long a toast takes to go out (the .toast.leaving animation). */
 const OUT_MS = 220;
 /** How long the screen readers' copy of a toast stays empty before it gets the new text. */
@@ -148,11 +150,19 @@ export function spokenText(shown: Shown, t: Strings): string {
 }
 
 /** On start: a new app version since the last visit, or newer rates after coming back online. */
-function startNotes(): Note[] {
+export function startNotes(): Note[] {
   const notes: Note[] = [];
-  // Nothing saved (a first visit, or storage blocked): no "updated" toast.
+  // Nothing saved (a first visit, or storage blocked): no "updated" toast. A tab that ran an older version says it
+  // too when another window started the new one first: the update reloads a window in use later (updateReload.ts).
   const seen = storage.getItem(SEEN_VERSION);
-  if (seen !== null && seen !== __APP_VERSION__) notes.push({ id: 'updated', arg: __APP_VERSION__ });
+  let ran: string | null = null;
+  try {
+    ran = sessionStorage.getItem(TAB_VERSION);
+    sessionStorage.setItem(TAB_VERSION, __APP_VERSION__);
+  } catch {
+    // no session storage: only the browser's last version counts
+  }
+  if ([seen, ran].some((v) => v !== null && v !== __APP_VERSION__)) notes.push({ id: 'updated', arg: __APP_VERSION__ });
   storage.setItem(SEEN_VERSION, __APP_VERSION__);
   try {
     const before = sessionStorage.getItem(RATES_BEFORE);

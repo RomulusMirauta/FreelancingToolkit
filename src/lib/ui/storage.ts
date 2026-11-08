@@ -47,4 +47,9 @@ export const storage = {
     }
     return [...new Set([...saved, ...memory.keys()])];
   },
+
+  /** Whether the browser has every value: none is kept for this page only. */
+  allSaved(): boolean {
+    return memory.size === 0;
+  },
 };

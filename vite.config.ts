@@ -9,6 +9,14 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 // The visual tests (`--mode visual`) build with fixed BNR and market rates, so the daily rate updates don't change the screenshots.
 const fixtures = fileURLToPath(new URL('./tests/visual/fixtures/', import.meta.url)).replace(/\\/g, '/');
 
+/**
+ * Addresses the service worker doesn't answer with the app it keeps: any below the app's folder, such as
+ * …/FreelancingToolkit/taxes/, where the page would load ./assets from a folder that doesn't exist and stay blank.
+ * They go to the network and get GitHub's 404, as without the service worker. Workbox tests the path with the query,
+ * so the app's folder with any query, and index.html with one, still open offline.
+ */
+export const NAVIGATE_FALLBACK_DENYLIST = [/^\/+[^/?]+\/(?!index\.html(?:\?|$))[^?]+/];
+
 // Served from GitHub Pages at /FreelancingToolkit/.
 export default defineConfig(({ mode }) => ({
   base: './',
@@ -25,7 +33,7 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       // Precache the bundled font too, not only JS/CSS/HTML.
       // The manifest screenshots are only for the install dialog, so they stay out of the offline cache.
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'], globIgnores: ['screenshots/**'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'], globIgnores: ['screenshots/**'], navigateFallbackDenylist: NAVIGATE_FALLBACK_DENYLIST },
       manifest: {
         name: 'FreelancingToolkit',
         short_name: 'Freelancing',

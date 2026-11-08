@@ -137,9 +137,12 @@ export function applySharedLink(): void {
   const left = pending ? null : readLeft();
   if (!params.has(MARK)) {
     // A reload sets the own settings aside for the next visit again: another tab may have put them back since, and
-    // this tab's address brings the link's back.
-    if (pending) savePending();
-    else if (left) restoreLeft(left);
+    // this tab's address brings the link's back, all of them: one it doesn't have is on its default, as when the
+    // link opened, not on the own value put back (the update's reload keeps this address, updateReload.ts).
+    if (pending) {
+      savePending();
+      for (const key of SHARED_KEYS) storage.removeItem(key);
+    } else if (left) restoreLeft(left);
     return;
   }
   openedNow = true;

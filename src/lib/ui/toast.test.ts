@@ -133,3 +133,41 @@ group("a word put into an amount at once (the keyboard's clipboard strip types i
     for (const [a, b] of [['30', '30x'], ['30', '3'], ['', '45'], ['30', '30 €5']]) expect(run(a!, b!).refused, `${a} → ${b}`).toBe(false);
   });
 });
+
+group('"updated" when the app starts', () => {
+  // One localStorage for the browser, and a session storage for each tab.
+  const over = (m: Map<string, string>) => ({
+    getItem: (k: string) => m.get(k) ?? null,
+    setItem: (k: string, v: string) => void m.set(k, v),
+    removeItem: (k: string) => void m.delete(k),
+  });
+  /** The app starting in a tab: fresh modules (storage.ts keeps nothing from before), then its "updated" message. */
+  async function start(browser: Map<string, string>, tab: Map<string, string>) {
+    vi.stubGlobal('localStorage', over(browser));
+    vi.stubGlobal('sessionStorage', over(tab));
+    vi.resetModules();
+    const notes = (await import('./toast')).startNotes();
+    vi.unstubAllGlobals();
+    return notes.filter((n) => n.id === 'updated');
+  }
+  const OLD = '0.9.0';
+  const UPDATED = [{ id: 'updated', arg: __APP_VERSION__ }];
+
+  it('comes in each tab that ran an older version, also after another window started the new one', async () => {
+    const browser = new Map([['ft-version', OLD]]);
+    const a = new Map([['ft-tab-version', OLD]]);
+    const b = new Map([['ft-tab-version', OLD]]);
+    expect(await start(browser, a)).toEqual(UPDATED);
+    expect(await start(browser, b)).toEqual(UPDATED);
+    // Once in each.
+    expect(await start(browser, a)).toEqual([]);
+    expect(await start(browser, b)).toEqual([]);
+  });
+
+  it('not in a tab opened after another one started the new version, nor on a first visit', async () => {
+    const browser = new Map([['ft-version', OLD]]);
+    expect(await start(browser, new Map())).toEqual(UPDATED);
+    expect(await start(browser, new Map())).toEqual([]);
+    expect(await start(new Map(), new Map())).toEqual([]);
+  });
+});

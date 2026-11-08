@@ -7,17 +7,18 @@ import { applyUrlState } from './urlState';
 import { flushQuery } from './lib/ui/query';
 import { droppedParams } from './lib/ui/urlQuery';
 import { notifyLater } from './lib/ui/toast';
-import { reloadWhenFree } from './lib/ui/updateReload';
+import { reloadForUpdate, reloadOnTakeover } from './lib/ui/updateReload';
 import { dropSecondCopy } from './lib/ui/secondCopy';
 // Bundled (not from a CDN) so the app keeps working offline; only the bold Latin subset used by the regime pills.
 import '@fontsource/space-grotesk/latin-700.css';
 import './styles.css';
 import './mobile.css';
 
-// The update reload waits while the page is in use (updateReload.ts). The address follows a burst of changes a
-// moment later (query.ts): it catches up before that reload, and when the page is left or hidden (a phone may close
-// a hidden page without warning).
-registerSW({ immediate: true, onNeedReload: () => reloadWhenFree(() => { flushQuery(); location.reload(); }) });
+// The update reload waits while the page is in use, and opens on the saved settings (updateReload.ts). The address
+// follows a burst of changes a moment later (query.ts): it catches up before a reload, and when the page is left or
+// hidden (a phone may close a hidden page without warning).
+reloadOnTakeover();
+registerSW({ immediate: true, onNeedReload: reloadForUpdate });
 window.addEventListener('pagehide', () => flushQuery());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushQuery(); });
 // One copy of the app: a service worker registered at …github.io//FreelancingToolkit/ before index.html put that
