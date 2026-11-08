@@ -93,6 +93,15 @@ const CASS_TIER_KEYS = ['CotaCASS', 'CASSPrag1', 'CASSPrag2', 'CASSPrag3', 'SalM
 // Rounded to the ban like the micro-enterprise ceiling, so a future rate can't leave it a hair off (2026's is exact).
 export const NORM_LIMIT_LEI = Math.round(P.PlafonNormaEUR * P.CursEURMediu2025 * 100) / 100;
 
+/**
+ * Revenue over the income-norm limit (Cod fiscal art. 69 alin. (9)): 25,000 EUR at BNR's average rate for the year the
+ * revenue is earned, about the rates the revenue itself comes in at. So revenue in another currency is compared in EUR
+ * (`eurPerYear`), and revenue in lei with the limit in lei at the 2025 average, the last one known.
+ */
+function normOverLimit(annual: number, eurPerYear?: number): boolean {
+  return eurPerYear === undefined ? annual > NORM_LIMIT_LEI : eurPerYear > P.PlafonNormaEUR;
+}
+
 /** The range of the optional sick-leave insurance over the year: the lowest month and the highest. */
 export const SICK_LEAVE_MONTHLY_MIN = P.CotaConcediiPFA * P.SalMin;
 export const SICK_LEAVE_MONTHLY_MAX = P.CotaConcediiPFA * P.SalMinIul * P.BazaConcediiMaxSM;
@@ -115,8 +124,11 @@ export function ownerSalaryTaxesMonthly(): number {
 
 const share = (paid: number, of: number) => (of > 0 ? paid / of : 0);
 
-/** One regime, one yearly amount (gross salary for the employee, revenue for the rest). */
-export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions): RegimeResult {
+/**
+ * One regime, one yearly amount (gross salary for the employee, revenue for the rest). `eurPerYear`: the same amount
+ * in EUR when it is earned in another currency, for the income-norm limit.
+ */
+export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions, eurPerYear?: number): RegimeResult {
   switch (regime) {
     case 'employee': {
       const opts = o.employee;
@@ -158,7 +170,7 @@ export function computeRegime(regime: BoardRegime, annual: number, o: TaxOptions
       return {
         takeHome: r.takeHome - sickLeave,
         taxShare: share(paid, annual),
-        notice: norm ? { kind: 'normLimit', overLimit: annual > NORM_LIMIT_LEI } : undefined,
+        notice: norm ? { kind: 'normLimit', overLimit: normOverLimit(annual, eurPerYear) } : undefined,
         lines: [
           { key: 'revenue', annual },
           ...(norm ? [] : [{ key: 'expenses' as const, annual: expenses, kind: 'minus' as const }]),

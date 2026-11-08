@@ -46,6 +46,15 @@ describe('income-norm limit', () => {
     expect(computeRegime('pfaNorm', 126_037.5, DEFAULT_TAX_OPTIONS).notice).toEqual({ kind: 'normLimit', overLimit: false });
     expect(computeRegime('pfaNorm', 126_037.51, DEFAULT_TAX_OPTIONS).notice).toEqual({ kind: 'normLimit', overLimit: true });
   });
+
+  it('revenue in another currency is compared in EUR: up to 25,000 EUR it is allowed, whatever it makes in lei', () => {
+    // At 5.3408 lei, 24,000 EUR is 128,179.20 lei: over the limit in lei at the 2025 average, not in EUR.
+    const notice = (eur: number) => computeRegime('pfaNorm', Math.round(eur * 5.3408 * 100) / 100, DEFAULT_TAX_OPTIONS, eur).notice;
+    expect(notice(24_000)).toEqual({ kind: 'normLimit', overLimit: false });
+    expect(notice(25_000)).toEqual({ kind: 'normLimit', overLimit: false });
+    expect(notice(25_001)).toEqual({ kind: 'normLimit', overLimit: true });
+    expect(computeRegime('pfaNorm', 128_179.2, DEFAULT_TAX_OPTIONS).notice).toEqual({ kind: 'normLimit', overLimit: true });
+  });
 });
 
 describe('PFA net income exactly on a CAS band', () => {

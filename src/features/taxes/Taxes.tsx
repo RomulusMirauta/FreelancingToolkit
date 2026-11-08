@@ -58,6 +58,18 @@ export function annualLei(i: TaxIncome, work: WorkSettings): number {
   return Math.round(rescale(convert(i.amount, i.currency, 'RON', RATES), i.per, 'year', work) * 100) / 100;
 }
 
+/**
+ * A yearly amount in lei back in EUR at today's rate, when it is earned in another currency (undefined in lei): the
+ * income norm's limit is then compared in EUR. An income in EUR comes back as typed: rounded to the cent, since
+ * 25,000 EUR a year can come back a hair over 25,000 at some rates.
+ */
+export function annualEur(annual: number, currency: string): number | undefined {
+  return currency === 'RON' ? undefined : Math.round((annual / RATES.EUR!) * 100) / 100;
+}
+
+/** Not allowed at this income (the income norm over its limit): never "Most money", and marked where it shows. */
+const notAllowed = (r: RegimeResult) => r.notice?.kind === 'normLimit' && r.notice.overLimit;
+
 const isOptions = (v: unknown): v is TaxOptions => JSON.stringify(mergeTaxOptions(v)) === JSON.stringify(v);
 const isRegime = (v: unknown): v is BoardRegime => MAIN_REGIMES.includes(v as BoardRegime);
 
@@ -128,13 +140,14 @@ export function Taxes({ income, setIncome, work }: { income: TaxIncome; setIncom
   const [reference, setReference] = usePersistentState<BoardRegime>('ft.taxRef', 'employee', isRegime);
   useUrlQuery(REF_QUERY, reference);
   const annual = annualLei(income, work);
+  const eur = annualEur(annual, income.currency);
 
   const results = useMemo(
-    () => Object.fromEntries(BOARD_REGIMES.map((r) => [r, computeRegime(r, annual, options)])) as Record<BoardRegime, RegimeResult>,
-    [annual, options],
+    () => Object.fromEntries(BOARD_REGIMES.map((r) => [r, computeRegime(r, annual, options, eur)])) as Record<BoardRegime, RegimeResult>,
+    [annual, eur, options],
   );
   // A regime the income would not be allowed in (income norm above its limit) can't be "most money".
-  const allowed = MAIN_REGIMES.filter((r) => !(results[r].notice?.kind === 'normLimit' && results[r].notice.overLimit));
+  const allowed = MAIN_REGIMES.filter((r) => !notAllowed(results[r]));
   const best = Math.max(...allowed.map((r) => results[r].takeHome));
 
   const [cy, cm, cd] = PARAMS_CHECKED_ON.split('-').map(Number) as [number, number, number];
@@ -328,16 +341,30 @@ function IncomeInput({ value, onChange, work, label, hint, main = false }: {
   );
 }
 
+/** A row of the net-to-gross table: the gross a regime needs (null: none up to 1e12 lei), and whether it allows it. */
+interface Needed { annual: number | null; overLimit: boolean }
+
+/**
+ * The gross each regime needs for a yearly take-home in lei, checked by the cards' rule, so the income norm is marked
+ * where that gross is over its limit instead of passing for the cheapest. `currency` is the target's: a gross in
+ * another currency is compared with the limit in EUR.
+ */
+export function neededGross(targetLei: number, currency: string, options: TaxOptions): Record<BoardRegime, Needed> {
+  return Object.fromEntries(MAIN_REGIMES.map((r) => {
+    const annual = solveForTakeHome((a) => computeRegime(r, a, options).takeHome, targetLei);
+    // Checked on the amount shown, to the ban: the solver stops a hair above an answer exactly on the limit.
+    const shown = annual === null ? null : Math.round(annual * 100) / 100;
+    return [r, { annual, overLimit: shown !== null && notAllowed(computeRegime(r, shown, options, annualEur(shown, currency))) }];
+  })) as Record<BoardRegime, Needed>;
+}
+
 function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) {
-  const { solver: ts, regimes, periods } = useT();
+  const { solver: ts, board: tb, regimes, periods } = useT();
   const phone = useIsPhone();
   const [target, setTarget] = usePersistentState('ft.solverTarget', DEFAULT_TARGET, isTaxIncome);
   useUrlQuery(TARGET_QUERY, target);
   const targetLei = annualLei(target, work);
-  const needed = useMemo(
-    () => Object.fromEntries(MAIN_REGIMES.map((r) => [r, solveForTakeHome((a) => computeRegime(r, a, options).takeHome, targetLei)])) as Record<BoardRegime, number | null>,
-    [targetLei, options],
-  );
+  const needed = useMemo(() => neededGross(targetLei, target.currency, options), [targetLei, target.currency, options]);
   // Show the answer in the target's currency: for its period, plus month and year as reference points.
   const inTarget = (yearLei: number, per: Period) => convert(rescale(yearLei, 'year', per, work), 'RON', target.currency, RATES);
   const columns = PERIODS.filter((p) => p === target.per || p === 'month' || p === 'year');
@@ -362,13 +389,24 @@ function Solver({ options, work }: { options: TaxOptions; work: WorkSettings }) 
         </thead>
         <tbody>
           {MAIN_REGIMES.map((r) => {
-            const a = needed[r];
+            const { annual: a, overLimit } = needed[r];
+            // A gross over what the regime allows is marked as on its card, and on phones as in the list of nets.
             return (
               <tr key={r}>
-                <th scope="row"><RegimeName label={regimes[r]} /></th>
+                <th scope="row">
+                  <RegimeName label={regimes[r]} />
+                  {overLimit && !phone && <> <span className="not-ranked-tag" title={tb.notRankedTitle}>{tb.notRanked}</span></>}
+                </th>
                 {phone ? (
                   <td className="solver-amount">
-                    {a === null ? '—' : <>{formatMoney(inTarget(a, target.per))} {per(target.per)}<small>{formatMoney(inTarget(a, second))} {per(second)}</small></>}
+                    {/* The ⚠ goes on the small line, so the column (no wrapping) keeps its width and the names theirs. */}
+                    {a === null ? '—' : <>
+                      {formatMoney(inTarget(a, target.per))} {per(target.per)}
+                      <small>
+                        {overLimit && <><span className="rank-mark over" role="img" aria-label={tb.notRanked} title={tb.notRankedTitle}>⚠</span> </>}
+                        {formatMoney(inTarget(a, second))} {per(second)}
+                      </small>
+                    </>}
                   </td>
                 ) : (
                   columns.map((p) => <td key={p}>{a === null ? '—' : formatMoney(inTarget(a, p))}</td>)

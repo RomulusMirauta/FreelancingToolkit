@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
+import { en, ro } from '../../lib/i18n/strings';
 import { DEFAULT_TAX_OPTIONS, MAIN_REGIMES, computeRegime, type BoardRegime } from '../../lib/tax/regimes';
 import { DEFAULT_WORK, type Period, type WorkSettings } from '../../lib/time/periods';
-import { annualLei } from './Taxes';
+import { annualEur, annualLei, neededGross } from './Taxes';
 
 const lei = (amount: number, per: Period = 'month') => ({ amount, per, currency: 'RON' });
 
@@ -56,5 +58,63 @@ describe('an income exactly on a threshold, as typed on the page', () => {
     expect(at(42_487.5, 'month', fourDay)('srlMicro').notice).toEqual({ kind: 'microOk' });
     expect(at(126_037.5, 'year', fourDay)('pfaNorm').notice).toEqual({ kind: 'normLimit', overLimit: false });
     expect(at(4600, 'month', fourDay)('employee').notes).toContainEqual({ kind: 'untaxedAmount' });
+  });
+});
+
+describe('the income-norm limit on the cards', () => {
+  // The notice the card shows and "Most money" goes by, for an income as typed.
+  const norm = (amount: number, currency: string, per: Period = 'year') => {
+    const annual = annualLei({ amount, per, currency }, DEFAULT_WORK);
+    return computeRegime('pfaNorm', annual, DEFAULT_TAX_OPTIONS, annualEur(annual, currency)).notice;
+  };
+  const over = (overLimit: boolean) => ({ kind: 'normLimit', overLimit });
+
+  it('an income in EUR is compared with 25,000 EUR: 24,000 and 25,000 a year are allowed, 25,001 is not', () => {
+    expect(norm(24_000, 'EUR')).toEqual(over(false));
+    expect(norm(2_000, 'EUR', 'month')).toEqual(over(false));
+    expect(norm(25_000, 'EUR')).toEqual(over(false));
+    expect(norm(25_001, 'EUR')).toEqual(over(true));
+  });
+
+  it('an income in lei keeps the limit in lei, at the 2025 average', () => {
+    expect(norm(126_037.5, 'RON')).toEqual(over(false));
+    expect(norm(126_037.51, 'RON')).toEqual(over(true));
+  });
+
+  it('over the limit, the warning reads the revenue as last year\'s and leaves next year to the 2026 average', () => {
+    const enText = en.notices.normOver('25,000.00', '126,037.50');
+    const roText = ro.notices.normOver('25.000,00', '126.037,50');
+    expect(enText).toContain("If last year's revenue was this high");
+    expect(enText).toContain('2026 average');
+    expect(enText).not.toContain('would not be allowed next year');
+    expect(roText).toContain('Dacă încasările de anul trecut au fost la fel de mari');
+    expect(roText).toContain('cursul mediu pe 2026');
+    expect(roText).not.toContain('anul viitor norma de venit nu ar mai fi permisă');
+  });
+});
+
+describe('net to gross: the income norm over its limit is marked', () => {
+  const norm = (targetLei: number, currency = 'RON') => neededGross(targetLei, currency, DEFAULT_TAX_OPTIONS).pfaNorm;
+  // The norm's taxes are on the norm, not on the revenue: it needs this much on top of the take-home.
+  const taxes = 126_037.5 - computeRegime('pfaNorm', 126_037.5, DEFAULT_TAX_OPTIONS).takeHome;
+
+  it('the default 10,000 RON a month: the norm needs 141,870 RON a year, over its limit, and is the only row marked', () => {
+    const rows = neededGross(120_000, 'RON', DEFAULT_TAX_OPTIONS);
+    expect(rows.pfaNorm.annual).toBeCloseTo(141_870, 2);
+    expect(MAIN_REGIMES.filter((r) => rows[r].overLimit)).toEqual(['pfaNorm']);
+    expect(norm(60_000).overLimit).toBe(false);
+  });
+
+  it('in lei: a gross of exactly 126,037.50 RON a year is allowed, a ban more is not', () => {
+    expect(norm(126_037.5 - taxes).overLimit).toBe(false);
+    expect(norm(126_037.51 - taxes).overLimit).toBe(true);
+  });
+
+  it('in another currency: a gross of 24,000 or 25,000 EUR a year is allowed, 25,001 is not', () => {
+    const rate = effectiveRates(BNR_RATES, {}).EUR!;
+    const target = (grossEur: number) => Math.round(grossEur * rate * 100) / 100 - taxes;
+    expect(norm(target(24_000), 'EUR').overLimit).toBe(false);
+    expect(norm(target(25_000), 'EUR').overLimit).toBe(false);
+    expect(norm(target(25_001), 'EUR').overLimit).toBe(true);
   });
 });

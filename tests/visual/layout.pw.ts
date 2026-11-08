@@ -143,6 +143,31 @@ test('VAT: the verdict has its own line, and the field shares a line with its qu
   expect(Math.abs(boxes.field.right - boxes.head.right)).toBeLessThanOrEqual(1);
 });
 
+test('income norm: an income in EUR is compared with 25,000 EUR, and net to gross marks the norm over its limit', async ({ page }, info) => {
+  await openApp(page, { lang: 'en', tab: 'taxes' });
+  const card = page.locator('article.regime').filter({ has: page.locator('#rg-pfaNorm') });
+  // 2,000 EUR a month is 24,000 EUR a year: allowed, and the most money, though over 126,037.50 RON. The star comes
+  // first: it waits for the page, which has no pill before it is drawn either.
+  await page.goto('./?lang=en&income=2000&income_currency=EUR&income_per=month#taxes');
+  await expect(card).toHaveClass(/is-best/);
+  await expect(card.locator('.not-ranked-tag')).toHaveCount(0);
+  await page.goto('./?lang=en&income=25000&income_currency=EUR&income_per=year#taxes');
+  await expect(card).toHaveClass(/is-best/);
+  await expect(card.locator('.not-ranked-tag')).toHaveCount(0);
+  await page.goto('./?lang=en&income=25001&income_currency=EUR&income_per=year#taxes');
+  await expect(card.locator('.not-ranked-tag')).toHaveText('Over the limit');
+
+  // The default 10,000 RON a month: the norm needs 141,870 RON a year, over its limit. Phones get the ⚠ of the list of nets.
+  const mark = isPhone(info) ? '[role="img"][aria-label="Over the limit"]' : '.not-ranked-tag';
+  const rows = page.locator('.solver tbody tr');
+  await expect(rows.locator(mark)).toHaveCount(1);
+  await expect(rows.filter({ has: page.locator(mark) })).toContainText('Income norm');
+  // 1,700 EUR a month needs a gross of about 24,500 EUR a year, over 126,037.50 RON: allowed.
+  await page.goto('./?lang=en&net=1700&net_currency=EUR&net_per=month#taxes');
+  await expect(page.locator('.solver summary')).toContainText('1,700.00 EUR');
+  await expect(rows.locator(mark)).toHaveCount(0);
+});
+
 /** A toast waiting for the page, the way a reload hands one over. */
 const withToast = (page: Page) =>
   page.addInitScript(() => sessionStorage.setItem('ft-toast-after-reload', JSON.stringify([{ id: 'offline' }])));
