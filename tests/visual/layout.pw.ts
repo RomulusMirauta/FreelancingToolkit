@@ -583,3 +583,46 @@ test('an amount whose income a month passes the limit stops the tax income there
   await expect(page.locator('.income-main input')).toHaveValue('999,999,999.99');
   await expect(page.locator('.toast')).toHaveCount(0);
 });
+
+test('a page left open moves on to the next day, at midnight in Romania or on coming back to it', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-25T22:00:00+02:00') });
+  await page.goto('./?lang=en#taxes');
+  const monthly = page.locator('.calendar .monthly strong');
+  const first = page.locator('.next-deadlines li').first();
+  await expect(monthly).toHaveText('Every month on the 25th (next: Wed, 25 November 2026, today)');
+  await expect(first).toContainText('in 61 days');
+  // Nothing drew the page again: at 09:00 the next morning it still said "today" for the 25th, and every "in N
+  // days" was a day too many, until a click.
+  await page.clock.fastForward('11:00:00');
+  await expect(monthly).toHaveText('Every month on the 25th (next: Mon, 21 December 2026, in 25 days)');
+  await expect(first).toContainText('in 60 days');
+  // A hidden page's timers can sleep through midnight: back in view, it reads the date again.
+  await page.clock.setSystemTime(new Date('2026-11-27T09:00:00+02:00'));
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(monthly).toHaveText('Every month on the 25th (next: Mon, 21 December 2026, in 24 days)');
+});
+
+test('a page left open over New Year counts the new year\'s public holidays', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-12-31T22:00:00+02:00') });
+  await page.goto('./?lang=en&holidays=1');
+  const label = page.locator('.settings-check span');
+  const summary = page.locator('.settings:not(.fees) > summary .muted');
+  await expect(label).toHaveText('Take off the public holidays (11 working days in 2026)');
+  await expect(summary).toContainText('249 working days/year');
+  // The year was read once, when the app loaded: 2026's holidays stayed until a reload.
+  await page.clock.fastForward('12:00:00');
+  await expect(label).toHaveText('Take off the public holidays (9 working days in 2027)');
+  await expect(summary).toContainText('251 working days/year');
+});
+
+test.describe('in another time zone', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+
+  test('the payment calendar counts from the date in Romania', async ({ page }) => {
+    // 16:30 on 25 November in California is 02:30 on the 26th in Romania, where the 25th's deadline has passed: the
+    // page said it was today.
+    await page.clock.setFixedTime(new Date('2026-11-26T00:30:00Z'));
+    await page.goto('./?lang=en#taxes');
+    await expect(page.locator('.calendar .monthly strong')).toHaveText('Every month on the 25th (next: Mon, 21 December 2026, in 25 days)');
+  });
+});

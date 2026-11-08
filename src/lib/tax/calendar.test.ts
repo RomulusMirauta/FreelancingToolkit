@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { en, ro } from '../i18n/strings';
 import { daysUntil, deadlinesIn, nextMonthly, nextWorkingDay, upcomingDeadlines } from './calendar';
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -45,5 +46,17 @@ describe('payment calendar', () => {
     expect(iso(nextMonthly(new Date(2026, 11, 22)))).toBe('2027-01-25'); // and on past the new year
     expect(iso(nextMonthly(new Date(2024, 11, 2)))).toBe('2024-12-20'); // 21 December 2024 was a Saturday: the working day before
     expect(daysUntil(new Date(2026, 10, 2, 23), new Date(2026, 10, 25))).toBe(23);
+  });
+
+  it('lists D390 without being a VAT payer, D301 and D394 too', () => {
+    // D390 is for anyone registered under art. 316 or 317 (Cod fiscal art. 325): the list tied it to VAT payers.
+    for (const { calendar } of [en, ro]) {
+      const pfa = calendar.monthly.filter((m) => m.audience.includes('pfa')).map((m) => m.text);
+      const d390 = pfa.find((t) => t.includes('D390'))!;
+      expect(d390).toMatch(/art\. 317/);
+      expect(d390).not.toMatch(/^(If you are a VAT payer|Dacă ești plătitor de TVA)/);
+      expect(pfa.filter((t) => t.includes('D301'))).toHaveLength(1);
+      expect(pfa.find((t) => t.includes('D300'))).toMatch(/D394.*30/);
+    }
   });
 });

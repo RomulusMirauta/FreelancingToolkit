@@ -13,6 +13,7 @@ import { roundMoney } from './lib/ui/numbers';
 import { flushQuery } from './lib/ui/query';
 import { applyTheme, isTheme, type Theme } from './lib/ui/theme';
 import { usePersistentState } from './lib/ui/usePersistentState';
+import { useToday } from './lib/ui/useToday';
 import { useUrlQuery } from './lib/ui/urlQuery';
 import { LANG_QUERY, THEME_QUERY, WORK_QUERY, isWork } from './features/app/appQueries';
 import { Toast, notifyTooBig } from './lib/ui/toast';
@@ -44,6 +45,10 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   useUrlQuery(WORK_QUERY, work);
 
   useEffect(() => applyTheme(theme), [theme]);
+
+  // A new day in Romania renders the page again, at midnight or on coming back to a page left open: the calendar,
+  // the rates' age and the public holidays' year are read during render, and nothing below is memoized on the date.
+  useToday();
 
   // The converter's figures, for the fees card under Working time.
   const [snapshot, setSnapshot] = useState<ConverterSnapshot | null>(null);

@@ -1,5 +1,6 @@
 import snapshot from '../../data/rates.json';
 import market from '../../data/market-rates.json';
+import { publicHolidays } from '../time/holidays';
 
 /** RON per 1 unit of each currency (BNR multipliers already applied). */
 export interface RateTable {
@@ -87,8 +88,17 @@ export function ageInDays(rateDate: string, today: Date): number {
 
 /**
  * BNR publishes on banking days around 13:00, so a Friday rate is still current on
- * Monday morning (3 days). Anything older than 4 days means the snapshot is stale.
+ * Monday morning (3 days). Anything older than 4 days means the snapshot is stale, not counting
+ * the weekdays BNR is closed for a public holiday: after Easter, or 30 November and 1 December,
+ * its latest rate is 5 days old on the morning it opens again.
  */
 export function isStale(rateDate: string, today: Date): boolean {
-  return ageInDays(rateDate, today) > 4;
+  const [y, m, d] = rateDate.split('-').map(Number) as [number, number, number];
+  const from = new Date(y, m - 1, d);
+  const to = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  let closed = 0;
+  for (let year = y; year <= to.getFullYear(); year++) {
+    closed += publicHolidays(year).filter((h) => h > from && h < to && h.getDay() !== 0 && h.getDay() !== 6).length;
+  }
+  return ageInDays(rateDate, today) - closed > 4;
 }

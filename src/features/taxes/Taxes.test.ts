@@ -12,7 +12,7 @@ const WORK: Record<string, WorkSettings> = {
   fullTime: DEFAULT_WORK,
   partTime: { ...DEFAULT_WORK, hoursPerDay: 4 },
   fourDay: { ...DEFAULT_WORK, daysPerWeek: 4 },
-  weekend: { ...DEFAULT_WORK, daysPerWeek: 2 },
+  twoDay: { ...DEFAULT_WORK, daysPerWeek: 2 },
   billable70: { ...DEFAULT_WORK, billablePct: 70 },
   holidays: { ...DEFAULT_WORK, holidays: true },
   daysOff21: { ...DEFAULT_WORK, daysOff: 21 },

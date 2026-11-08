@@ -181,7 +181,7 @@ export const en = {
     billablePct: 'Billable hours (%)',
     holidays: (year: number, days: string) => `Take off the public holidays (${days} working days in ${year})`,
     presets: 'Quick pick',
-    presetNames: { fullTime: 'Full-time', partTime: 'Part-time', fourDay: '4-day week', weekend: 'Weekends only' },
+    presetNames: { fullTime: 'Full-time', partTime: 'Part-time', fourDay: '4-day week', twoDay: '2-day week' },
     preset: (h: number, d: number) => `${h} h × ${d} days`,
     notes: [
       { lead: 'Billable hours', text: 'The share of your working time you can invoice; the rest goes on e-mails, offers, admin and finding clients. 60–80% is common. The hourly rate stays the same, the day, month and year amounts go down.' },
@@ -443,7 +443,9 @@ export const en = {
     monthly: [
       { text: "Last month's salaries (D112): income tax and contributions, for an SRL paying a salary", audience: ['srl'] as Audience[] },
       { text: 'Tax on dividends paid last month (D100)', audience: ['srl'] as Audience[] },
-      { text: 'If you are a VAT payer: the D300 return (monthly or quarterly) and, for EU clients, the D390 statement', audience: ['pfa', 'srl'] as Audience[] },
+      { text: 'If you are a VAT payer: the D300 return (monthly or quarterly); the D394 statement follows by the 30th', audience: ['pfa', 'srl'] as Audience[] },
+      { text: 'With an intra-EU VAT number (art. 317) or as a VAT payer: the D390 statement, for each month with services sold to or bought from businesses in other EU countries', audience: ['pfa', 'srl'] as Audience[] },
+      { text: 'If you are not a VAT payer and buy services from abroad (software, ads, platforms): the D301 return, and the VAT on them', audience: ['pfa', 'srl'] as Audience[] },
     ],
     note: 'General deadlines for a calendar year; in December what falls on the 25th is due on the 21st. They do not replace the ANAF calendar: check there and with your accountant.',
   },
@@ -628,7 +630,7 @@ export const ro: Strings = {
     billablePct: 'Ore facturabile (%)',
     holidays: (year, days) => `Scade sărbătorile legale (${days} zile lucrătoare în ${year})`,
     presets: 'Alegere rapidă',
-    presetNames: { fullTime: 'Normă întreagă', partTime: 'Jumătate de normă', fourDay: 'Săptămână de 4 zile', weekend: 'Doar în weekend' },
+    presetNames: { fullTime: 'Normă întreagă', partTime: 'Jumătate de normă', fourDay: 'Săptămână de 4 zile', twoDay: 'Săptămână de 2 zile' },
     preset: (h, d) => `${h} h × ${d} zile`,
     notes: [
       { lead: 'Ore facturabile', text: 'Partea din timpul de lucru pe care o poți factura; restul se duce pe e-mailuri, oferte, acte și căutat clienți. 60–80% e obișnuit. Tariful pe oră rămâne același, iar sumele pe zi, lună și an scad.' },
@@ -890,7 +892,9 @@ export const ro: Strings = {
     monthly: [
       { text: 'Salariile lunii trecute (D112): impozitul și contribuțiile, pentru un SRL care plătește salariu', audience: ['srl'] },
       { text: 'Impozitul pe dividendele plătite luna trecută (D100)', audience: ['srl'] },
-      { text: 'Dacă ești plătitor de TVA: decontul D300 (lunar sau trimestrial) și, pentru clienți din UE, declarația D390', audience: ['pfa', 'srl'] },
+      { text: 'Dacă ești plătitor de TVA: decontul D300 (lunar sau trimestrial); declarația D394 urmează până pe 30', audience: ['pfa', 'srl'] },
+      { text: 'Cu cod de TVA intracomunitar (art. 317) sau ca plătitor de TVA: declarația D390, pentru fiecare lună cu servicii prestate către firme din alte țări UE sau cumpărate de la ele', audience: ['pfa', 'srl'] },
+      { text: 'Dacă nu ești plătitor de TVA și cumperi servicii din străinătate (software, reclame, platforme): decontul D301 și TVA-ul aferent', audience: ['pfa', 'srl'] },
     ],
     note: 'Termene generale, pentru anul calendaristic; în decembrie, ce cade pe 25 se depune și se plătește până pe 21. Nu înlocuiesc calendarul ANAF: verifică acolo și cu contabilul.',
   },

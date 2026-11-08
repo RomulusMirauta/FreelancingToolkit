@@ -1,4 +1,5 @@
 import { holidaysOnWorkdays } from './holidays';
+import { todayInRomania } from './today';
 
 export const PERIODS = ['hour', 'day', 'week', 'month', 'months3', 'months6', 'months9', 'year'] as const;
 export type Period = (typeof PERIODS)[number];
@@ -18,16 +19,16 @@ export const DEFAULT_WORK: WorkSettings = { hoursPerDay: 8, daysPerWeek: 5, days
 
 export const WEEKS_PER_YEAR = 52;
 
-/** The year the public holidays are counted for: the current one. */
-export const HOLIDAY_YEAR = new Date().getFullYear();
+/** The year the public holidays are counted for: Romania's, read at each call so a page left open moves on to the next. */
+export const holidayYear = (): number => todayInRomania().getFullYear();
 
 /** Working days in the year: 52 weeks, minus days off and, if chosen, public holidays on working days. */
-export function workDaysIn(s: WorkSettings, year = HOLIDAY_YEAR): number {
+export function workDaysIn(s: WorkSettings, year = holidayYear()): number {
   return WEEKS_PER_YEAR * s.daysPerWeek - s.daysOff - (s.holidays ? holidaysOnWorkdays(year, s.daysPerWeek) : 0);
 }
 
 /** Billable hours in one period. Months are a twelfth of the billable year. */
-export function hoursIn(period: Period, s: WorkSettings, year = HOLIDAY_YEAR): number {
+export function hoursIn(period: Period, s: WorkSettings, year = holidayYear()): number {
   const day = s.hoursPerDay * (s.billablePct / 100);
   const yearHours = day * workDaysIn(s, year);
   switch (period) {

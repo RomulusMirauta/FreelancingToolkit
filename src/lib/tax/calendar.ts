@@ -60,7 +60,11 @@ function monthlyDue(y: number, m: number): Date {
   return x;
 }
 
-/** The next monthly deadline (salaries D112, dividend tax, VAT D300), on or after `from`. */
+/**
+ * The next monthly deadline, on or after `from`: salaries (D112), dividend tax, and VAT: D300, D390 for anyone
+ * registered under art. 316 or 317 (Cod fiscal art. 325), D301 for the VAT a non-VAT payer owes on services bought
+ * from abroad (art. 324 alin. (1) lit. d), art. 307 alin. (2)).
+ */
 export function nextMonthly(from: Date): Date {
   const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const thisMonth = monthlyDue(start.getFullYear(), start.getMonth() + 1);

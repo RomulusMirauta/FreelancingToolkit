@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { daysUntil, nextMonthly, upcomingDeadlines, type Audience, type Deadline, type DeadlineKind } from '../../lib/tax/calendar';
+import { todayInRomania } from '../../lib/time/today';
 
 type Filter = 'all' | Audience;
 const FILTERS: Filter[] = ['all', 'pfa', 'srl'];
@@ -24,9 +25,8 @@ function groupByMonth(list: Deadline[]): [string, Deadline[]][] {
 export function Calendar() {
   const { calendar: t, locale } = useT();
   const [filter, setFilter] = useState<Filter>('all');
-  // Read on every render on purpose, so a page left open moves on to the next day.
-  // eslint-disable-next-line react/purity
-  const today = new Date();
+  // Read on every render on purpose: a new day in Romania renders the app again (useToday in App.tsx).
+  const today = todayInRomania();
   const list = upcomingDeadlines(today).filter((d) => filter === 'all' || d.audience.includes(filter));
   const monthly = nextMonthly(today);
   const fmt = (d: Date) => d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });

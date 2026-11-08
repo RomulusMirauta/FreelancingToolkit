@@ -4,6 +4,7 @@ import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale } from '../../lib/currency/rates';
 import { useLang, useT } from '../../lib/i18n';
 import { PERIODS, rescale, type Period, type WorkSettings } from '../../lib/time/periods';
+import { todayInRomania } from '../../lib/time/today';
 import { bareAmount, formatEditable, formatMoney, isAtOnce, isSaneAmount, parseAmount } from '../../lib/ui/numbers';
 import { notifyTooBig, refuseNonNumberPaste, refuseWord } from '../../lib/ui/toast';
 import { usePersistentState } from '../../lib/ui/usePersistentState';
@@ -161,9 +162,9 @@ export function Converter({ work, onTaxes, onIncome, onSnapshot }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const brace = useBrace(scrollRef, columns.length);
 
-  // Read on every render on purpose, so a page left open notices when the rates get old.
-  // eslint-disable-next-line react/purity
-  const stale = isStale(BNR_RATES.date, new Date());
+  // Read on every render on purpose, so a page left open notices when the rates get old: a new day in Romania, where
+  // BNR's dates are, renders the app again (useToday in App.tsx).
+  const stale = isStale(BNR_RATES.date, todayInRomania());
   const anchor = columns.includes('EUR') ? 'EUR' : columns[0]!;
   const hourAnchor = valueAt('hour', anchor);
   useEffect(() => onSnapshot({ monthRon, hour: hourAnchor, anchor }), [monthRon, hourAnchor, anchor, onSnapshot]);

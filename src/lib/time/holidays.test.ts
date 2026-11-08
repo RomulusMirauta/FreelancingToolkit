@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { en, ro } from '../i18n/strings';
 import { holidaySplit, holidaysOnWorkdays, isDayOff, orthodoxEaster, publicHolidays } from './holidays';
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -23,6 +24,13 @@ describe('public holidays', () => {
     expect(holidaysOnWorkdays(2026, 5)).toBe(11);
     expect(holidaysOnWorkdays(2026, 7)).toBe(16);
     expect(holidaysOnWorkdays(2026, 2.5)).toBeCloseTo(5.5, 9);
+  });
+
+  it('counts a two-day week as two of Monday to Friday, and the quick pick no longer says weekends', () => {
+    // "Weekends only" took 3.6 days off 2027 for its holidays; on Saturdays and Sundays there are 8.
+    expect(holidaySplit(2027)).toEqual({ weekdays: 9, weekend: 8 });
+    expect(holidaysOnWorkdays(2027, 2)).toBeCloseTo(3.6, 9);
+    for (const { settings } of [en, ro]) expect(Object.values(settings.presetNames).join(' · ')).not.toMatch(/weekend/i);
   });
 
   it('knows weekends and holidays are days off', () => {

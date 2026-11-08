@@ -3,7 +3,7 @@ import { convert, crossRate } from './convert';
 import { CURRENCIES } from './currencies';
 import { formatNumber } from '../ui/numbers';
 import {
-  BNR_HISTORY, BNR_RATES, MARKET_RATES, effectiveRates, isMarketRate, isStale, rateChange, rateDirection, rateSeries,
+  BNR_HISTORY, BNR_RATES, MARKET_RATES, ageInDays, effectiveRates, isMarketRate, isStale, rateChange, rateDirection, rateSeries,
   type DayRates, type RateTable,
 } from './rates';
 
@@ -39,6 +39,29 @@ describe('staleness', () => {
   });
   it('a week-old rate is stale', () => {
     expect(isStale('2026-10-23', new Date(2026, 10, 2))).toBe(true);
+  });
+  it('BNR\'s latest rate is current on the morning after it was closed for two holidays next to a weekend', () => {
+    expect(isStale('2026-04-09', new Date(2026, 3, 14, 9))).toBe(false); // Good Friday and Easter Monday
+    expect(isStale('2025-12-31', new Date(2026, 0, 5, 9))).toBe(false); // 1 and 2 January
+    expect(isStale('2026-11-27', new Date(2026, 11, 2, 9))).toBe(false); // 30 November and 1 December
+    expect(isStale('2027-04-29', new Date(2027, 4, 4, 9))).toBe(false); // Good Friday and Easter Monday, 1 May a Saturday
+  });
+  it('past the holidays, two missed fixings still make it stale', () => {
+    expect(isStale('2026-04-09', new Date(2026, 3, 16, 9))).toBe(true); // Tuesday's and Wednesday's missed
+    expect(isStale('2026-11-27', new Date(2026, 11, 4, 9))).toBe(true);
+  });
+  it('without holidays, the same 4 days as before', () => {
+    // No public holiday from 5 October to 2 November 2026: each banking day's rate, seen on each of the next 10 days,
+    // is stale exactly when the calendar days alone made it so.
+    for (let d = 5; d <= 23; d++) {
+      const weekday = new Date(2026, 9, d).getDay();
+      if (weekday === 0 || weekday === 6) continue;
+      const rate = `2026-10-${String(d).padStart(2, '0')}`;
+      for (let day = d; day <= d + 10; day++) {
+        const today = new Date(2026, 9, day, 9);
+        expect(isStale(rate, today), `${rate} seen on ${today.toDateString()}`).toBe(ageInDays(rate, today) > 4);
+      }
+    }
   });
 });
 

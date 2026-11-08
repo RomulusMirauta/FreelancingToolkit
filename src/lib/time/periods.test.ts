@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { DEFAULT_WORK, PERIODS, hoursIn, isValidWork, readWork, rescale, workDaysIn, type Period } from './periods';
+import { describe, expect, it, vi } from 'vitest';
+import { DEFAULT_WORK, PERIODS, holidayYear, hoursIn, isValidWork, readWork, rescale, workDaysIn, type Period } from './periods';
 
 describe('periods', () => {
   it('scales the default 30 €/h across every period', () => {
@@ -27,6 +27,22 @@ describe('periods', () => {
     expect(workDaysIn(s, 2026)).toBe(260 - 21 - 11);
     expect(hoursIn('year', s, 2026)).toBe(8 * 228);
     expect(hoursIn('day', s, 2026)).toBe(8);
+  });
+
+  it('counts the public holidays of the year it is in Romania, read again at each call', () => {
+    // The year was read once, when the app loaded: a page left open over New Year kept 2026's 11 holidays.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-12-31T20:00:00Z')); // 22:00 on 31 December in Romania
+      expect(holidayYear()).toBe(2026);
+      expect(workDaysIn({ ...DEFAULT_WORK, holidays: true })).toBe(260 - 11);
+      vi.setSystemTime(new Date('2026-12-31T22:30:00Z')); // 00:30 on 1 January in Romania
+      expect(holidayYear()).toBe(2027);
+      expect(workDaysIn({ ...DEFAULT_WORK, holidays: true })).toBe(260 - 9);
+      expect(hoursIn('year', { ...DEFAULT_WORK, holidays: true })).toBe(8 * 251);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('bills only the billable share of the time', () => {

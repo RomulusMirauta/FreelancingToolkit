@@ -3,7 +3,7 @@ import { useLang, useT } from '../../lib/i18n';
 import { Fold } from '../../lib/ui/Fold';
 import { Notes } from '../../lib/ui/Notes';
 import { holidaysOnWorkdays } from '../../lib/time/holidays';
-import { DEFAULT_WORK, HOLIDAY_YEAR, hoursIn, isValidWork, maxDaysOff, workDaysIn, type WorkSettings } from '../../lib/time/periods';
+import { DEFAULT_WORK, holidayYear, hoursIn, isValidWork, maxDaysOff, workDaysIn, type WorkSettings } from '../../lib/time/periods';
 import { formatEditable, formatNumber, parseAmount } from '../../lib/ui/numbers';
 
 interface Props {
@@ -27,7 +27,8 @@ const PRESETS = [
   { key: 'fullTime', hoursPerDay: DEFAULT_WORK.hoursPerDay, daysPerWeek: DEFAULT_WORK.daysPerWeek },
   { key: 'partTime', hoursPerDay: 4, daysPerWeek: 5 },
   { key: 'fourDay', hoursPerDay: 8, daysPerWeek: 4 },
-  { key: 'weekend', hoursPerDay: 8, daysPerWeek: 2 },
+  // Not "weekends only": up to five days a week, the public holidays counted are Monday to Friday's (holidaysOnWorkdays).
+  { key: 'twoDay', hoursPerDay: 8, daysPerWeek: 2 },
 ] as const;
 
 export function Settings({ work, setWork }: Props) {
@@ -36,7 +37,8 @@ export function Settings({ work, setWork }: Props) {
   // The inputs are uncontrolled so partial typing ("0.") is not overwritten; bumping this remounts them on a preset.
   // A new language remounts them too, so their text takes its decimal mark (7,5 → 7.5).
   const [resets, setResets] = useState(0);
-  const holidayDays = holidaysOnWorkdays(HOLIDAY_YEAR, work.daysPerWeek);
+  const year = holidayYear();
+  const holidayDays = holidaysOnWorkdays(year, work.daysPerWeek);
   return (
     <Fold
       id="work"
@@ -108,7 +110,7 @@ export function Settings({ work, setWork }: Props) {
               setResets(resets + 1);
             }}
           />
-          <span>{t.holidays(HOLIDAY_YEAR, formatNumber(holidayDays))}</span>
+          <span>{t.holidays(year, formatNumber(holidayDays))}</span>
         </label>
       </div>
       {/* What the settings come to, read-only: the figures every period of the converter is built from. */}
