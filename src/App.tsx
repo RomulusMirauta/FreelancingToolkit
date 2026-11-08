@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { SharedBanner, TopActions } from './features/app/TopActions';
 import { ViewSwitch } from './features/app/ViewSwitch';
 import { Converter, DEFAULT_SOURCE, type ConverterSnapshot } from './features/converter/Converter';
-import { saveSource } from './features/converter/sourceQuery';
+import { monthIncome, saveSource } from './features/converter/sourceQuery';
 import { Fees } from './features/converter/Fees';
 import { ResetApp } from './features/reset/ResetApp';
 import { Settings } from './features/settings/Settings';
@@ -15,7 +15,7 @@ import { applyTheme, isTheme, type Theme } from './lib/ui/theme';
 import { usePersistentState } from './lib/ui/usePersistentState';
 import { useUrlQuery } from './lib/ui/urlQuery';
 import { LANG_QUERY, THEME_QUERY, WORK_QUERY, isWork } from './features/app/appQueries';
-import { Toast } from './lib/ui/toast';
+import { Toast, notifyTooBig } from './lib/ui/toast';
 import { trackView } from './lib/analytics';
 
 
@@ -48,11 +48,13 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   // The converter's figures, for the fees card under Working time.
   const [snapshot, setSnapshot] = useState<ConverterSnapshot | null>(null);
 
-  // Stable, so the converter's effect runs only when its amount changes.
-  const followConverter = useCallback(
-    (monthRon: number) => setIncome({ amount: roundMoney(monthRon), per: 'month', currency: 'RON' }),
-    [setIncome],
-  );
+  // Stable, so the converter's effect runs only when its amount changes. Past the largest amount the tax page
+  // takes, the income stops there, and the word in the corner says what the limit is.
+  const followConverter = useCallback((monthRon: number) => {
+    const followed = monthIncome(monthRon);
+    if (followed.amount !== roundMoney(monthRon)) notifyTooBig();
+    setIncome(followed);
+  }, [setIncome]);
 
   // The other way round: an income typed on the tax page becomes the converter's amount (same amount,
   // currency and period), so both pages show the same money. The default income gives the default 30 EUR/hour.
@@ -111,8 +113,8 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
             <Converter
               work={work}
               onTaxes={(yearRon) => {
-                // Rounded to the ban like the income that follows the converter, so the two agree.
-                setIncome({ amount: roundMoney(yearRon / 12), per: 'month', currency: 'RON' });
+                // The same income as the one that follows the converter, so the two agree.
+                followConverter(yearRon / 12);
                 go('taxes');
               }}
               onIncome={followConverter}

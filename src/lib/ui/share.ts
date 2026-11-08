@@ -131,6 +131,14 @@ export function finishSharedLink(): void {
 }
 
 /**
+ * Whether this page load opened a shared link (not one from before a reload, still waiting for a choice): its
+ * settings are all in the address, and one it doesn't have is on its default.
+ */
+export function linkOpenedNow(): boolean {
+  return openedNow;
+}
+
+/**
  * Whether this visit opened a shared link, whether there were own settings to go back to, and whether the link
  * held the very same settings (then nothing was replaced and there is nothing to go back to).
  */

@@ -2,8 +2,9 @@ import { CURRENCIES } from '../../lib/currency/currencies';
 import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
 import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period } from '../../lib/time/periods';
-import { roundMoney } from '../../lib/ui/numbers';
+import { MAX_AMOUNT, roundMoney } from '../../lib/ui/numbers';
 import { readQuery, writeQuery } from '../../lib/ui/query';
+import { linkOpenedNow } from '../../lib/ui/share';
 import { noteDropped, numberParam } from '../../lib/ui/urlQuery';
 
 /**
@@ -42,13 +43,27 @@ const readJson = (key: string): unknown => {
   }
 };
 
+/**
+ * The tax page's income for the converter's amount per month in lei: rounded the way the converter shows it, and
+ * no more than the largest amount the tax page takes. A larger one was saved and put in the address, then refused
+ * on the next start as a broken link.
+ */
+export function monthIncome(monthRon: number): { amount: number; per: 'month'; currency: 'RON' } {
+  return { amount: Math.min(roundMoney(monthRon), MAX_AMOUNT), per: 'month', currency: 'RON' };
+}
+
 /** The tax page's income as the converter sends it: the amount per month in lei, with the saved working time and custom rates. */
 function followedIncome(source: Source): { amount: number; per: 'month'; currency: 'RON' } {
   const work = readWork(readJson('ft.work')) ?? DEFAULT_WORK;
   const overrides = readJson('ft.customRates');
   const rates = effectiveRates(BNR_RATES, typeof overrides === 'object' && overrides ? (overrides as Record<string, number>) : {});
-  const month = convert(rescale(source.amount, source.period, 'month', work), source.currency, 'RON', rates);
-  return { amount: roundMoney(month), per: 'month', currency: 'RON' };
+  return monthIncome(convert(rescale(source.amount, source.period, 'month', work), source.currency, 'RON', rates));
+}
+
+/** The converter's saved amount, or the default one when none (or one it can't use) is saved. */
+function savedSource(defaultSource: Source): Source {
+  const saved = readJson('ft.source') as Source | null;
+  return saved && typeof saved.amount === 'number' && KNOWN.has(saved.currency) && PERIODS.includes(saved.period) ? saved : defaultSource;
 }
 
 /**
@@ -57,10 +72,40 @@ function followedIncome(source: Source): { amount: number; per: 'month'; currenc
  */
 export function incomeFollowsConverter(defaultSource: Source): boolean {
   const income = readJson('ft.taxIncome') as { amount?: unknown; per?: unknown; currency?: unknown } | null;
-  if (!income) return false;
-  const saved = readJson('ft.source') as Source | null;
-  const followed = followedIncome(saved && typeof saved.amount === 'number' ? saved : defaultSource);
-  return income.amount === followed.amount && income.per === 'month' && income.currency === 'RON';
+  if (!income || income.per !== 'month' || income.currency !== 'RON') return false;
+  // An income typed on the tax page becomes the converter's amount (saveSource), so one in lei a month that isn't
+  // the converter's amount came from the converter, at the rates of the day it was sent. Not worked out again: the
+  // site gets new rates every banking day, and from the next one on it no longer matched.
+  if (!sourceFollowsIncome()) return true;
+  // The converter's amount is this very income: it follows when the converter gives it back as it is.
+  return income.amount === followedIncome(savedSource(defaultSource)).amount;
+}
+
+/**
+ * The converter's amount per month in lei that the tax income goes with, before the address's working time and
+ * custom rates are read: null when the saved income doesn't follow the converter (with none saved, the default
+ * income does). For refollowIncome.
+ */
+export function followedMonth(defaultSource: Source): number | null {
+  if (readJson('ft.taxIncome') !== null && !incomeFollowsConverter(defaultSource)) return null;
+  return followedIncome(savedSource(defaultSource)).amount;
+}
+
+/**
+ * Runs once before the first render, after the address's working time and custom rates are read: when they
+ * changed the converter's amount per month (`before`, from followedMonth), the tax income that went with it
+ * follows, as it does when they are changed in the converter. A reload with the same ones leaves it as it was
+ * sent. An income in the address is read later and still wins; a shared link has its own (see applySourceQuery).
+ */
+export function refollowIncome(defaultSource: Source, before: number | null): void {
+  if (before === null || linkOpenedNow()) return;
+  const income = followedIncome(savedSource(defaultSource));
+  if (income.amount === before) return;
+  try {
+    localStorage.setItem('ft.taxIncome', JSON.stringify(income));
+  } catch {
+    // storage unavailable: the tax page opens on its default income
+  }
 }
 
 /**
@@ -103,8 +148,10 @@ export function writeSourceQuery(source: Source, isDefault: boolean): void {
 
 /**
  * Runs once before the first render. An amount in the address wins over the saved one, and the tax page's
- * income follows it (as it would after typing it in the converter), so a link opened on #taxes is right too.
- * Without one, a saved amount is written into the address. A broken amount is dropped from the address.
+ * income follows it (as it would after typing it in the converter), so an address opened on #taxes is right too.
+ * Not in a shared link: it has the sender's income whenever that isn't the default, so without one the income
+ * stays on the default, as the sender's was. Without an amount, a saved one is written into the address. A broken
+ * amount is dropped from the address.
  */
 export function applySourceQuery(defaultSource: Source): void {
   const params = readQuery();
@@ -114,7 +161,7 @@ export function applySourceQuery(defaultSource: Source): void {
       // Only a different amount touches the saved state, so a reload keeps an income set on the tax page.
       if (!same(readJson('ft.source') as Partial<Source> | null, fromUrl)) {
         localStorage.setItem('ft.source', JSON.stringify({ period: fromUrl.period, currency: fromUrl.currency, amount: fromUrl.amount }));
-        localStorage.setItem('ft.taxIncome', JSON.stringify(followedIncome(fromUrl)));
+        if (!linkOpenedNow()) localStorage.setItem('ft.taxIncome', JSON.stringify(followedIncome(fromUrl)));
       }
       return;
     }

@@ -544,3 +544,42 @@ test('a currency turned off and on again is no change: nothing saved or in the a
   await expect(dot).not.toHaveClass(/pulse/);
   await expect(page).not.toHaveURL(/currencies=/);
 });
+
+test('"Reset tab" on the converter also resets a tax income the converter sent before the rates changed', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  // 40 EUR an hour, sent to the tax page at the previous day's rate (5.3403; the test rates are of the next day):
+  // worked out again with today's rate it no longer matched, and the reset kept it while the converter went back
+  // to 30 EUR an hour.
+  await page.evaluate(() => {
+    localStorage.setItem('ft.source', JSON.stringify({ period: 'hour', currency: 'EUR', amount: 40 }));
+    localStorage.setItem('ft.taxIncome', JSON.stringify({ amount: 37026.08, per: 'month', currency: 'RON' }));
+  });
+  await page.goto('./?lang=en');
+  await expect(page).toHaveURL(/income=37026\.08/);
+  await page.locator('.reset-wrap > .menu-trigger').click();
+  await Promise.all([page.waitForEvent('load'), page.locator('.reset-row').getByRole('button', { name: 'Reset tab' }).click()]);
+  await drawn(page);
+  expect(await saved(page, 'ft.source')).toBeNull();
+  expect(await saved(page, 'ft.taxIncome')).toBeNull();
+  await expect(page).not.toHaveURL(/income=/);
+});
+
+test('an amount whose income a month passes the limit stops the tax income there, and a reload finds nothing broken', async ({ page }) => {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const cell = byName(page, 'hour-EUR');
+  await focusCell(page, cell);
+  await page.keyboard.type('2000000');
+  await cell.blur();
+  // 2,000,000 EUR an hour is 1.85 billion lei a month: saved and put in the address, it was refused on the next
+  // start ("Some settings in the link weren't valid") and the tax page went back to its default income.
+  await expect(page.locator('.toast')).toContainText('not the only one testing');
+  await expect.poll(() => saved(page, 'ft.taxIncome')).toBe('{"amount":999999999.99,"per":"month","currency":"RON"}');
+  await expect(page).toHaveURL(/income=999999999\.99/);
+  await page.reload();
+  await drawn(page);
+  await expect(byName(page, 'hour-EUR')).toHaveValue('2,000,000.00');
+  await expect(page.locator('.toast')).toHaveCount(0);
+  await page.evaluate(() => { location.hash = '#taxes'; });
+  await expect(page.locator('.income-main input')).toHaveValue('999,999,999.99');
+  await expect(page.locator('.toast')).toHaveCount(0);
+});

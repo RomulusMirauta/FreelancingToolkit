@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { URL_QUERIES } from './urlState';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { URL_QUERIES, applyUrlState } from './urlState';
 import { SOURCE_PARAMS } from './features/converter/sourceQuery';
 import { APP_KEYS, APP_QUERY, PAGE_KEYS, PAGE_QUERY } from './lib/ui/settingsKeys';
 import { DEFAULT_TAX_OPTIONS, mergeTaxOptions } from './lib/tax/regimes';
+import { BNR_RATES } from './lib/currency/rates';
+import { DEFAULT_WORK, rescale } from './lib/time/periods';
+import { roundMoney } from './lib/ui/numbers';
+import { flushQuery } from './lib/ui/query';
 import type { UrlQuery } from './lib/ui/urlQuery';
 
 // The app's source files, as text.
@@ -199,5 +203,72 @@ describe('saved card options', () => {
     expect(q().isValid(merged)).toBe(true);
     expect(merged.employee).toEqual({ dependants: 2, under26: true, schoolChildren: 0 });
     expect(merged.pfaReal).toEqual({ ...DEFAULT_TAX_OPTIONS.pfaReal, expensesMonthly: 1500 });
+  });
+});
+
+describe('the tax income at start follows the working time and custom rates in the address', () => {
+  // A tiny browser: an address that history.replaceState changes, and the app's storage.
+  let url: URL;
+  let store: Map<string, string>;
+  beforeEach(() => {
+    vi.stubGlobal('location', {
+      get href() { return url.href; },
+      get search() { return url.search; },
+      get hash() { return url.hash; },
+    });
+    vi.stubGlobal('history', { state: null, replaceState: (_: unknown, __: string, next: string) => { url = new URL(next, url); } });
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+  });
+  afterEach(() => {
+    flushQuery();
+    vi.unstubAllGlobals();
+  });
+
+  /** A start on `address` with `saved` in storage (what main.tsx runs before the first render): the income saved then. */
+  const start = (address: string, saved: Record<string, unknown> = {}) => {
+    url = new URL(address, 'https://x.test/app/');
+    store = new Map(Object.entries(saved).map(([k, v]) => [k, JSON.stringify(v)]));
+    applyUrlState();
+    flushQuery();
+    const raw = store.get('ft.taxIncome');
+    return raw === undefined ? null : JSON.parse(raw);
+  };
+  const EUR = BNR_RATES.rates.EUR!;
+  const AT_4H = { ...DEFAULT_WORK, hoursPerDay: 4 };
+  /** An amount an hour in EUR as the converter sends it to the tax page: lei a month, at an EUR rate. */
+  const sent = (amount: number, rate: number, work = DEFAULT_WORK) =>
+    ({ amount: roundMoney(rescale(amount, 'hour', 'month', work) * rate), per: 'month', currency: 'RON' });
+  const SOURCE = { period: 'hour', currency: 'EUR', amount: 40 };
+
+  it('an income that followed the converter follows them too, as after changing them in the converter', () => {
+    const saved = { 'ft.source': SOURCE, 'ft.taxIncome': sent(40, EUR) };
+    expect(start('?hours=4', saved)).toEqual(sent(40, EUR, AT_4H));
+    expect(url.searchParams.get('income')).toBe(String(sent(40, EUR, AT_4H).amount));
+    expect(start('?hours=4&rates=EUR:6', saved)).toEqual(sent(40, 6, AT_4H));
+  });
+
+  it('also one sent on an earlier banking day, at that day\'s rate', () => {
+    expect(start('?hours=4', { 'ft.source': SOURCE, 'ft.taxIncome': sent(40, EUR - 0.0001) })).toEqual(sent(40, EUR, AT_4H));
+  });
+
+  it('with nothing saved, the default income follows them as well', () => {
+    expect(start('?hours=4')).toEqual(sent(30, EUR, AT_4H));
+  });
+
+  it('an income typed on the tax page stays, and an income in the address still wins', () => {
+    const typed = { amount: 12000, per: 'month', currency: 'EUR' };
+    expect(start('?hours=4&rates=EUR:6', { 'ft.source': { period: 'month', currency: 'EUR', amount: 12000 }, 'ft.taxIncome': typed })).toEqual(typed);
+    expect(start('?hours=4&income=5000&income_currency=RON&income_per=month', { 'ft.source': SOURCE, 'ft.taxIncome': sent(40, EUR) }))
+      .toEqual({ amount: 5000, per: 'month', currency: 'RON' });
+  });
+
+  it('a reload, with the working time it already had, leaves the income as it was sent, on any day\'s rates', () => {
+    // Worked out again on every start, an income that follows the converter would move with each day's rates.
+    const income = sent(40, EUR - 0.0001, AT_4H);
+    expect(start('?amount=40&currency=EUR&per=hour&hours=4', { 'ft.source': SOURCE, 'ft.work': AT_4H, 'ft.taxIncome': income })).toEqual(income);
   });
 });

@@ -2,7 +2,7 @@ import { LANG_QUERY, THEME_QUERY, WORK_QUERY } from './features/app/appQueries';
 import { DEFAULT_SOURCE } from './features/converter/Converter';
 import { ADDED_QUERY, COLUMNS_QUERY, GOAL_QUERY, RATES_QUERY } from './features/converter/converterQueries';
 import { FEES_QUERY } from './features/converter/Fees';
-import { applySourceQuery } from './features/converter/sourceQuery';
+import { applySourceQuery, followedMonth, refollowIncome } from './features/converter/sourceQuery';
 import { SIDE_JOB_QUERY } from './features/taxes/SideJob';
 import { INCOME_QUERY, OPTIONS_QUERY, REF_QUERY, TARGET_QUERY } from './features/taxes/Taxes';
 import { VAT_QUERY } from './features/taxes/Vat';
@@ -25,7 +25,10 @@ export const URL_QUERIES: readonly AnyQuery[] = [...BEFORE_SOURCE, ...AFTER_SOUR
 
 /** Runs once before the first render: the address wins over what is saved, and what is saved fills the address. */
 export function applyUrlState(): void {
+  // A tax income that follows the converter follows a working time or custom rate the address changes, too.
+  const followed = followedMonth(DEFAULT_SOURCE);
   BEFORE_SOURCE.forEach(applyUrlQuery);
+  refollowIncome(DEFAULT_SOURCE, followed);
   applySourceQuery(DEFAULT_SOURCE);
   AFTER_SOURCE.forEach(applyUrlQuery);
 }

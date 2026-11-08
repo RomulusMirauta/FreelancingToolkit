@@ -126,3 +126,38 @@ describe('opening a shared link', () => {
     expect((await load(LINK)).sharedLinkState()).toEqual({ opened: true, hadOwn: false, same: false });
   });
 });
+
+describe('the tax income in a shared link', () => {
+  // The sender typed 40 EUR an hour in the converter, then put the tax page back on its default income ("Reset
+  // tab" there): the address has the amount and no income, which a link worked out from the amount instead.
+  const SOURCE = '{"period":"hour","currency":"EUR","amount":40}';
+  const sender = async () => {
+    local = new Map([['ft.source', SOURCE]]);
+    vi.stubGlobal('localStorage', storage(local));
+    return (await load()).shareUrl('taxes');
+  };
+
+  it('a link with the converter\'s amount and no income opens on the default income, as the sender\'s', async () => {
+    const link = await sender();
+    expect(link).toBe('https://x.test/app/?share=1&amount=40&currency=EUR&per=hour#taxes');
+    // Someone else's browser, with an income of their own.
+    local = new Map(Object.entries(OWN));
+    vi.stubGlobal('localStorage', storage(local));
+    await load(link);
+    expect(local.get('ft.source')).toBe(SOURCE);
+    expect(local.has('ft.taxIncome')).toBe(false);
+    expect(url.searchParams.has('income')).toBe(false);
+  });
+
+  it('opened in the sender\'s own browser, it says nothing changed', async () => {
+    const share = await load(await sender());
+    expect(share.sharedLinkState()).toEqual({ opened: true, hadOwn: false, same: true });
+  });
+
+  it('nor does a link\'s working time change the default income', async () => {
+    for (const link of ['?share=1&hours=4', '?share=1&hours=4&amount=40&currency=EUR&per=hour']) {
+      await load(link);
+      expect(local.has('ft.taxIncome'), link).toBe(false);
+    }
+  });
+});

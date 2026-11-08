@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { BNR_RATES } from '../../lib/currency/rates';
+import { DEFAULT_WORK, rescale } from '../../lib/time/periods';
+import { MAX_AMOUNT, roundMoney } from '../../lib/ui/numbers';
 import { flushQuery } from '../../lib/ui/query';
 import { droppedParams } from '../../lib/ui/urlQuery';
-import { applySourceQuery } from './sourceQuery';
+import { applySourceQuery, incomeFollowsConverter, monthIncome } from './sourceQuery';
 
 // A tiny browser: an address that history.replaceState changes, and the app's storage with an amount and an
 // income of its own.
@@ -57,5 +60,62 @@ describe('the converter\'s amount in the address', () => {
     url = new URL('https://x.test/app/?amount=1024.215&currency=RON&per=month');
     applySourceQuery(DEFAULT_SOURCE);
     expect(JSON.parse(store.get('ft.taxIncome')!)).toEqual({ amount: 1024.22, per: 'month', currency: 'RON' });
+  });
+
+  it('the tax income that follows it stops at the largest amount the tax page takes', () => {
+    // 2,000,000 EUR an hour is about 1.85 billion lei a month: saved, it was refused on the next start.
+    url = new URL('https://x.test/app/?amount=2000000&currency=EUR&per=hour');
+    applySourceQuery(DEFAULT_SOURCE);
+    expect(JSON.parse(store.get('ft.taxIncome')!)).toEqual({ amount: MAX_AMOUNT, per: 'month', currency: 'RON' });
+  });
+});
+
+describe('the income the converter passes on to the tax page', () => {
+  it('is its amount a month in lei, rounded the way it shows it, up to the largest amount the tax page takes', () => {
+    expect(monthIncome(1024.215)).toEqual({ amount: 1024.22, per: 'month', currency: 'RON' });
+    expect(monthIncome(MAX_AMOUNT)).toEqual({ amount: MAX_AMOUNT, per: 'month', currency: 'RON' });
+    // Over it, the income was saved and put in the address, then refused on the next start as a broken link.
+    expect(monthIncome(1_851_477_333.33)).toEqual({ amount: MAX_AMOUNT, per: 'month', currency: 'RON' });
+  });
+});
+
+describe('whether the tax income only follows the converter, for "Reset tab" on the converter', () => {
+  const EUR = BNR_RATES.rates.EUR!;
+  /** 40 EUR an hour (or another amount) in lei a month at an EUR rate, as the converter sends it. */
+  const sent = (amount: number, rate: number, work = DEFAULT_WORK) =>
+    JSON.stringify({ amount: roundMoney(rescale(amount, 'hour', 'month', work) * rate), per: 'month', currency: 'RON' });
+  const save = (saved: Record<string, unknown>) => {
+    store = new Map(Object.entries(saved).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]));
+  };
+
+  it('an income the converter sent on an earlier banking day still follows it, whatever today\'s rates', () => {
+    // Worked out again with the rates of the next deploy, it no longer matched, and the reset kept it.
+    for (const rate of [EUR, EUR - 0.0001, EUR + 0.001]) {
+      save({ 'ft.source': { period: 'hour', currency: 'EUR', amount: 40 }, 'ft.taxIncome': sent(40, rate) });
+      expect(incomeFollowsConverter(DEFAULT_SOURCE), String(rate)).toBe(true);
+    }
+  });
+
+  it('so does one sent after a change of working time, with no amount of its own saved in the converter', () => {
+    const work = { ...DEFAULT_WORK, hoursPerDay: 6 };
+    save({ 'ft.work': work, 'ft.taxIncome': sent(30, EUR - 0.0001, work) });
+    expect(incomeFollowsConverter(DEFAULT_SOURCE)).toBe(true);
+  });
+
+  it('an income typed on the tax page in another currency or period doesn\'t', () => {
+    save({ 'ft.source': { period: 'month', currency: 'EUR', amount: 12000 }, 'ft.taxIncome': { amount: 12000, per: 'month', currency: 'EUR' } });
+    expect(incomeFollowsConverter(DEFAULT_SOURCE)).toBe(false);
+    save({ 'ft.source': { period: 'year', currency: 'RON', amount: 150000 }, 'ft.taxIncome': { amount: 150000, per: 'year', currency: 'RON' } });
+    expect(incomeFollowsConverter(DEFAULT_SOURCE)).toBe(false);
+  });
+
+  it('lei a month, typed on either page, is the converter\'s amount and the income at once: the two go together', () => {
+    save({ 'ft.source': { period: 'month', currency: 'RON', amount: 15000 }, 'ft.taxIncome': { amount: 15000, per: 'month', currency: 'RON' } });
+    expect(incomeFollowsConverter(DEFAULT_SOURCE)).toBe(true);
+  });
+
+  it('with no income saved, there is nothing to reset', () => {
+    save({ 'ft.source': { period: 'hour', currency: 'EUR', amount: 40 } });
+    expect(incomeFollowsConverter(DEFAULT_SOURCE)).toBe(false);
   });
 });
