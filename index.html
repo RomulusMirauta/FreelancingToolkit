@@ -20,8 +20,10 @@
     <title>FreelancingToolkit</title>
     <script>
       // Before the page paints, so it never flashes the wrong theme: the address (?theme=) first, then the saved one.
+      // The address is read as the app reads it (THEME_QUERY in appQueries.ts): ?theme=auto, ?theme=Dark.
       try {
         var q = new URLSearchParams(location.search).get('theme');
+        if (q) q = q === 'auto' ? 'system' : q.toLowerCase();
         var t = q === 'light' || q === 'dark' || q === 'system' ? q : JSON.parse(localStorage.getItem('ft.theme'));
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
       } catch (e) {}

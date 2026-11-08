@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { writeQuery } from './query';
+import { readQuery, writeQuery } from './query';
+import { PAGE_FOLDS } from './settingsKeys';
 
 /**
  * Which sections are folded, kept in the address as ?fold=converter,fees so a reload, a bookmark or a
@@ -7,6 +8,7 @@ import { writeQuery } from './query';
  * the #taxes hash are left alone.
  */
 const PARAM = 'fold';
+const SECTIONS = new Set([...PAGE_FOLDS.converter, ...PAGE_FOLDS.taxes]);
 
 let closed: Set<string> | null = null;
 /** Sections on screen now, for "fold all / unfold all". */
@@ -14,17 +16,26 @@ const mounted = new Set<string>();
 const listeners = new Set<() => void>();
 
 function current(): Set<string> {
-  // Read lazily: a shared link is applied (and the address rewritten) before the first render.
-  closed ??= new Set((new URLSearchParams(location.search).get(PARAM) ?? '').split(',').filter(Boolean));
+  if (closed === null) {
+    // Read lazily: a shared link is applied (and the address rewritten) before the first render.
+    const listed = (readQuery().get(PARAM) ?? '').split(',').filter(Boolean);
+    // An unknown name (an edited address) would count as a change that no "Reset tab" clears: it is dropped.
+    closed = new Set(listed.filter((id) => SECTIONS.has(id)));
+    if (closed.size < listed.length) writeFolds(closed);
+  }
   return closed;
+}
+
+function writeFolds(ids: ReadonlySet<string>) {
+  writeQuery((params) => {
+    if (ids.size) params.set(PARAM, [...ids].join(','));
+    else params.delete(PARAM);
+  });
 }
 
 function save(next: Set<string>) {
   closed = next;
-  writeQuery((params) => {
-    if (next.size) params.set(PARAM, [...next].join(','));
-    else params.delete(PARAM);
-  });
+  writeFolds(next);
   version++;
   listeners.forEach((l) => l());
 }
@@ -88,5 +99,5 @@ export function clearFolds(ids?: readonly string[]): void {
 
 /** The fold parameter as it is now, to carry over when the address is rewritten. */
 export function foldParam(): string | null {
-  return new URLSearchParams(location.search).get(PARAM);
+  return readQuery().get(PARAM);
 }

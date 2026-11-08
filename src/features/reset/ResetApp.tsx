@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { PAGE_FOLDS, PAGE_KEYS, PAGE_QUERY, type Page } from '../../lib/ui/settingsKeys';
-import { writeQuery } from '../../lib/ui/query';
+import { flushQuery, writeQuery } from '../../lib/ui/query';
 import { DEFAULT_SOURCE } from '../converter/Converter';
 import { SOURCE_PARAMS, incomeFollowsConverter, sourceFollowsIncome } from '../converter/sourceQuery';
 import { INCOME_QUERY } from '../taxes/Taxes';
@@ -143,6 +143,8 @@ function resetPage(page: Page) {
   } catch {
     // storage unavailable: nothing was saved
   }
+  // The reload opens the address: it must have lost the page's parameters, or they would come back.
+  flushQuery();
   location.reload();
 }
 
@@ -158,7 +160,9 @@ function resetApp() {
   // No query string: a shared link's settings must not come back after a reset. Nor its banner, whose "Back to
   // my settings" would undo the reset.
   settleSharedLink();
-  location.replace(location.pathname);
+  flushQuery();
+  // A whole address: at …github.io//FreelancingToolkit/ the path alone would lead to another site.
+  location.replace(location.origin + location.pathname);
 }
 
 /** A wrench, for the "Tools" button. */

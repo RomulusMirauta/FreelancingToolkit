@@ -184,6 +184,19 @@ test('Tab goes through the table even when pressed faster than a frame', async (
   expect(await page.evaluate(() => document.activeElement?.hasAttribute('data-cell'))).toBe(false);
 });
 
+test('holding an arrow key in a field keeps the page, and the address catches up', async ({ page }, info) => {
+  test.skip(isPhone(info), 'keyboards only');
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  const field = page.locator('input[name="daysOff"]');
+  await field.focus();
+  // Each step changed the address twice (working time, and the income that follows it); Safari throws on a 101st
+  // change within 10 seconds, which used to leave an empty page.
+  for (let i = 0; i < 70; i++) await page.keyboard.press('ArrowUp');
+  await expect(field).toHaveValue('70');
+  await expect(page).toHaveURL(/days_off=70/);
+  await expect(page.locator('.app-header')).toBeVisible();
+});
+
 /** Own settings saved, then someone's link opened in the same tab: its banner. */
 async function openSharedLink(page: Page) {
   await openApp(page, { lang: 'en', tab: 'converter' });

@@ -1,3 +1,4 @@
+import { flushQuery, readQuery, readable } from './query';
 import { STORAGE_PREFIX } from './usePersistentState';
 
 /** The settings and the address just before "Reset tab", so its toast can undo it (this tab only). */
@@ -12,7 +13,9 @@ export function saveBeforeReset(): void {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith(STORAGE_PREFIX)) saved[key] = localStorage.getItem(key)!;
     }
-    sessionStorage.setItem(KEY, JSON.stringify({ search: location.search, saved } satisfies Snapshot));
+    // The query as the app has it: the address may be a moment behind (see query.ts).
+    const query = readable(readQuery());
+    sessionStorage.setItem(KEY, JSON.stringify({ search: query ? `?${query}` : '', saved } satisfies Snapshot));
   } catch {
     // no storage: the reset can't be undone, the toast's button does nothing
   }
@@ -29,7 +32,9 @@ export function undoPageReset(): void {
     }
     for (const [key, value] of Object.entries(saved)) localStorage.setItem(key, value);
     sessionStorage.removeItem(KEY);
-    location.replace(location.pathname + search + location.hash);
+    flushQuery();
+    // A whole address: at …github.io//FreelancingToolkit/ the path alone would lead to another site.
+    location.replace(location.origin + location.pathname + search + location.hash);
   } catch {
     // storage unavailable or the snapshot is broken: the reset stays
   }

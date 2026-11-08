@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushQuery } from './query';
 import { applyUrlQuery, droppedParams, numberParam, writeUrlQuery, type UrlQuery } from './urlQuery';
 
 // A tiny browser: an address that history.replaceState changes, and a storage map.
@@ -8,6 +9,7 @@ beforeEach(() => {
   url = new URL('https://x.test/app/');
   store = new Map();
   vi.stubGlobal('location', {
+    get href() { return url.href; },
     get search() { return url.search; },
     get pathname() { return url.pathname; },
     get hash() { return url.hash; },
@@ -19,7 +21,16 @@ beforeEach(() => {
     removeItem: (k: string) => store.delete(k),
   });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  flushQuery();
+  vi.unstubAllGlobals();
+});
+
+/** The address once it has caught up: the app writes it a moment after a change (query.ts). */
+const address = () => {
+  flushQuery();
+  return url.search;
+};
 
 interface Pay { amount: number; per: string }
 const PAY: UrlQuery<Pay> = {
@@ -45,15 +56,15 @@ const TWO: UrlQuery<Two> = {
 describe('amounts in the address', () => {
   it('writes a changed value and removes the default', () => {
     writeUrlQuery(PAY, { amount: 250.5, per: 'year' });
-    expect(url.search).toBe('?pay=250.5&pay_per=year');
+    expect(address()).toBe('?pay=250.5&pay_per=year');
     writeUrlQuery(PAY, { amount: 100, per: 'month' });
-    expect(url.search).toBe('');
+    expect(address()).toBe('');
   });
 
   it('keeps other parameters and the hash', () => {
     url = new URL('https://x.test/app/?fold=fees#taxes');
     writeUrlQuery(PAY, { amount: 5, per: 'month' });
-    expect(url.search).toBe('?fold=fees&pay=5&pay_per=month');
+    expect(address()).toBe('?fold=fees&pay=5&pay_per=month');
     expect(url.hash).toBe('#taxes');
   });
 
@@ -75,7 +86,7 @@ describe('amounts in the address', () => {
     store.set('ft.pay', JSON.stringify({ amount: 7, per: 'month' }));
     url = new URL('https://x.test/app/?pay=abc&pay_per=year&fold=x');
     applyUrlQuery(PAY);
-    expect(url.search).toBe('?fold=x&pay=7&pay_per=month');
+    expect(address()).toBe('?fold=x&pay=7&pay_per=month');
     expect(JSON.parse(store.get('ft.pay')!)).toEqual({ amount: 7, per: 'month' });
   });
 
@@ -93,18 +104,18 @@ describe('amounts in the address', () => {
     url = new URL('https://x.test/app/?pay=300');
     applyUrlQuery(PAY);
     expect(store.has('ft.pay')).toBe(false);
-    expect(url.search).toBe('');
+    expect(address()).toBe('');
   });
 
   it('without an address value, a saved one is written into the address', () => {
     store.set('ft.pay', JSON.stringify({ amount: 42, per: 'year' }));
     applyUrlQuery(PAY);
-    expect(url.search).toBe('?pay=42&pay_per=year');
+    expect(address()).toBe('?pay=42&pay_per=year');
   });
 
   it('sparse: only changed parameters are written, a missing one is its default, the rest of the saved value stays', () => {
     writeUrlQuery(TWO, { a: 0, b: 5, note: 'x' });
-    expect(url.search).toBe('?b=5');
+    expect(address()).toBe('?b=5');
     store.set('ft.two', JSON.stringify({ note: 'kept', a: 9, b: 9 }));
     url = new URL('https://x.test/app/?a=3');
     applyUrlQuery(TWO);

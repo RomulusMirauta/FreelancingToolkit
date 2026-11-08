@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushQuery, writeQuery } from './query';
 import { saveBeforeReset, undoPageReset } from './undoReset';
 
 // A tiny browser: an address, the app's storage and the tab's session storage.
@@ -18,13 +19,19 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', new Proxy(ls, { ownKeys: () => [...local.keys()], getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) }));
   vi.stubGlobal('sessionStorage', storage(session));
   vi.stubGlobal('location', {
+    get href() { return url.href; },
+    get origin() { return url.origin; },
     get search() { return url.search; },
     get pathname() { return url.pathname; },
     get hash() { return url.hash; },
     replace: (next: string) => { url = new URL(next, url); },
   });
+  vi.stubGlobal('history', { state: null, replaceState: (_: unknown, __: string, next: string) => { url = new URL(next, url); } });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  flushQuery();
+  vi.unstubAllGlobals();
+});
 
 describe('undoing "Reset tab"', () => {
   it('puts back the settings and the address as they were', () => {
@@ -52,5 +59,23 @@ describe('undoing "Reset tab"', () => {
   it('without a saved state it does nothing', () => {
     undoPageReset();
     expect(url.search).toBe('?currencies=EUR,RON,PLN&fold=fees');
+  });
+
+  it('keeps a change the address had not caught up with yet', () => {
+    writeQuery((p) => p.set('amount', '40'));
+    saveBeforeReset();
+    // "Reset tab" writes the address before it reloads.
+    writeQuery((p) => p.delete('currencies'));
+    flushQuery();
+    undoPageReset();
+    expect(url.search).toBe('?currencies=EUR,RON,PLN&fold=fees&amount=40');
+  });
+
+  it('stays on the app\'s own site at an address with a double slash (…//app/)', () => {
+    url = new URL('https://x.test//app/?currencies=EUR,RON,PLN#x');
+    saveBeforeReset();
+    url = new URL('https://x.test//app/#x');
+    undoPageReset();
+    expect(url.href).toBe('https://x.test//app/?currencies=EUR,RON,PLN#x');
   });
 });

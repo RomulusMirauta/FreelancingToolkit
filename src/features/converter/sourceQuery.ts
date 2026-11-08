@@ -2,9 +2,8 @@ import { CURRENCIES } from '../../lib/currency/currencies';
 import { convert } from '../../lib/currency/convert';
 import { BNR_RATES, effectiveRates } from '../../lib/currency/rates';
 import { DEFAULT_WORK, PERIODS, readWork, rescale, type Period } from '../../lib/time/periods';
-import { isSaneAmount } from '../../lib/ui/numbers';
 import { readQuery, writeQuery } from '../../lib/ui/query';
-import { noteDropped } from '../../lib/ui/urlQuery';
+import { noteDropped, numberParam } from '../../lib/ui/urlQuery';
 
 /**
  * The converter cell the user typed into, in the address: ?amount=40&currency=EUR&per=hour. Names and values
@@ -21,10 +20,11 @@ interface Source {
 const KNOWN = new Set(CURRENCIES.map((c) => c.code));
 
 function fromQuery(params: URLSearchParams): Source | null {
-  const amount = Number(params.get('amount'));
+  // As every number in the address: an empty ?amount= is no amount, not 0.
+  const amount = numberParam(params.get('amount') ?? '');
   const currency = (params.get('currency') ?? '').toUpperCase();
   const period = params.get('per') as Period;
-  if (!params.has('amount') || !isSaneAmount(amount)) return null;
+  if (amount === null) return null;
   if (!KNOWN.has(currency) || !PERIODS.includes(period)) return null;
   return { amount, currency, period };
 }

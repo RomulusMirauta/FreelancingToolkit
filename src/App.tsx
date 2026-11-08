@@ -9,6 +9,7 @@ import { Settings } from './features/settings/Settings';
 import { DEFAULT_INCOME, INCOME_QUERY, Taxes, isTaxIncome, type TaxIncome } from './features/taxes/Taxes';
 import { DEFAULT_LANG, LangProvider, isLang, useT, type Lang } from './lib/i18n';
 import { DEFAULT_WORK, readWork } from './lib/time/periods';
+import { flushQuery } from './lib/ui/query';
 import { applyTheme, isTheme, type Theme } from './lib/ui/theme';
 import { usePersistentState } from './lib/ui/usePersistentState';
 import { useUrlQuery } from './lib/ui/urlQuery';
@@ -70,7 +71,7 @@ function Shell({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   useEffect(() => trackView(view), [view]);
 
   const go = (v: View) => {
-    history.replaceState(null, '', v === 'taxes' ? '#taxes' : location.pathname + location.search);
+    flushQuery(v === 'taxes' ? '#taxes' : '');
     setView(v);
     window.scrollTo(0, 0);
   };

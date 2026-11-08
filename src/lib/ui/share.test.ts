@@ -27,6 +27,7 @@ beforeEach(() => {
   session = new Map();
   reloads = 0;
   vi.stubGlobal('location', {
+    get href() { return url.href; },
     get search() { return url.search; },
     get pathname() { return url.pathname; },
     get hash() { return url.hash; },
@@ -48,6 +49,7 @@ async function load(address?: string) {
   share.applySharedLink();
   applyUrlState();
   share.finishSharedLink();
+  (await import('./query')).flushQuery();
   return share;
 }
 

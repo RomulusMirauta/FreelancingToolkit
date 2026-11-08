@@ -1,4 +1,4 @@
-import { readable, writeQuery } from './query';
+import { flushQuery, readQuery, readable, writeQuery } from './query';
 import { APP_QUERY, PAGE_KEYS, PAGE_QUERY, type Page } from './settingsKeys';
 import { notifyRestoredAfterReload } from './toast';
 
@@ -16,7 +16,7 @@ const legacyParam = (key: string) => key.replace(/^ft\./, '');
 const PENDING = 'ft-shared-backup';
 
 export function shareUrl(view: Page): string {
-  const params = new URLSearchParams(location.search);
+  const params = readQuery();
   APP_QUERY.forEach((k) => params.delete(k));
   params.delete(MARK);
   const rest = readable(params);
@@ -87,7 +87,7 @@ export function applySharedLink(): void {
     backup = pending.own;
     sameAsOwn = pending.same;
   }
-  const params = new URLSearchParams(location.search);
+  const params = readQuery();
   if (!params.has(MARK)) return;
   openedNow = true;
   try {
@@ -151,6 +151,7 @@ export function restoreOwnSettings(): void {
   }
   // The reload alone looks like nothing happened: after it, a toast says the own settings are back.
   notifyRestoredAfterReload();
+  flushQuery();
   location.reload();
 }
 
