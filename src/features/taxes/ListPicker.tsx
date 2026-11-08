@@ -111,7 +111,9 @@ export function ListPicker<T extends string | number>({ value, options, onChange
         <div
           ref={popRef}
           className={['add-pop', 'list-pop', align === 'right' ? 'pop-right' : '', up ? 'pop-up' : '', columns === 2 ? 'two-cols' : ''].filter(Boolean).join(' ')}
-          style={shift ? { transform: `translateX(-${shift}px)` } : undefined}
+          // A margin, not a transform: the pop-in animation's transform replaced the shift while it ran, and the page
+          // stayed as wide as the unshifted panel.
+          style={shift ? { marginLeft: -shift } : undefined}
         >
           {search && (
             <input

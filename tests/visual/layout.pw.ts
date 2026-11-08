@@ -1031,3 +1031,267 @@ test.describe('in another time zone', () => {
     await expect(page.locator('.calendar .monthly strong')).toHaveText('Every month on the 25th (next: Mon, 21 December 2026, in 25 days)');
   });
 });
+
+/**
+ * Focus as the Tab key gives it, which is what shows a focus ring: a step on and back. Not back and on: before the
+ * page's first button, Firefox leaves the page.
+ */
+async function tabTo(page: Page, target: Locator) {
+  await target.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(target).toBeFocused();
+}
+
+/**
+ * An element's focus ring: its lowest contrast with the colours beside it (the element's own background inside it,
+ * its parent's outside), and whether a box that clips its content cuts it off.
+ */
+const ringOf = (target: Locator) =>
+  target.evaluate((el) => {
+    const rgba = (c: string) => c.match(/[\d.]+/g)!.map(Number);
+    // The colour seen through an element: its background over its ancestors', down to an opaque one.
+    const backdrop = (from: Element) => {
+      const layers: number[][] = [];
+      for (let e: Element | null = from; e && layers.at(-1)?.[3] !== 1; e = e.parentElement) {
+        const [r = 0, g = 0, b = 0, a = 1] = rgba(getComputedStyle(e).backgroundColor);
+        if (a > 0) layers.push([r, g, b, a]);
+      }
+      return layers.reduceRight((under, [r = 0, g = 0, b = 0, a = 1]) => [r * a + under[0]! * (1 - a), g * a + under[1]! * (1 - a), b * a + under[2]! * (1 - a)], [255, 255, 255]);
+    };
+    const lum = (c: number[]) => {
+      const [r = 0, g = 0, b = 0] = c.map((v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (a: number[], b: number[]) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+    const s = getComputedStyle(el);
+    const offset = parseFloat(s.outlineOffset);
+    const reach = offset + parseFloat(s.outlineWidth);
+    const beside = [...(reach >= 0 ? [backdrop(el.parentElement!)] : []), ...(offset < 0 ? [backdrop(el)] : [])];
+    const box = el.getBoundingClientRect();
+    let clipped = false;
+    for (let e = el.parentElement; e; e = e.parentElement) {
+      const c = getComputedStyle(e);
+      if (c.overflowX === 'visible' && c.overflowY === 'visible') continue;
+      const clip = e.getBoundingClientRect();
+      if (box.left - reach < clip.left || box.right + reach > clip.right || box.top - reach < clip.top || box.bottom + reach > clip.bottom) clipped = true;
+    }
+    return { style: s.outlineStyle, contrast: Math.min(...beside.map((c) => contrast(rgba(s.outlineColor), c))), clipped };
+  });
+
+for (const colorScheme of ['dark', 'light'] as const) {
+  test.describe(`focus rings, ${colorScheme}`, () => {
+    test.use({ colorScheme });
+
+    test('the tax page\'s switches, pickers and lists, and the settings menu, show a ring of at least 3:1', async ({ page }, info) => {
+      test.skip(isPhone(info), 'keyboards only');
+      await openApp(page, { lang: 'ro', tab: 'taxes' });
+      const shown = async (target: Locator) => {
+        const ring = await ringOf(target);
+        expect(ring.style).not.toBe('none');
+        expect(ring.contrast).toBeGreaterThanOrEqual(3);
+        expect(ring.clipped).toBe(false);
+      };
+      // The CIM | mandate switch clipped its ring away; the best card's "Reference" drew it in the header's own
+      // colour (1:1), the other cards' in 1.6:1 on the light theme; the pickers had only a faint halo.
+      for (const target of [
+        page.locator('.segmented button').first(),
+        page.locator('.segmented button').nth(1),
+        page.locator('.regime.is-best .ref-toggle').first(),
+        page.locator('.regime:not(.is-best) .ref-toggle').first(),
+        page.locator('.income-row-main .currency-btn').first(),
+        page.locator('.income-row-main .currency-btn').last(),
+        page.locator('.regime-options .currency-btn').first(),
+      ]) {
+        await tabTo(page, target);
+        await shown(target);
+      }
+      // The option the arrow keys reach, and the menu's items, had only a tint (1.2:1).
+      await tabTo(page, page.locator('.income-row-main .currency-btn').last());
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('ArrowDown');
+      await shown(page.locator('.list-pop li.active'));
+      await page.keyboard.press('Escape');
+      await tabTo(page, page.locator('.top-actions .menu-trigger'));
+      await page.keyboard.press('Enter');
+      const item = page.locator('.top-actions .menu-pop > button').first();
+      await tabTo(page, item);
+      await shown(item);
+    });
+  });
+
+  test.describe(`Windows contrast theme, ${colorScheme}`, () => {
+    test.use({ colorScheme, forcedColors: 'active' });
+
+    test('the selected view, theme, language, currencies, quick pick, filter, pay contract and list option stand out', async ({ page, browserName }) => {
+      test.skip(browserName !== 'chromium', 'contrast themes are a Windows feature, drawn here by Chromium');
+      await openApp(page, { lang: 'ro', tab: 'taxes' });
+      // The theme replaced every colour that marked them, so the selected one looked like the others.
+      const system = await page.evaluate(() => {
+        const probe = document.body.appendChild(document.createElement('i'));
+        const read = (c: string) => { probe.style.color = c; return getComputedStyle(probe).color; };
+        const colours = { highlight: read('Highlight'), highlightText: read('HighlightText') };
+        probe.remove();
+        return colours;
+      });
+      const look = (target: Locator) => target.first().evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { background: s.backgroundColor, text: s.color, adjust: s.getPropertyValue('forced-color-adjust') };
+      });
+      // Drawn as set (forced-color-adjust: none): the plate the browser puts behind text hid the HighlightText.
+      const highlighted = { background: system.highlight, text: system.highlightText, adjust: 'none' };
+      const isHighlighted = async (on: Locator, off: Locator) => {
+        expect(await look(on)).toEqual(highlighted);
+        expect((await look(off)).background).not.toBe(system.highlight);
+      };
+      const thumbMarks = async (thumb: Locator, on: Locator, off: Locator) => {
+        expect((await look(thumb)).background).toBe(system.highlight);
+        expect(await look(on)).toMatchObject({ text: system.highlightText, adjust: 'none' });
+        expect((await look(off)).text).not.toBe(system.highlightText);
+      };
+      await thumbMarks(page.locator('.views-thumb'), page.locator('.views button[aria-current="page"]'), page.locator('.views button:not([aria-current])'));
+      await isHighlighted(page.locator('.calendar .chip.on'), page.locator('.calendar .chip:not(.on)'));
+      await isHighlighted(page.locator('.segmented button.on'), page.locator('.segmented button:not(.on)'));
+      await page.locator('.income-row-main .currency-btn').last().click();
+      await page.keyboard.press('ArrowDown');
+      await isHighlighted(page.locator('.list-pop li.active'), page.locator('.list-pop li:not(.active)'));
+      await page.keyboard.press('Escape');
+
+      await page.goto('./?lang=ro');
+      await isHighlighted(page.locator('.chips .chip.on'), page.locator('.chips .chip:not(.on)'));
+      await isHighlighted(page.locator('.settings-presets .chip.on'), page.locator('.settings-presets .chip:not(.on)'));
+      // Its hours keep a colour of their own, which the theme turned into its text colour on the highlight.
+      expect((await look(page.locator('.settings-presets .chip.on .preset-detail'))).text).toBe(system.highlightText);
+      await page.locator('.top-actions .menu-trigger').click();
+      for (const slider of ['.theme-slider', '.lang-slider']) {
+        await thumbMarks(page.locator(`${slider} .slider-thumb`), page.locator(`${slider} button[aria-checked="true"]`), page.locator(`${slider} button[aria-checked="false"]`));
+      }
+    });
+  });
+}
+
+/** Every element, ::before and ::after still set to move: a transition of a property that moves it, or an animation. */
+const stillMoving = (page: Page) =>
+  page.evaluate(() => {
+    const MOVES = /^(all|transform|translate|rotate|scale|width|height|top|right|bottom|left|inset|margin.*|padding.*)$/;
+    const seconds = (list: string) => list.split(',').map((d) => parseFloat(d) * (d.trim().endsWith('ms') ? 0.001 : 1));
+    const found = new Set<string>();
+    for (const el of document.querySelectorAll('*')) {
+      for (const pseudo of [null, '::before', '::after']) {
+        const s = getComputedStyle(el, pseudo);
+        if (pseudo && (s.content === 'none' || s.content === 'normal')) continue;
+        const durations = seconds(s.transitionDuration);
+        const moves = s.transitionProperty.split(',').map((p) => p.trim()).filter((p, i) => MOVES.test(p) && durations[i % durations.length]! > 0);
+        const animation = s.animationName !== 'none' && seconds(s.animationDuration).some((d) => d > 0) ? s.animationName : '';
+        if (moves.length || animation) found.add(`${el.tagName.toLowerCase()}.${[...el.classList].join('.')}${pseudo ?? ''}: ${animation || moves.join(', ')}`);
+      }
+    }
+    return [...found];
+  });
+
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' });
+
+  test('nothing on either tab is set to move', async ({ page }) => {
+    // The ↺ turned and the Tools buttons and a shared link's buttons lifted; the chevrons inside the tax cards turned.
+    await openApp(page, { lang: 'en', tab: 'converter', motion: true });
+    await page.goto('./?lang=en&share=1&currencies=EUR,USD');
+    await expect(page.locator('.shared-banner')).toBeVisible();
+    expect(await stillMoving(page)).toEqual([]);
+    await page.goto('./?lang=en#taxes');
+    await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+    expect(await stillMoving(page)).toEqual([]);
+  });
+});
+
+test('phones: a list opened near the right edge stays inside the screen while it comes in', async ({ page }, info) => {
+  test.skip(!isPhone(info), 'phones only');
+  await openApp(page, { lang: 'ro', tab: 'taxes', motion: true });
+  const width = page.viewportSize()!.width;
+  await page.locator('.income-row-main .currency-btn').last().click();
+  // Each frame of its pop-in. The animation's transform replaced the shift that keeps it on screen: for 0.2 s it reached
+  // 75 px past the edge, and the page stayed that much wider while the list was open.
+  const frames = await page.evaluate(() => new Promise<{ right: number; page: number }[]>((resolve) => {
+    const seen: { right: number; page: number }[] = [];
+    const start = performance.now();
+    const frame = () => {
+      seen.push({ right: document.querySelector('.list-pop')!.getBoundingClientRect().right, page: document.scrollingElement!.scrollWidth });
+      if (performance.now() - start < 300) requestAnimationFrame(frame);
+      else resolve(seen);
+    };
+    frame();
+  }));
+  expect(frames.length).toBeGreaterThan(5);
+  for (const f of frames) {
+    expect(f.right).toBeLessThanOrEqual(width);
+    expect(f.page).toBe(width);
+  }
+});
+
+/**
+ * What runs past its place on the tax page: the page wider than the screen, a row of the phone ranking past the list,
+ * its name under its amount or a word of the name split over two lines (anywhere but after its hyphen or soft hyphen,
+ * as "Micro-" in Romanian), a card option past its card, a label over its field.
+ */
+const overflowsOnTaxes = (page: Page) =>
+  page.evaluate(() => {
+    const found: string[] = [];
+    const box = (el: Element) => el.getBoundingClientRect();
+    const over = (a: number, b: number) => a > b + 0.5;
+    // The middle of the line a letter is on, by the last of its boxes: a range that touches the break after a soft
+    // hyphen also gets the hyphen drawn at the end of the line before.
+    const lineOf = (node: Node, at: number) => {
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + 1);
+      const last = [...range.getClientRects()].at(-1)!;
+      return last.top + last.height / 2;
+    };
+    if (over(document.scrollingElement!.scrollWidth, innerWidth)) found.push(`page ${document.scrollingElement!.scrollWidth} px wide`);
+    const rank = box(document.querySelector('.rank')!);
+    for (const li of document.querySelectorAll('.rank li')) {
+      const row = li.textContent!;
+      const amount = box(li.querySelector('b')!);
+      if (over(box(li).right, rank.right) || over(amount.right, box(li).right)) found.push(`${row}: past the list`);
+      if (over(box(li.querySelector('.regime-name')!).right, amount.left)) found.push(`${row}: name under the amount`);
+      const text = li.querySelector('.kw-rest')!.firstChild!;
+      // A word ends at a space, after a hyphen or at a soft hyphen: where the name may break.
+      for (const word of text.textContent!.matchAll(/[^\s\u00ad-]+-?/g)) {
+        if (Math.abs(lineOf(text, word.index) - lineOf(text, word.index + word[0].length - 1)) > 5) found.push(`${row}: "${word[0]}" split`);
+      }
+    }
+    for (const card of document.querySelectorAll('.regime')) {
+      const name = card.querySelector('h3')!.textContent!;
+      for (const el of card.querySelectorAll('.regime-options *')) if (over(box(el).right, box(card).right)) found.push(`${name}: ${el.className} past the card`);
+      for (const field of card.querySelectorAll('.regime-options .field')) {
+        const words = document.createRange();
+        words.selectNodeContents(field.firstElementChild!);
+        const label = words.getBoundingClientRect();
+        const input = box(field.lastElementChild!);
+        if (over(label.right, input.left) && over(label.bottom, input.top)) found.push(`${name}: ${field.firstElementChild!.textContent} over its field`);
+      }
+    }
+    return found;
+  });
+
+for (const lang of LANGS) {
+  test(`narrow phones: nothing on the tax page runs off a 320 px screen, nor with the largest income (${lang})`, async ({ page }, info) => {
+    test.skip(!isPhone(info), 'phones only');
+    const fits = async () => {
+      await expect(page.locator('.rank')).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
+      expect(await overflowsOnTaxes(page)).toEqual([]);
+    };
+    // 320 px is also a 1280 px window zoomed to 400%. The ranking ran 31 px past its list and 6 px off the screen,
+    // cutting "RON", and in English the expenses' "RON/month" ran 12 px past its card.
+    await page.setViewportSize({ width: 320, height: 860 });
+    await openApp(page, { lang, tab: 'taxes' });
+    await fits();
+    // 999,999,999.99 EUR an hour, 24 hours a day, 7 days a week: the ranking's amounts ran past the list, and on most
+    // phones pushed the page sideways.
+    await page.goto(`./?lang=${lang}&income=999999999.99&income_currency=EUR&income_per=hour&hours=24&days=7#taxes`);
+    await fits();
+    await page.setViewportSize(info.project.use.viewport!);
+    await fits();
+  });
+}

@@ -94,11 +94,12 @@
   .howto[open] > summary { color: var(--text); }
   .howto > p { margin: 6px 0 0; }
   .rank-title { margin: 0 0 6px; font-size: 0.85rem; color: var(--muted); }
-  .rank { list-style: none; margin: 0 0 14px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); display: grid; gap: 2px; }
+  /* Never wider than the screen (320 px, the largest income): the name keeps its longest word, the amount wraps. */
+  .rank { list-style: none; margin: 0 0 14px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .rank li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; }
   .rank li.best { background: var(--accent-soft); }
-  .rank .regime-name { font-size: 0.85rem; flex: 1; min-width: 0; }
-  .rank b { font-variant-numeric: var(--numeric); white-space: nowrap; }
+  .rank .regime-name { font-size: 0.85rem; flex: 1; min-width: min-content; }
+  .rank b { font-variant-numeric: var(--numeric); overflow-wrap: anywhere; text-align: right; }
   .rank b small { font-weight: 500; color: var(--muted); }
   .rank-mark { flex: none; width: 14px; color: var(--accent); }
   .rank-mark.over { color: var(--warn); }

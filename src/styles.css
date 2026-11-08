@@ -392,7 +392,8 @@ input:focus-visible, button:focus-visible, summary:focus-visible {
 .add-list li .sym-col { flex: none; min-width: 2.4rem; text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--text); }
 .add-list li .sym-col:not(:empty) { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 0 5px; }
 .add-list li span { color: var(--muted); font-size: 0.9rem; }
-.add-list li.active { background: var(--accent-soft); }
+/* The tint alone barely shows (1.2:1) where the keyboard is: a ring inside the option too. */
+.add-list li.active { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; }
 .add-list li.active span { color: var(--text); }
 /* Currency symbol as a hint after the ISO code: "EUR €". */
 .cur-sym { margin-left: 0.3em; font-weight: 500; opacity: 0.85; }
@@ -636,7 +637,9 @@ footer { margin: 24px 0 8px; text-align: center; }
 .currency-btn[aria-expanded='true']::after { transform: translateY(-60%) rotate(180deg); }
 /* Every input of an income row is editable, so all of them get the lime box. */
 .income .income-amount input, .income .currency-btn { background-color: var(--edit-bg); border: 1.5px solid var(--edit); }
-.income .currency-btn:focus-visible, .income .income-amount input:focus { outline: none; box-shadow: 0 0 0 3px var(--edit-strong-bg); }
+/* The halo is too faint to show focus on its own: the field has its caret, the buttons keep the ring. */
+.income .income-amount input:focus { outline: none; box-shadow: 0 0 0 3px var(--edit-strong-bg); }
+.income .currency-btn:focus-visible { box-shadow: 0 0 0 3px var(--edit-strong-bg); }
 .income {display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin-bottom: 16px; }
 .income input { text-align: right; font-variant-numeric: tabular-nums; }
 .income-hint, .income-total { flex-basis: 100%; margin: 0; }
@@ -666,6 +669,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .segmented button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; }
 .segmented button + button { border-left: 1px solid var(--border); }
 .segmented button.on { background: var(--accent); color: var(--surface); }
+/* The ring goes inside the button: the switch clips whatever reaches past its rounded corners. */
+.segmented button:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
 
 .note { background: var(--surface-2); padding: 8px 10px; border-radius: 6px; margin: 0 0 12px; font-size: 0.9rem; }
 
@@ -963,9 +968,10 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 /* Options: the editable part of each card, tinted like the converter's editable cells. */
 /* The options area takes up the extra height, so notes, disadvantages and details line up at the bottom of every card in a row. */
 .regime-options { flex: 1 0 auto; display: grid; align-content: start; gap: 8px; padding: 10px 12px; background: var(--edit-bg); border-top: 1px solid var(--border); }
-.regime-options .field { font-size: 0.82rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-/* Label on the left, a compact input on the right: long labels wrap, inputs stay the size of their content. */
-.regime-options .field > span:first-child { flex: 1; min-width: 0; }
+.regime-options .field { font-size: 0.82rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+/* Label on the left, a compact input on the right: long labels wrap, inputs stay the size of their content. A card
+   too narrow for the label's longest word beside the input (a 320 px phone) takes the input under the label. */
+.regime-options .field > span:first-child { flex: 1; min-width: min-content; }
 .regime-options .field-input { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 .regime-options .field-input input { border-color: var(--edit); }
 .regime-options .field-amount .field-input input { width: 7.5rem; }
@@ -1068,7 +1074,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .list-empty { margin: 8px 4px 2px; }
 /* In a card's options, the list button gets the lime box like the other inputs. */
 .regime-options .currency-btn { background-color: var(--surface); border: 1.5px solid var(--edit); min-width: 4.5rem; }
-.regime-options .currency-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--edit-strong-bg); }
+.regime-options .currency-btn:focus-visible { box-shadow: 0 0 0 3px var(--edit-strong-bg); }
 .add-list li .check { margin-left: auto; color: var(--accent); font-weight: 700; }
 
 .kw-plus { margin-right: 8px; font-weight: 800; font-size: 1.05rem; opacity: 0.85; }
@@ -1101,6 +1107,9 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .regime.is-best .ref-toggle:not(.on, :hover) { opacity: var(--best-ref-opacity); }
 .regime.is-best .ref-toggle:hover:not(.on) { background: color-mix(in srgb, var(--best-text) 12%, transparent); }
 .regime.is-best .ref-toggle.on { background: var(--best-text); border-color: var(--best-text); color: var(--best); }
+/* The ring is drawn on the header, so it takes the header's text colour: the accent is the best card's own. */
+.ref-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.regime.is-best .ref-toggle:focus-visible { outline-color: var(--best-text); }
 
 .theme-switch button { padding: 4px 8px; font-size: 0.9rem; line-height: 1; }
 
@@ -1136,7 +1145,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   display: grid; grid-template-columns: 22px 1fr; gap: 2px 10px; align-items: center; width: 100%; text-align: left;
   border: 0; background: none; color: var(--text); padding: 9px 10px; border-radius: 8px; cursor: pointer; font: inherit;
 }
-.top-actions .menu-pop > button:hover, .top-actions .menu-pop > button:focus-visible { background: var(--accent-soft); outline: none; }
+.top-actions .menu-pop > button:hover { background: var(--accent-soft); }
+.top-actions .menu-pop > button:focus-visible { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; }
 .top-actions .menu-pop svg { grid-row: span 2; color: var(--accent); }
 .top-actions .menu-pop b { font-weight: 600; font-size: 0.9rem; }
 .top-actions .menu-pop small { grid-column: 2; color: var(--muted); font-size: 0.78rem; }
@@ -1194,6 +1204,8 @@ input[aria-invalid='true'] { border-color: var(--danger); }
   .menu-pop, .chev, .currency-btn::after, .slider-thumb, .slider button, .views-thumb, .views button { transition: none !important; }
   .reset-wrap.open .menu-pop > *, .slider button span, .slider-icon, .views-icon, .reset-app .dot.pulse, .add-pop, .reset-confirm { animation: none !important; }
   .kept-meter > span, .vat-bar span, .regime, .chip, input, .fold > summary, .fold > summary h2::before, .menu-trigger .icon svg { transition: none !important; }
+  .reset-app, .reset-app .icon, .banner-btn, .regime-cons > summary::before, .regime-details > summary::before,
+  .install-steps details > summary::before, .howto > summary::before { transition: none !important; }
 }
 
 /* ---------- Read-only result tiles (Working time, Fees): what the settings come to ---------- */
@@ -1318,3 +1330,16 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .top-actions.open .menu-trigger .gear { transform: rotate(60deg); }
 @media (hover: hover) { .top-actions .menu-trigger:hover .gear { transform: rotate(60deg); } }
 @media (prefers-reduced-motion: reduce) { .top-actions .menu-trigger .gear { transition: none; } }
+
+/* Windows contrast themes replace the page's colours, and with them what marks the selected choice: the system's
+   highlight colours mark it again. The selected ones are drawn as set here (forced-color-adjust: none), since the
+   plate the browser draws behind text hid the HighlightText; so are their focus rings and what they hold. */
+@media (forced-colors: active) {
+  .views-thumb, .slider-thumb { background: Highlight; }
+  .views button[aria-current='page'], .slider button[aria-checked='true'], .chip.on, .segmented button.on, .add-list li.active {
+    forced-color-adjust: none; color: HighlightText; outline-color: CanvasText;
+  }
+  .chip.on, .segmented button.on, .add-list li.active { background: Highlight; border-color: Highlight; }
+  .segmented button.on, .add-list li.active { outline-color: HighlightText; }
+  .chip.on *, .add-list li.active * { color: inherit !important; background: none !important; border-color: currentColor !important; }
+}
