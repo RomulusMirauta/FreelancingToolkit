@@ -174,7 +174,10 @@ function InstallSteps({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Shown after opening a link with someone's settings, until the viewer chooses (a reload keeps it). */
+/**
+ * Shown after opening a link with someone's settings, until the viewer chooses (a reload keeps it). With the tab
+ * closed first, the next visit puts the own settings back instead.
+ */
 export function SharedBanner() {
   const t = useT().app;
   const [{ opened, hadOwn, same }] = useState(sharedLinkState);

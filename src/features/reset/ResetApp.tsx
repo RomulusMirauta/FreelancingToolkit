@@ -162,8 +162,9 @@ function resetApp() {
     if (key.startsWith(STORAGE_PREFIX)) storage.removeItem(key);
   }
   // No query string: a shared link's settings must not come back after a reset. Nor its banner, whose "Back to
-  // my settings" would undo the reset.
-  settleSharedLink();
+  // my settings" would undo the reset, nor the own settings a link left waiting in another tab, which the next
+  // visit would put back.
+  settleSharedLink(true);
   flushQuery();
   // A whole address: at …github.io//FreelancingToolkit/ the path alone would lead to another site.
   location.replace(location.origin + location.pathname);

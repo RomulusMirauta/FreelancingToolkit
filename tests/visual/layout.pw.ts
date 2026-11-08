@@ -598,6 +598,43 @@ test('shared link: "Keep the link’s" and "Reset app" end it, and a reload brin
   await expect(banner).toHaveCount(0);
 });
 
+/** Own settings saved in one tab, then someone's link opened in a tab of its own and closed without a choice. */
+async function closeSharedLinkTab(page: Page) {
+  await openApp(page, { lang: 'en', tab: 'converter' });
+  await page.goto('./?lang=en&currencies=EUR,RON,PLN');
+  await drawn(page);
+  const linkTab = await page.context().newPage();
+  await linkTab.goto('./?share=1&currencies=EUR,USD');
+  await expect(linkTab.locator('.shared-banner').getByRole('button', { name: 'Back to my settings' })).toBeVisible();
+  await linkTab.close();
+}
+
+test('shared link: with its tab closed before a choice, the next visit puts the own settings back and says so', async ({ context, page }) => {
+  await closeSharedLinkTab(page);
+  await page.close();
+  const later = await context.newPage();
+  await openApp(later, { lang: 'en', tab: 'converter' });
+  await expect(later.locator('.toast')).toContainText('Your own settings are back.');
+  await expect(later.locator('.shared-banner')).toHaveCount(0);
+  await expect(later).toHaveURL(/currencies=EUR,RON,PLN(&|$)/);
+  await expect(byName(later, 'hour-PLN')).toHaveCount(1);
+  await expect(byName(later, 'hour-USD')).toHaveCount(0);
+});
+
+test('shared link: "Reset app" in a tab open from before also ends a link whose tab was closed before a choice', async ({ context, page }) => {
+  await closeSharedLinkTab(page);
+  await page.locator('.reset-wrap > .menu-trigger').click();
+  await page.locator('.reset-row').getByRole('button', { name: 'Reset app' }).click();
+  await Promise.all([page.waitForURL((u) => u.search === ''), page.locator('.reset-confirm .danger').click()]);
+  await drawn(page);
+  // Nothing comes back after the reset, nor on the next visit.
+  await expect(page).not.toHaveURL(/currencies=/);
+  const later = await context.newPage();
+  await openApp(later, { lang: 'en', tab: 'converter' });
+  await expect(later).not.toHaveURL(/currencies=/);
+  await expect(later.locator('.toast')).toHaveCount(0);
+});
+
 test('with site data blocked, a link sets the app for the visit, as its banner says, and the address keeps it', async ({ page }) => {
   // "Block all cookies", "Don't allow sites to save data": reaching either storage throws. The app showed its
   // defaults and emptied the address, under a banner saying it showed the sender's settings.
