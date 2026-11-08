@@ -1374,6 +1374,85 @@ test('an amount typed as the new year comes in, before the page has noticed it, 
   await expect.poll(() => saved(page, 'ft.taxIncome')).toBe('{"amount":36646.94,"per":"month","currency":"RON"}');
 });
 
+/** Goes to text on the page as find in page (Ctrl+F) or a link to that text does: the browser opens a folded card for it. */
+const revealText = (page: Page, text: string) => page.goto(`${page.url().split('#')[0]}#:~:text=${encodeURIComponent(text)}`);
+
+test('a section folded by a click that the browser opens to show a match shows it, and covers nothing', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openApp(page, { lang: 'en', tab: 'converter', motion: true });
+  const card = page.locator('details.converter');
+  const title = card.locator(':scope > summary');
+  const body = card.locator('.fold-body');
+  await title.click();
+  await expect(card).not.toHaveAttribute('open');
+  await expect(page).toHaveURL(/fold=converter/);
+  // Its lowest height on any frame while open, from now: shown by the browser, it doesn't slide open again.
+  await body.evaluate((el) => {
+    const w = window as unknown as { lowest: number };
+    w.lowest = Infinity;
+    const frame = () => {
+      if ((el.parentElement as HTMLDetailsElement).open) w.lowest = Math.min(w.lowest, el.getBoundingClientRect().height);
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  await revealText(page, 'Every amount is editable');
+  await expect(card).toHaveAttribute('open');
+  // It stayed folded for the app, with its body 0 px high and transparent: the fields in it lay over the cards
+  // below and took their clicks, so typing into "Days per week" changed the converter's rate.
+  await expect(page).not.toHaveURL(/fold=/);
+  await expect(body).toHaveCSS('opacity', '1');
+  const height = (await body.boundingBox())!.height;
+  expect(height).toBeGreaterThan(100);
+  expect(await page.evaluate(() => (window as unknown as { lowest: number }).lowest)).toBeGreaterThan(height - 1);
+  const days = byName(page, 'daysPerWeek');
+  // Playwright's click waits while another element would take it.
+  await days.click({ timeout: 5000 });
+  await expect(days).toBeFocused();
+  await title.click();
+  await expect(card).not.toHaveAttribute('open');
+});
+
+test('a section folded in the address that the browser opens to show a match counts as open: the address and Tools follow', async ({ page }) => {
+  // Romanian, the default: nothing else counts as something to reset.
+  await openApp(page, { lang: 'ro', tab: 'converter' });
+  await page.goto('./?fold=fees');
+  const card = page.locator('details.fees');
+  const tools = page.locator('.reset-wrap > .menu-trigger');
+  await expect(card).not.toHaveAttribute('open');
+  await expect(tools.locator('.dot')).toHaveClass(/pulse/);
+  await revealText(page, 'Ce ajunge efectiv în cont');
+  await expect(card).toHaveAttribute('open');
+  // It kept ?fold=fees and the pulsing dot, and its first click on the title changed nothing on screen.
+  await expect(page).not.toHaveURL(/fold=/);
+  await expect(tools).toHaveAccessibleName('Unelte');
+  await expect(tools.locator('.dot')).not.toHaveClass(/pulse/);
+  await card.locator(':scope > summary').click();
+  await expect(card).not.toHaveAttribute('open');
+});
+
+test('the Tools dot pulses by transform and opacity alone, which the browser animates without repainting the page', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await openApp(page, { lang: 'ro', tab: 'converter', motion: true });
+  await page.goto('./?hours=6');
+  const dot = page.locator('.reset-wrap .dot');
+  await expect(dot).toHaveClass(/pulse/);
+  const animations = () =>
+    dot.evaluate((el) =>
+      document.getAnimations().flatMap((a) => {
+        const effect = a.effect as KeyframeEffect | null;
+        if (effect?.target !== el) return [];
+        const props = new Set(effect.getKeyframes().flatMap((k) => Object.keys(k)));
+        for (const p of ['offset', 'computedOffset', 'easing', 'composite']) props.delete(p);
+        return [{ on: effect.pseudoElement, props: [...props].sort() }];
+      }),
+    );
+  // A box-shadow on the dot itself: the page was repainted every frame for as long as it was open.
+  expect(await animations()).toEqual([{ on: '::before', props: ['opacity', 'transform'] }]);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await animations()).toEqual([]);
+});
+
 test.describe('in another time zone', () => {
   test.use({ timezoneId: 'America/Los_Angeles' });
 

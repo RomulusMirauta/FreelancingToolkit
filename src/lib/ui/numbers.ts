@@ -13,6 +13,11 @@ export const MAX_WHOLE_DIGITS = 9;
 export const isSaneAmount = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x >= 0 && x <= MAX_AMOUNT;
 let fmt2 = makeMoney('ro-RO');
 let fmtRate = makeRate('ro-RO');
+/**
+ * formatNumber's formatters for the language in use, by decimals: building one takes about 40 times as long as using
+ * it, and every key typed on the tax page formats over 100 figures (the § sources' among them).
+ */
+let fmtCounts = new Map<number, Intl.NumberFormat>();
 
 function makeMoney(locale: string) {
   return new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
@@ -28,6 +33,7 @@ export function setNumberLocale(next: NumberLang): void {
   const locale = next === 'ro' ? 'ro-RO' : 'en-GB';
   fmt2 = makeMoney(locale);
   fmtRate = makeRate(locale);
+  fmtCounts = new Map();
 }
 
 /** Under half a ban it is 0,00: Intl writes a loss that small, and −0, as -0,00. */
@@ -37,7 +43,12 @@ export function formatMoney(x: number): string {
 
 /** A count such as days or a percentage: up to `decimals` decimals, none when it is whole (228, 5,5). */
 export function formatNumber(x: number, decimals = 1): string {
-  return new Intl.NumberFormat(lang === 'ro' ? 'ro-RO' : 'en-GB', { maximumFractionDigits: decimals }).format(x);
+  let fmt = fmtCounts.get(decimals);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat(lang === 'ro' ? 'ro-RO' : 'en-GB', { maximumFractionDigits: decimals });
+    fmtCounts.set(decimals, fmt);
+  }
+  return fmt.format(x);
 }
 
 export function formatRate(x: number): string {

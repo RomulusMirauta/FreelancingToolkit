@@ -1158,13 +1158,22 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 .reset-wrap.open .menu-pop > :nth-child(1) { animation-delay: 0.06s; }
 .reset-wrap.open .menu-pop > :nth-child(2) { animation-delay: 0.03s; }
 @keyframes menu-item-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.reset-app .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-/* While something can be reset, the halo breathes out and fades, every couple of seconds. */
-.reset-app .dot.pulse { animation: dot-halo 2.2s ease-out infinite; }
+.reset-app .dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* While something can be reset, the halo breathes out and fades, every couple of seconds: a disc that grows from
+   under the dot. It moves only by transform and opacity, which the browser animates without repainting the page; the
+   box-shadow halo it replaces was repainted every frame, for as long as the page was open. At z-index -1 in the
+   button (made a stacking context) it is drawn over the button and under the dot and its ring, as the shadow was;
+   without the animation it doesn't show. */
+.reset-app.menu-trigger { isolation: isolate; }
+.reset-app .dot.pulse::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: dot-halo 2.2s ease-out infinite;
+}
+/* Out to 9 px past the dot's 4 px radius: 13 / 4. */
 @keyframes dot-halo {
-  0% { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
-  70% { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 9px color-mix(in srgb, var(--accent) 0%, transparent); }
-  100% { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 0 transparent; }
+  0% { transform: scale(1); opacity: 1; }
+  70%, 100% { transform: scale(3.25); opacity: 0; }
 }
 
 /* ---------- Sliders (language, theme): a thumb that glides between the stops, and can be dragged ---------- */
@@ -1202,7 +1211,7 @@ input[aria-invalid='true'] { border-color: var(--danger); }
 
 @media (prefers-reduced-motion: reduce) {
   .menu-pop, .chev, .currency-btn::after, .slider-thumb, .slider button, .views-thumb, .views button { transition: none !important; }
-  .reset-wrap.open .menu-pop > *, .slider button span, .slider-icon, .views-icon, .reset-app .dot.pulse, .add-pop, .reset-confirm { animation: none !important; }
+  .reset-wrap.open .menu-pop > *, .slider button span, .slider-icon, .views-icon, .reset-app .dot.pulse::before, .add-pop, .reset-confirm { animation: none !important; }
   .kept-meter > span, .vat-bar span, .regime, .chip, input, .fold > summary, .fold > summary h2::before, .menu-trigger .icon svg { transition: none !important; }
   .reset-app, .reset-app .icon, .banner-btn, .regime-cons > summary::before, .regime-details > summary::before,
   .install-steps details > summary::before, .howto > summary::before { transition: none !important; }

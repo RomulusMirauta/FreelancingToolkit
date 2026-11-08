@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
-  bareAmount, formatEditable, formatEditableGrouped, formatEditableRate, formatMoney, groupTyped, isAtOnce, parseAmount, pastedAmount,
-  roundMoney, setNumberLocale, typedAmount,
+  bareAmount, formatEditable, formatEditableGrouped, formatEditableRate, formatMoney, formatNumber, groupTyped, isAtOnce, parseAmount,
+  pastedAmount, roundMoney, setNumberLocale, typedAmount,
 } from './numbers';
 
 describe('parseAmount', () => {
@@ -42,6 +42,27 @@ describe('formatting follows the language', () => {
     setNumberLocale('en');
     expect(formatMoney(1234.5)).toBe('1,234.50');
     expect(formatEditable(160.278)).toBe('160.28');
+  });
+
+  it('counts and percentages: one formatter per language and number of decimals, not one per figure', () => {
+    const figures = [0, 5, 5.5, 7.25, 228, 1234.567, 4050, 999_999_999.99];
+    for (const as of ['en', 'ro'] as const) {
+      const locale = as === 'ro' ? 'ro-RO' : 'en-GB';
+      const expected = [0, 1, 2].map((decimals) => figures.map((x) => new Intl.NumberFormat(locale, { maximumFractionDigits: decimals }).format(x)));
+      setNumberLocale(as === 'ro' ? 'en' : 'ro');
+      setNumberLocale(as);
+      // Every key typed on the tax page formats over 100 figures, and each one built its own formatter.
+      const built = vi.spyOn(Intl, 'NumberFormat');
+      try {
+        for (let round = 0; round < 3; round++) {
+          for (const decimals of [0, 1, 2]) expect(figures.map((x) => formatNumber(x, decimals))).toEqual(expected[decimals]);
+          expect(formatNumber(5.5)).toBe(expected[1]![2]);
+        }
+        expect(built).toHaveBeenCalledTimes(3);
+      } finally {
+        built.mockRestore();
+      }
+    }
   });
 });
 

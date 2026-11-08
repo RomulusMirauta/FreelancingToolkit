@@ -7,7 +7,8 @@ const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(pre
  * A card that folds: the title with a chevron, and a short summary beside it that stays readable
  * while the card is folded. Open by default; a folded card is remembered in the address (see folds.ts).
  * Opening and closing slide the body's height (measured, so any content works); a closing card stays
- * open in the DOM until its body has slid shut. No motion when the system asks for less.
+ * open in the DOM until its body has slid shut. No motion when the system asks for less. A folded card the
+ * browser opens by itself (find in page, a link to text in it) counts as opened.
  */
 export function Fold({ id, title, summary, className, children }: {
   /** Short and stable: it appears in the address (?fold=converter,fees). */
@@ -54,7 +55,7 @@ export function Fold({ id, title, summary, className, children }: {
         [{ height, opacity: 1 }, { height: '0px', opacity: 0 }],
         { duration: 200, easing: 'cubic-bezier(0.3, 0, 1, 1)', fill: 'forwards' },
       );
-      // The finished animation keeps the body shut until the card closes; it is cancelled on the next change.
+      // The finished animation keeps the body shut until the card closes, then goes (below).
       running.current.onfinish = () => {
         body.style.overflow = '';
         setClosing(false);
@@ -62,8 +63,27 @@ export function Fold({ id, title, summary, className, children }: {
     }
   }, [open]);
 
+  // Once the card has shut, its finished close animation goes: kept, it left a card the browser opens by itself
+  // with a 0 px, transparent body whose fields lay over the cards below and took their clicks and typing.
+  // Only a finished one: in the commit that starts a close, `closing` is still false and the new animation runs.
+  useLayoutEffect(() => {
+    if (open || closing || running.current?.playState !== 'finished') return;
+    running.current.cancel();
+    running.current = null;
+  }, [open, closing]);
+
   return (
-    <details className={`card fold${className ? ` ${className}` : ''}`} open={open || closing}>
+    <details
+      className={`card fold${className ? ` ${className}` : ''}`}
+      open={open || closing}
+      // The browser opened a folded card to show a match: the app follows (the address, Tools), without sliding it
+      // open again.
+      onToggle={(e) => {
+        if (!e.currentTarget.open || open || closing) return;
+        was.current = true;
+        setOpen(true);
+      }}
+    >
       {/* The click is handled here, not by the browser, so a closing card can animate before it shuts. */}
       <summary
         onClick={(e) => {
